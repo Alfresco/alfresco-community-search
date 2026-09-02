@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.alfresco</groupId>
+        <artifactId>alfresco-super-pom</artifactId>
+        <version>12</version>
+    </parent>
+
+    <groupId>org.alfresco</groupId>
+    <artifactId>alfresco-community-search-parent</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>Alfresco Community Search :: Parent</name>
+    <description>Alfresco Community Search :: Parent</description>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <maven.build.sourceVersion>17</maven.build.sourceVersion>
+        <spring-boot.version>4.1.0</spring-boot.version>
+        <maven-surefire-plugin.version>3.5.4</maven-surefire-plugin.version>
+        <spotless-plugin.version>2.45.0</spotless-plugin.version>
+        <license-maven-plugin.version>2.5.0</license-maven-plugin.version>
+        <licenseName>community</licenseName>
+    </properties>
+
+    <modules>
+        <module>alfresco-search-index-model</module>
+        <module>alfresco-search-opensearch-client</module>
+        <module>alfresco-search-opensearch-client-test</module>
+        <module>alfresco-search-reindexing-core</module>
+        <module>alfresco-elasticsearch-batch-indexing</module>
+        <module>alfresco-elasticsearch-batch-indexing-distribution</module>
+    </modules>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <version>${spring-boot.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>${maven-surefire-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <configuration>
+                        <!-- super-pom sets this true, which leaves the not-yet-populated modules with no
+                             installable artifact. Remove once every module has sources. -->
+                        <skipIfEmpty>false</skipIfEmpty>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+                <version>${license-maven-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>check-licenses</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>check-file-header</goal>
+                        </goals>
+                        <configuration>
+                            <addJavaLicenseAfterPackage>false</addJavaLicenseAfterPackage>
+                            <organizationName>Alfresco Software Limited</organizationName>
+                            <failOnMissingHeader>true</failOnMissingHeader>
+                            <failOnNotUptodateHeader>true</failOnNotUptodateHeader>
+                            <licenseResolver>classpath://alfresco</licenseResolver>
+                            <licenseName>${licenseName}</licenseName>
+                            <roots>
+                                <root>src</root>
+                            </roots>
+                            <includes>
+                                <include>**/*.java</include>
+                            </includes>
+                        </configuration>
+                    </execution>
+                </executions>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.alfresco</groupId>
+                        <artifactId>alfresco-license-headers</artifactId>
+                        <version>1.0</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>${spotless-plugin.version}</version>
+                <configuration>
+                    <java>
+                        <eclipse>
+                            <file>https://raw.githubusercontent.com/Alfresco/alfresco-community-repo/refs/heads/master/alfresco-formatter.xml</file>
+                        </eclipse>
+                        <importOrder>
+                            <order>\#java|\#javax|\#jakarta,\#,\#org.alfresco,java|javax|jakarta,,org.alfresco</order>
+                        </importOrder>
+                        <removeUnusedImports />
+                        <formatAnnotations />
+                    </java>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <scm>
+        <url>https://github.com/Alfresco/alfresco-community-search</url>
+        <connection>scm:git:https://github.com/Alfresco/alfresco-community-search.git</connection>
+        <developerConnection>scm:git:https://github.com/Alfresco/alfresco-community-search.git</developerConnection>
+        <tag>HEAD</tag>
+    </scm>
+</project>

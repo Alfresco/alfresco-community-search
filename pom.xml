@@ -9,22 +9,32 @@
     </parent>
 
     <groupId>org.alfresco</groupId>
-    <artifactId>alfresco-community-search-parent</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <artifactId>alfresco-search-community-parent</artifactId>
+    <version>5.8.1-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>Alfresco Community Search :: Parent</name>
     <description>Alfresco Community Search :: Parent</description>
+    <url>https://github.com/Alfresco/alfresco-community-search</url>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <maven.build.sourceVersion>17</maven.build.sourceVersion>
-        <spring-boot.version>4.1.0</spring-boot.version>
+        <spring-boot.version>4.1.1</spring-boot.version>
         <maven-surefire-plugin.version>3.5.4</maven-surefire-plugin.version>
+        <maven-failsafe-plugin.version>3.5.4</maven-failsafe-plugin.version>
+        <maven-jar-plugin.version>3.4.2</maven-jar-plugin.version>
+        <jacoco-plugin.version>0.8.13</jacoco-plugin.version>
         <spotless-plugin.version>2.45.0</spotless-plugin.version>
         <license-maven-plugin.version>2.5.0</license-maven-plugin.version>
         <licenseName>community</licenseName>
+
+        <!-- Only libraries Spring Boot manages behind a safe release, or does not manage at all,
+             are pinned here. Tomcat, Netty, snakeyaml and commons-lang3 are deliberately not
+             pinned: Spring Boot 4.1.1 already manages the same or a newer version of each. -->
+        <dependency.hsqldb.version>2.7.4</dependency.hsqldb.version>
+        <dependency.commons-compress.version>1.27.1</dependency.commons-compress.version>
     </properties>
 
     <modules>
@@ -36,6 +46,48 @@
         <module>alfresco-elasticsearch-batch-indexing-distribution</module>
     </modules>
 
+    <repositories>
+        <repository>
+            <id>central</id>
+            <name>Central Repository</name>
+            <url>https://repo.maven.apache.org/maven2</url>
+            <layout>default</layout>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>alfresco-public</id>
+            <name>Alfresco Public Repository</name>
+            <url>https://artifacts.alfresco.com/nexus/content/groups/public</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>alfresco-public-snapshots</id>
+            <name>Alfresco Public Snapshots Repository</name>
+            <url>https://artifacts.alfresco.com/nexus/content/groups/public-snapshots</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
+    <pluginRepositories>
+        <pluginRepository>
+            <id>alfresco-public</id>
+            <name>Alfresco Public Repository</name>
+            <url>https://artifacts.alfresco.com/nexus/content/groups/public</url>
+        </pluginRepository>
+    </pluginRepositories>
+
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -44,6 +96,21 @@
                 <version>${spring-boot.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+
+            <!-- Ahead of the version Spring Boot manages. Entries declared here outrank the
+                 imported Spring Boot BOM. -->
+            <dependency>
+                <groupId>org.hsqldb</groupId>
+                <artifactId>hsqldb</artifactId>
+                <version>${dependency.hsqldb.version}</version>
+            </dependency>
+            <!-- Not managed by the Spring Boot BOM, so pin it here rather than let it arrive
+                 transitively. No module reaches it yet; retained for the modules to be moved in. -->
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-compress</artifactId>
+                <version>${dependency.commons-compress.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -55,6 +122,12 @@
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-maven-plugin</artifactId>
                     <version>${spring-boot.version}</version>
+                    <configuration>
+                        <!-- Change in the layout is needed to switch from Spring Boot's JarLauncher to the
+                             PropertiesLauncher. PropertiesLauncher allows us to specify an additional directory
+                             for loading jdbc drivers (Loader-Path added by the maven-jar-plugin below). -->
+                        <layout>ZIP</layout>
+                    </configuration>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -63,11 +136,27 @@
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-failsafe-plugin</artifactId>
+                    <version>${maven-failsafe-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.jacoco</groupId>
+                    <artifactId>jacoco-maven-plugin</artifactId>
+                    <version>${jacoco-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-jar-plugin</artifactId>
+                    <version>${maven-jar-plugin.version}</version>
                     <configuration>
                         <!-- super-pom sets this true, which leaves the not-yet-populated modules with no
                              installable artifact. Remove once every module has sources. -->
                         <skipIfEmpty>false</skipIfEmpty>
+                        <archive>
+                            <manifestEntries>
+                                <Loader-Path>db-drivers/</Loader-Path>
+                            </manifestEntries>
+                        </archive>
                     </configuration>
                 </plugin>
             </plugins>
@@ -79,6 +168,24 @@
                 <artifactId>license-maven-plugin</artifactId>
                 <version>${license-maven-plugin.version}</version>
                 <executions>
+                    <execution>
+                        <id>third-party-licenses</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>add-third-party</goal>
+                        </goals>
+                        <!-- Override of dual licenses is not working due to https://github.com/mojohaus/license-maven-plugin/issues/386 -->
+                        <!-- Overrides are listed in README instead -->
+                        <configuration>
+                            <failOnMissing>true</failOnMissing>
+                            <excludedScopes>provided,test</excludedScopes>
+                            <excludedGroups>org.alfresco</excludedGroups>
+                            <failIfWarning>true</failIfWarning>
+                            <includedLicenses>https://raw.githubusercontent.com/Alfresco/third-party-license-overrides/master/includedLicenses.txt</includedLicenses>
+                            <licenseMergesUrl>https://raw.githubusercontent.com/Alfresco/third-party-license-overrides/master/licenseMerges.txt</licenseMergesUrl>
+                            <overrideUrl>https://raw.githubusercontent.com/Alfresco/third-party-license-overrides/master/override-THIRD-PARTY.properties</overrideUrl>
+                        </configuration>
+                    </execution>
                     <execution>
                         <id>check-licenses</id>
                         <phase>compile</phase>
@@ -135,4 +242,17 @@
         <developerConnection>scm:git:https://github.com/Alfresco/alfresco-community-search.git</developerConnection>
         <tag>HEAD</tag>
     </scm>
+
+    <distributionManagement>
+        <repository>
+            <id>alfresco-public-releases</id>
+            <name>Alfresco Releases Repository</name>
+            <url>https://artifacts.alfresco.com/nexus/content/repositories/releases</url>
+        </repository>
+        <snapshotRepository>
+            <id>alfresco-public-snapshots</id>
+            <name>Alfresco Snapshots Repository</name>
+            <url>https://artifacts.alfresco.com/nexus/content/repositories/snapshots</url>
+        </snapshotRepository>
+    </distributionManagement>
 </project>

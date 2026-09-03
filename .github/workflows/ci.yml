@@ -30,14 +30,14 @@ jobs:
   pre_commit:
     runs-on: ubuntu-latest
     steps:
-      - uses: Alfresco/alfresco-build-tools/.github/actions/pre-commit@v18.19.1
+      - uses: Alfresco/alfresco-build-tools/.github/actions/pre-commit@567a9393acca033008ce34eafcb200469e4ea2f5 # v18.27.0
 
   build:
     name: "Build and test"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin

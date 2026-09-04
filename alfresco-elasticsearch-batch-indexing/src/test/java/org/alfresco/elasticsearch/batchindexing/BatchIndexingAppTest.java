@@ -33,6 +33,5 @@ class BatchIndexingAppTest
 {
     @Test
     void contextLoads()
-    {
-    }
+    {}
 }

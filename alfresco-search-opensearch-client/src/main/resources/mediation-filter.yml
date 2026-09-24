@@ -1,0 +1,24 @@
+mediation:
+  nodeTypes:
+  contentNodeTypes:
+  nodeAspects:
+    - sys:hidden
+  fields:
+    - cmis:changeToken
+    - alfcmis:nodeRef
+    - cmis:isImmutable
+    - cmis:isLatestVersion
+    - cmis:isMajorVersion
+    - cmis:isLatestMajorVersion
+    - cmis:isVersionSeriesCheckedOut
+    - cmis:versionSeriesCheckedOutBy
+    - cmis:versionSeriesCheckedOutId
+    - cmis:checkinComment
+    - cmis:contentStreamId
+    - cmis:isPrivateWorkingCopy
+    - cmis:allowedChildObjectTypeIds
+    - cmis:sourceId
+    - cmis:targetId
+    - cmis:policyText
+    - trx:password
+    - pub:publishingEventPayload

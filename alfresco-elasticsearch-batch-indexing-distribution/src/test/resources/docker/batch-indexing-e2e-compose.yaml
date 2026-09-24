@@ -1,0 +1,78 @@
+services:
+  postgres:
+    image: postgres:16.5
+    mem_limit: 512m
+    environment:
+      POSTGRES_PASSWORD: alfresco  # pragma: allowlist secret
+      POSTGRES_USER: alfresco
+      POSTGRES_DB: alfresco
+    command: postgres -c max_connections=300 -c log_min_messages=LOG
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -d $$POSTGRES_DB -U $$POSTGRES_USER"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    volumes:
+      - ${ALFRESCO_DUMP_SQL_PATH}:/docker-entrypoint-initdb.d/alfresco-dump.sql:ro
+
+  elasticsearch:
+    image: elasticsearch:8.17.3
+    mem_limit: 2g
+    environment:
+      - xpack.security.enabled=false
+      - discovery.type=single-node
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health?pretty | grep status | grep -q '\\(green\\|yellow\\)'"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  transform-core-aio:
+    image: alfresco/alfresco-transform-core-aio:5.2.4
+    mem_limit: 1536m
+    environment:
+      JAVA_OPTS: >-
+        -XX:MinRAMPercentage=50
+        -XX:MaxRAMPercentage=80
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/ready"]
+      interval: 20s
+      timeout: 2s
+      retries: 3
+      start_period: 10s
+
+  batch-indexing:
+    image: alfresco/alfresco-elasticsearch-batch-indexing:${BATCH_INDEXING_TAG}
+    pull_policy: never
+    mem_limit: 512m
+    environment:
+      JAVA_OPTS: >-
+        -XX:MinRAMPercentage=50
+        -XX:MaxRAMPercentage=80
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/alfresco
+      SPRING_DATASOURCE_USERNAME: alfresco
+      SPRING_DATASOURCE_PASSWORD: alfresco # pragma: allowlist secret
+      SPRING_ELASTICSEARCH_REST_URIS: http://elasticsearch:9200
+      ELASTICSEARCH_INDEXNAME: alfresco
+      ALFRESCO_ACCEPTEDCONTENTMEDIATYPESCACHE_BASEURL: http://transform-core-aio:8090/transform/config
+      ALFRESCO_REINDEX_CONTINUOUS_POLLINGINTERVAL: 5s
+      ALFRESCO_REINDEX_CONTINUOUS_MAXPOLLINGINTERVAL: 30s
+      ALFRESCO_REINDEX_CONTINUOUS_OVERLAP: 30s
+      ALFRESCO_REINDEX_CONTINUOUS_MAXWINDOW: 876000h
+      ALFRESCO_REINDEX_CONTINUOUS_MAXGAPAGE: 0s
+      ALFRESCO_REINDEX_CONTENTINDEXINGENABLED: "false"
+    volumes:
+      - ${POSTGRES_DRIVER_PATH}:/opt/db-drivers/postgresql.jar:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      transform-core-aio:
+        condition: service_healthy

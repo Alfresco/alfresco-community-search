@@ -1,0 +1,91 @@
+services:
+  postgres:
+    image: postgres:16.5
+    mem_limit: 512m
+    environment:
+      POSTGRES_PASSWORD: alfresco  # pragma: allowlist secret
+      POSTGRES_USER: alfresco
+      POSTGRES_DB: alfresco
+    command: postgres -c max_connections=300 -c log_min_messages=LOG
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -d $$POSTGRES_DB -U $$POSTGRES_USER"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    volumes:
+      - ${ALFRESCO_DUMP_SQL_PATH}:/docker-entrypoint-initdb.d/alfresco-dump.sql:ro
+
+  elasticsearch:
+    image: elasticsearch:8.17.3
+    mem_limit: 2g
+    environment:
+      - xpack.security.enabled=false
+      - discovery.type=single-node
+      # path.repo lets the snapshot/restore tests register a filesystem
+      # snapshot repository without needing a shared bind mount. The dir
+      # lives inside the container's ephemeral fs — snapshots vanish with
+      # the compose tear-down, which is exactly the test lifetime we want.
+      - path.repo=/tmp/es-snapshots
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health?pretty | grep status | grep -q '\\(green\\|yellow\\)'"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  toxiproxy:
+    # Same tag used by the reindexing module's reliability harness so we don't
+    # pull two versions on CI. Config file declares one proxy per upstream so
+    # batch-indexing can start without a race against the test-side setup.
+    # Mount goes to /tmp because the image's rootfs is a scratch-style layout
+    # without any pre-existing /toxiproxy/ or /config/ directory.
+    image: ghcr.io/shopify/toxiproxy:2.12.0
+    command: -host 0.0.0.0 -config /tmp/toxiproxy-config.json
+    volumes:
+      - ${TOXIPROXY_CONFIG_PATH}:/tmp/toxiproxy-config.json:ro
+    healthcheck:
+      # The toxiproxy image is a distroless scratch layout — no sh, wget or
+      # curl. It does ship the toxiproxy-cli which talks the same admin API
+      # (default: localhost:8474), so `list` is a clean liveness probe.
+      test: ["CMD", "/toxiproxy-cli", "list"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+      start_period: 2s
+
+  batch-indexing:
+    image: alfresco/alfresco-elasticsearch-batch-indexing:${BATCH_INDEXING_TAG}
+    pull_policy: never
+    mem_limit: 1g
+    environment:
+      JAVA_OPTS: >-
+        -XX:MinRAMPercentage=50
+        -XX:MaxRAMPercentage=80
+      # Both deps are reached via toxiproxy — the proxy is transparent when no
+      # toxics are attached. Tests inject toxics through the admin API on port
+      # 8474.
+      SPRING_DATASOURCE_URL: jdbc:postgresql://toxiproxy:5432/alfresco
+      SPRING_DATASOURCE_USERNAME: alfresco
+      SPRING_DATASOURCE_PASSWORD: alfresco # pragma: allowlist secret
+      SPRING_ELASTICSEARCH_REST_URIS: http://toxiproxy:9200
+      ELASTICSEARCH_INDEXNAME: alfresco
+      ALFRESCO_REINDEX_CONTINUOUS_POLLINGINTERVAL: ${INFRA_POLLING_INTERVAL:-2s}
+      ALFRESCO_REINDEX_CONTINUOUS_MAXPOLLINGINTERVAL: ${INFRA_MAX_POLLING_INTERVAL:-5s}
+      ALFRESCO_REINDEX_CONTINUOUS_OVERLAP: ${INFRA_OVERLAP:-30s}
+      ALFRESCO_REINDEX_CONTINUOUS_MAXWINDOW: ${INFRA_MAX_WINDOW:-24h}
+      ALFRESCO_REINDEX_CONTINUOUS_MAXGAPAGE: ${INFRA_MAX_GAP_AGE:-0s}
+      ALFRESCO_REINDEX_CONTENTINDEXINGENABLED: "false"
+    volumes:
+      - ${POSTGRES_DRIVER_PATH}:/opt/db-drivers/postgresql.jar:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      toxiproxy:
+        condition: service_healthy

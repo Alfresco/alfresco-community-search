@@ -1,15 +1,346 @@
-<?xml version="1.0" encoding="UTF-8" ?>
+<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-
     <parent>
-        <groupId>org.alfresco</groupId>
         <artifactId>alfresco-search-community-parent</artifactId>
+        <groupId>org.alfresco</groupId>
         <version>5.9.0-A.1-SNAPSHOT</version>
     </parent>
-
-    <artifactId>alfresco-elasticsearch-batch-indexing-distribution</artifactId>
-
+    <modelVersion>4.0.0</modelVersion>
     <name>Alfresco Community Search :: Batch Indexing Distribution</name>
-    <description>Alfresco Community Search :: Batch Indexing Distribution</description>
+    <artifactId>alfresco-elasticsearch-batch-indexing-distribution</artifactId>
+    <packaging>jar</packaging>
+
+    <properties>
+        <jolokia-agent-jvm.version>2.6.0</jolokia-agent-jvm.version>
+        <!-- Empty default so the reliability-tests profile runs all tagged suites when
+             no -Dit.groups=... is passed. CI overrides per matrix job. -->
+        <it.groups />
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents.client5</groupId>
+            <artifactId>httpclient5</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.opensearch.client</groupId>
+            <artifactId>opensearch-java</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.opensearch.client</groupId>
+            <artifactId>opensearch-rest-client</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.alfresco</groupId>
+            <artifactId>alfresco-search-opensearch-client-test</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>eu.rekawek.toxiproxy</groupId>
+            <artifactId>toxiproxy-java</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock-standalone</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>${maven-resources-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>copy-resources-docker-compose</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${basedir}/src/main/resources/docker-compose</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${basedir}/src/main/resources/docker-compose-origin</directory>
+                                    <filtering>true</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>**/*DockerComposeIT.java</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <!-- Produces the distribution zip (batch-indexing app jar + README + licenses + docker-compose). -->
+        <profile>
+            <id>distribution</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <skipITs>true</skipITs>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <configuration>
+                            <includeTypes>jar</includeTypes>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>copy-resources-for-zip</id>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>copy</goal>
+                                </goals>
+                                <configuration>
+                                    <artifactItems>
+                                        <artifactItem>
+                                            <groupId>org.alfresco</groupId>
+                                            <artifactId>alfresco-elasticsearch-batch-indexing</artifactId>
+                                            <version>${project.version}</version>
+                                            <classifier>app</classifier>
+                                            <outputDirectory>${project.basedir}/target/dependency</outputDirectory>
+                                        </artifactItem>
+                                    </artifactItems>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                        <version>3.7.1</version>
+                        <configuration>
+                            <finalName>alfresco-elasticsearch-batch-indexing-distribution-${project.version}</finalName>
+                            <appendAssemblyId>false</appendAssemblyId>
+                            <descriptors>
+                                <descriptor>src/main/assemble/distribution-zip-assembly.xml</descriptor>
+                            </descriptors>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>create-distribution</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!-- Runs BatchIndexingDockerComposeIT against the locally-built batch-indexing image. -->
+        <!-- Preconditions: -P docker-image build + scripts/ci/buildDockerImagesCi.sh have produced -->
+        <!-- the image alfresco-elasticsearch-batch-indexing:<project.version> in the local Docker daemon. -->
+        <profile>
+            <id>docker-compose-test</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <skipTests>true</skipTests>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <excludes combine.self="override" />
+                            <includes>
+                                <include>**/*DockerComposeIT.java</include>
+                            </includes>
+                            <systemPropertyVariables>
+                                <batch-indexing.version>${project.version}</batch-indexing.version>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!-- Runs the *ReliabilityIT suite against the locally-built batch-indexing image. -->
+        <!-- Same image precondition as docker-compose-test. Also copies the Jolokia JVM agent jar -->
+        <!-- to target/jolokia/ so the compose file can mount it into the batch-indexing container. -->
+        <!-- ITs additionally require the RELIABILITY_TESTS=true environment variable; otherwise -->
+        <!-- @EnabledIfEnvironmentVariable skips them. This gate keeps them off the default CI path. -->
+        <profile>
+            <id>reliability-tests</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <skipTests>true</skipTests>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>copy-jolokia-agent</id>
+                                <phase>process-test-resources</phase>
+                                <goals>
+                                    <goal>copy</goal>
+                                </goals>
+                                <configuration>
+                                    <artifactItems>
+                                        <artifactItem>
+                                            <groupId>org.jolokia</groupId>
+                                            <artifactId>jolokia-agent-jvm</artifactId>
+                                            <version>${jolokia-agent-jvm.version}</version>
+                                            <classifier>javaagent</classifier>
+                                            <outputDirectory>${project.build.directory}/jolokia</outputDirectory>
+                                            <destFileName>jolokia-agent.jar</destFileName>
+                                        </artifactItem>
+                                    </artifactItems>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <excludes combine.self="override" />
+                            <includes>
+                                <include>**/*ReliabilityIT.java</include>
+                                <include>**/reliability/**/*IT.java</include>
+                            </includes>
+                            <!-- Tag-based selection. CI passes e.g. -Dit.groups=lifecycle to run
+                                 one reliability suite per matrix job; empty default runs everything
+                                 the includes match. Requires JUnit 5 @Tag on each IT class. -->
+                            <groups>${it.groups}</groups>
+                            <systemPropertyVariables>
+                                <batch-indexing.version>${project.version}</batch-indexing.version>
+                                <jolokia.agent.path>${project.build.directory}/jolokia/jolokia-agent.jar</jolokia.agent.path>
+                                <reliability.output.dir>${project.build.directory}/reliability</reliability.output.dir>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!-- Off by default. Activating stages the Dockerfile so the CI scripts find it and would push. -->
+        <profile>
+            <id>docker-image</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <configuration>
+                            <includeTypes>jar</includeTypes>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>copy-resources-for-docker</id>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>copy</goal>
+                                </goals>
+                                <configuration>
+                                    <artifactItems>
+                                        <artifactItem>
+                                            <groupId>org.alfresco</groupId>
+                                            <artifactId>alfresco-elasticsearch-batch-indexing</artifactId>
+                                            <version>${project.version}</version>
+                                            <classifier>app</classifier>
+                                            <outputDirectory>${project.build.directory}/classes/docker/batch-indexing</outputDirectory>
+                                        </artifactItem>
+                                    </artifactItems>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <artifactId>maven-resources-plugin</artifactId>
+                        <version>${maven-resources-plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>copy-resources-docker-batch-indexing</id>
+                                <phase>process-resources</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>${project.build.directory}/classes/docker/batch-indexing</outputDirectory>
+                                    <resources>
+                                        <resource>
+                                            <directory>${project.basedir}/../alfresco-elasticsearch-batch-indexing/target/generated-sources/license</directory>
+                                        </resource>
+                                        <resource>
+                                            <directory>${project.basedir}/src/main/resources</directory>
+                                            <includes>
+                                                <include>licenses/*</include>
+                                                <include>Dockerfile</include>
+                                            </includes>
+                                        </resource>
+                                        <resource>
+                                            <directory>${project.basedir}</directory>
+                                            <includes>
+                                                <include>README.md</include>
+                                            </includes>
+                                        </resource>
+                                    </resources>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

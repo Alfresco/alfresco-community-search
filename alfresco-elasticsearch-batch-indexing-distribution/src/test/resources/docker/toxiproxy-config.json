@@ -1,0 +1,14 @@
+[
+  {
+    "name": "elasticsearch",
+    "listen": "0.0.0.0:9200",
+    "upstream": "elasticsearch:9200",
+    "enabled": true
+  },
+  {
+    "name": "postgres",
+    "listen": "0.0.0.0:5432",
+    "upstream": "postgres:5432",
+    "enabled": true
+  }
+]

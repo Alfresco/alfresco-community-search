@@ -1,0 +1,27 @@
+{
+  "mappings": {
+    "properties": {
+      "id": {
+        "type": "long"
+      },
+      "readers": {
+        "type": "keyword"
+      },
+      "denied": {
+        "type": "keyword"
+      },
+      "aclChangeSetId": {
+        "type": "long"
+      },
+      "tenantDomain": {
+        "type": "keyword"
+      },
+      "doc_type": {
+        "type": "keyword"
+      },
+      "timestamp": {
+        "type": "long"
+      }
+    }
+  }
+}

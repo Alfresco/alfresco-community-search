@@ -1,0 +1,9 @@
+# Compose override for AlfrescoIndexEmptyRefusesToStartIT. Layered on top of
+# batch-indexing-reliability-lifecycle-compose.yaml. Also disables the Alfresco-
+# index cursor bootstrap so the second start uses the real state doc rather than
+# reseeding from the (about-to-be-deleted) Alfresco index.
+services:
+  batch-indexing:
+    environment:
+      ALFRESCO_REINDEX_CONTINUOUS_REQUIREALFRESCOINDEX: "true"
+      ALFRESCO_REINDEX_CONTINUOUS_BOOTSTRAPFROMALFRESCOINDEX: "false"

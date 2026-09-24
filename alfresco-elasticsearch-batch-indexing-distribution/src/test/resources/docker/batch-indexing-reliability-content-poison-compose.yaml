@@ -1,0 +1,84 @@
+services:
+  postgres:
+    image: postgres:16.5
+    mem_limit: 512m
+    environment:
+      POSTGRES_PASSWORD: alfresco  # pragma: allowlist secret
+      POSTGRES_USER: alfresco
+      POSTGRES_DB: alfresco
+    command: postgres -c max_connections=300 -c log_min_messages=LOG
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -d $$POSTGRES_DB -U $$POSTGRES_USER"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    volumes:
+      - ${ALFRESCO_DUMP_SQL_PATH}:/docker-entrypoint-initdb.d/alfresco-dump.sql:ro
+
+  elasticsearch:
+    image: elasticsearch:8.17.3
+    mem_limit: 2g
+    environment:
+      - xpack.security.enabled=false
+      - discovery.type=single-node
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health?pretty | grep status | grep -q '\\(green\\|yellow\\)'"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Stands in for ACS: batch-indexing points its content-transform client at this
+  # service. Individual tests register stubs via WireMockControl before restarting
+  # batch-indexing (see the poison-IT startup dance).
+  wiremock:
+    image: wiremock/wiremock:3.12.1
+    mem_limit: 256m
+    command: ["--verbose", "--global-response-templating"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/__admin/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  batch-indexing:
+    image: alfresco/alfresco-elasticsearch-batch-indexing:${BATCH_INDEXING_TAG}
+    pull_policy: never
+    mem_limit: 1g
+    environment:
+      JAVA_OPTS: >-
+        -XX:MinRAMPercentage=50
+        -XX:MaxRAMPercentage=80
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/alfresco
+      SPRING_DATASOURCE_USERNAME: alfresco
+      SPRING_DATASOURCE_PASSWORD: alfresco  # pragma: allowlist secret
+      SPRING_ELASTICSEARCH_REST_URIS: http://elasticsearch:9200
+      ELASTICSEARCH_INDEXNAME: alfresco
+      # Content indexing on, pointed at WireMock. Cache disabled so we don't have
+      # to also stub the transformer-config endpoint — the mediation-side cache
+      # gates on the transformer list, batch-indexing itself only calls textContent.
+      ALFRESCO_REINDEX_CONTENTINDEXINGENABLED: "true"
+      ALFRESCO_ACCEPTEDCONTENTMEDIATYPESCACHE_ENABLED: "false"
+      ALFRESCO_REPOSITORY_URL: http://wiremock:8080/alfresco
+      ALFRESCO_CONTENT_TRANSFORM_SHAREDSECRET: secret  # pragma: allowlist secret
+      # Tight polling so the IT doesn't wait 30s for the first cycle.
+      ALFRESCO_REINDEX_CONTINUOUS_POLLINGINTERVAL: ${CONTENT_POLLING_INTERVAL:-5s}
+      ALFRESCO_REINDEX_CONTINUOUS_MAXPOLLINGINTERVAL: ${CONTENT_MAX_POLLING_INTERVAL:-10s}
+      ALFRESCO_REINDEX_CONTINUOUS_OVERLAP: ${CONTENT_OVERLAP:-30s}
+      ALFRESCO_REINDEX_CONTINUOUS_MAXWINDOW: ${CONTENT_MAX_WINDOW:-876000h}
+      ALFRESCO_REINDEX_CONTINUOUS_MAXGAPAGE: ${CONTENT_MAX_GAP_AGE:-0s}
+    volumes:
+      - ${POSTGRES_DRIVER_PATH}:/opt/db-drivers/postgresql.jar:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      wiremock:
+        condition: service_healthy

@@ -9,8 +9,6 @@ on:
       - release/**
   push:
     branches:
-      - feature/**
-      - fix/**
       - master
       - release/**
   schedule:

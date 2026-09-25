@@ -15,7 +15,7 @@
 #
 services:
   alfresco:
-    image: quay.io/alfresco/alfresco-content-repository:25.3.0
+    image: docker.io/alfresco/alfresco-content-repository-community:25.3.0
     mem_limit: 1900m
     environment:
       JAVA_TOOL_OPTIONS: >- #pragma: allowlist secret

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ACS-12851: a content model in a namespace the bundled prefix map does not contain. -->
+<model name="acme:contentModel" xmlns="http://www.alfresco.org/model/dictionary/1.0">
+
+    <description>Custom model for ACS-12851</description>
+    <author>integration test</author>
+    <version>1.0</version>
+
+    <imports>
+        <import uri="http://www.alfresco.org/model/dictionary/1.0" prefix="d"/>
+        <import uri="http://www.alfresco.org/model/content/1.0" prefix="cm"/>
+    </imports>
+
+    <namespaces>
+        <namespace uri="http://acme.example.org/model/custom/1.0" prefix="acme"/>
+    </namespaces>
+
+    <types>
+        <type name="acme:invoice">
+            <title>Invoice</title>
+            <parent>cm:content</parent>
+        </type>
+    </types>
+
+    <aspects>
+        <aspect name="acme:invoiceable">
+            <title>Invoiceable</title>
+            <properties>
+                <property name="acme:invoiceNumber">
+                    <type>d:text</type>
+                </property>
+            </properties>
+        </aspect>
+    </aspects>
+
+</model>

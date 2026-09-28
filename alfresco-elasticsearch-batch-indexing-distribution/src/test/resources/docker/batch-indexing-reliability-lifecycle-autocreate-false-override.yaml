@@ -1,0 +1,8 @@
+# Compose override for AutoCreateStateIndexFalseRefusesToStartIT. Layered on top of
+# batch-indexing-reliability-lifecycle-compose.yaml. Values are hardcoded (not
+# ${VAR}-interpolated) so leaked JVM env vars from prior tests in the same Maven
+# reactor invocation cannot flip them by accident.
+services:
+  batch-indexing:
+    environment:
+      ALFRESCO_REINDEX_CONTINUOUS_AUTOCREATESTATEINDEX: "false"

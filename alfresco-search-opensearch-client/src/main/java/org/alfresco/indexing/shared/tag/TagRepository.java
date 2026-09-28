@@ -1,8 +1,8 @@
 /*-
  * #%L
- * Alfresco Community Search :: Batch Indexing
+ * Alfresco Search Community :: OpenSearch Client
  * %%
- * Copyright (C) 2005 - 2026 Alfresco Software Limited
+ * Copyright (C) 2026 Alfresco Software Limited
  * %%
  * This file is part of the Alfresco software. 
  * If the software was purchased under a paid Alfresco license, the terms of 
@@ -23,15 +23,12 @@
  * along with Alfresco. If not, see <http://www.gnu.org/licenses/>.
  * #L%
  */
-package org.alfresco.elasticsearch.batchindexing;
+package org.alfresco.indexing.shared.tag;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
+import java.util.Optional;
 
-@SpringBootTest
-class BatchIndexingAppTest
+@FunctionalInterface
+public interface TagRepository
 {
-    @Test
-    void contextLoads()
-    {}
+    Optional<String> getTagName(String tagId);
 }

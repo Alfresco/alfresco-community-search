@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
@@ -10,7 +11,7 @@
 
     <groupId>org.alfresco</groupId>
     <artifactId>alfresco-search-community-parent</artifactId>
-    <version>5.9.0-A.1-SNAPSHOT</version>
+    <version>5.9.0-A.5-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>Alfresco Community Search :: Parent</name>
@@ -33,6 +34,22 @@
         <!-- Only libraries Spring Boot manages behind a safe release, or does not manage at all,
              are pinned here. Tomcat, Netty, snakeyaml and commons-lang3 are deliberately not
              pinned: Spring Boot 4.1.1 already manages the same or a newer version of each. -->
+        <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
+
+        <!-- Versions carried over from alfresco-elasticsearch-connector so the first community
+             build resolves the same dependency tree the connector build did. -->
+        <acs.event.model.version>1.0.11</acs.event.model.version>
+        <alfresco.database.connector.version>1.8.0-A.1</alfresco.database.connector.version>
+        <opensearch-java.version>3.9.0</opensearch-java.version>
+        <opensearch-rest-client.version>3.8.0</opensearch-rest-client.version>
+        <spring-retry.version>2.0.13</spring-retry.version>
+        <guava.version>33.4.8-jre</guava.version>
+        <okhttp3.version>5.1.0</okhttp3.version>
+        <testcontainers.version>2.0.2</testcontainers.version>
+        <toxiproxy.version>2.1.11</toxiproxy.version>
+        <wiremock.version>3.9.2</wiremock.version>
+        <awaitility.version>4.3.0</awaitility.version>
+        <postgresql.version>42.7.11</postgresql.version>
         <dependency.hsqldb.version>2.7.4</dependency.hsqldb.version>
         <dependency.commons-compress.version>1.27.1</dependency.commons-compress.version>
     </properties>
@@ -118,8 +135,95 @@
                 <artifactId>commons-compress</artifactId>
                 <version>${dependency.commons-compress.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.alfresco</groupId>
+                <artifactId>acs-event-model</artifactId>
+                <version>${acs.event.model.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.alfresco</groupId>
+                <artifactId>alfresco-database-connector</artifactId>
+                <version>${alfresco.database.connector.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.alfresco</groupId>
+                <artifactId>alfresco-database-connector-api</artifactId>
+                <version>${alfresco.database.connector.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.opensearch.client</groupId>
+                <artifactId>opensearch-java</artifactId>
+                <version>${opensearch-java.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.opensearch.client</groupId>
+                <artifactId>opensearch-rest-client</artifactId>
+                <version>${opensearch-rest-client.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.opensearch.client</groupId>
+                <artifactId>opensearch-rest-client-sniffer</artifactId>
+                <version>${opensearch-rest-client.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.retry</groupId>
+                <artifactId>spring-retry</artifactId>
+                <version>${spring-retry.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.guava</groupId>
+                <artifactId>guava</artifactId>
+                <version>${guava.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.squareup.okhttp3</groupId>
+                <artifactId>mockwebserver</artifactId>
+                <version>${okhttp3.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>eu.rekawek.toxiproxy</groupId>
+                <artifactId>toxiproxy-java</artifactId>
+                <version>${toxiproxy.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.wiremock</groupId>
+                <artifactId>wiremock-standalone</artifactId>
+                <version>${wiremock.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.awaitility</groupId>
+                <artifactId>awaitility</artifactId>
+                <version>${awaitility.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.postgresql</groupId>
+                <artifactId>postgresql</artifactId>
+                <version>${postgresql.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
+
+    <!-- Inherited by every module: the test stack the moved modules assume is present. -->
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.junit.vintage</groupId>
+                    <artifactId>junit-vintage-engine</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+    </dependencies>
 
     <build>
         <pluginManagement>
@@ -139,6 +243,18 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>${maven-surefire-plugin.version}</version>
+                </plugin>
+                <!-- Retains method parameter names. Spring falls back to matching a bean name
+                     against the injection-point name when several candidates share a type, so
+                     dropping this turns working injection into NoUniqueBeanDefinitionException. -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <configuration>
+                        <compilerArgs>
+                            <arg>-parameters</arg>
+                        </compilerArgs>
+                    </configuration>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -187,9 +303,15 @@
                             <excludedScopes>provided,test</excludedScopes>
                             <excludedGroups>org.alfresco</excludedGroups>
                             <failIfWarning>true</failIfWarning>
-                            <includedLicenses>https://raw.githubusercontent.com/Alfresco/third-party-license-overrides/master/includedLicenses.txt</includedLicenses>
-                            <licenseMergesUrl>https://raw.githubusercontent.com/Alfresco/third-party-license-overrides/master/licenseMerges.txt</licenseMergesUrl>
-                            <overrideUrl>https://raw.githubusercontent.com/Alfresco/third-party-license-overrides/master/override-THIRD-PARTY.properties</overrideUrl>
+                            <includedLicenses>
+                                https://raw.githubusercontent.com/Alfresco/third-party-license-overrides/master/includedLicenses.txt
+                            </includedLicenses>
+                            <licenseMergesUrl>
+                                https://raw.githubusercontent.com/Alfresco/third-party-license-overrides/master/licenseMerges.txt
+                            </licenseMergesUrl>
+                            <overrideUrl>
+                                https://raw.githubusercontent.com/Alfresco/third-party-license-overrides/master/override-THIRD-PARTY.properties
+                            </overrideUrl>
                         </configuration>
                     </execution>
                     <execution>
@@ -229,14 +351,31 @@
                 <configuration>
                     <java>
                         <eclipse>
-                            <file>https://raw.githubusercontent.com/Alfresco/alfresco-community-repo/refs/heads/master/alfresco-formatter.xml</file>
+                            <file>
+                                https://raw.githubusercontent.com/Alfresco/alfresco-community-repo/refs/heads/master/alfresco-formatter.xml
+                            </file>
                         </eclipse>
                         <importOrder>
                             <order>\#java|\#javax|\#jakarta,\#,\#org.alfresco,java|javax|jakarta,,org.alfresco</order>
                         </importOrder>
-                        <removeUnusedImports />
-                        <formatAnnotations />
+                        <removeUnusedImports/>
+                        <formatAnnotations/>
                     </java>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <argLine>-Xmx1024m</argLine>
                 </configuration>
             </plugin>
         </plugins>

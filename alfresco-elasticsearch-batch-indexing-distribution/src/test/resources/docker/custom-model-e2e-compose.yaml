@@ -1,0 +1,126 @@
+services:
+  postgres:
+    image: postgres:16.5
+    mem_limit: 512m
+    environment:
+      POSTGRES_PASSWORD: alfresco  # pragma: allowlist secret
+      POSTGRES_USER: alfresco
+      POSTGRES_DB: alfresco
+    command: postgres -c max_connections=300 -c log_min_messages=LOG
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -d $$POSTGRES_DB -U $$POSTGRES_USER"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  elasticsearch:
+    image: elasticsearch:8.17.3
+    mem_limit: 2g
+    environment:
+      - xpack.security.enabled=false
+      - discovery.type=single-node
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health?pretty | grep status | grep -q '\\(green\\|yellow\\)'"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ACS needs a broker for repository events; it retries, so no health gate here.
+  activemq:
+    image: alfresco/alfresco-activemq:6.2-jre17-rockylinux8
+    mem_limit: 1g
+
+  transform-core-aio:
+    image: alfresco/alfresco-transform-core-aio:5.2.4
+    mem_limit: 1536m
+    environment:
+      JAVA_OPTS: >-
+        -XX:MinRAMPercentage=50
+        -XX:MaxRAMPercentage=80
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/ready"]
+      interval: 20s
+      timeout: 2s
+      retries: 3
+      start_period: 10s
+
+  # Owns the index mapping: activating a content model extends it with the model's fields.
+  alfresco:
+    image: docker.io/alfresco/alfresco-content-repository-community:${ALFRESCO_COMMUNITY_TAG}
+    mem_limit: 2g
+    environment:
+      JAVA_TOOL_OPTIONS: >-
+        -Dencryption.keystore.type=JCEKS
+        -Dencryption.cipherAlgorithm=DESede/CBC/PKCS5Padding
+        -Dencryption.keyAlgorithm=DESede
+        -Dencryption.keystore.location=/usr/local/tomcat/shared/classes/alfresco/extension/keystore/keystore
+        -Dmetadata-keystore.password=mp6yc0UD9e
+        -Dmetadata-keystore.aliases=metadata
+        -Dmetadata-keystore.metadata.password=oKIWzVdEdA
+        -Dmetadata-keystore.metadata.algorithm=DESede
+      JAVA_OPTS: >-
+        -Ddb.driver=org.postgresql.Driver
+        -Ddb.username=alfresco
+        -Ddb.password=alfresco
+        -Ddb.url=jdbc:postgresql://postgres:5432/alfresco
+        -Dindex.subsystem.name=elasticsearch
+        -Delasticsearch.createIndexIfNotExists=true
+        -Delasticsearch.host=elasticsearch
+        -Delasticsearch.indexName=alfresco
+        -Dsolr.secureComms=secret
+        -Dsolr.sharedSecret=secret
+        -Dmessaging.broker.url="failover:(nio://activemq:61616)?timeout=3000&jms.useCompression=true"
+        -Dmessaging.broker.username=admin
+        -Dmessaging.broker.password=admin
+        -Dtransform.service.enabled=false
+        -DlocalTransform.core-aio.url=http://transform-core-aio:8090/
+        -Dcsrf.filter.enabled=false
+        -Dalfresco.restApi.basicAuthScheme=true
+        -Ddeployment.method=DOCKER_COMPOSE
+        -Xms1g -Xmx1g
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/alfresco/api/-default-/public/alfresco/versions/1/probes/-ready-"]
+      interval: 20s
+      timeout: 10s
+      retries: 30
+      start_period: 90s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+
+  batch-indexing:
+    image: alfresco/alfresco-elasticsearch-batch-indexing:${BATCH_INDEXING_TAG}
+    pull_policy: never
+    mem_limit: 512m
+    environment:
+      JAVA_OPTS: >-
+        -XX:MinRAMPercentage=50
+        -XX:MaxRAMPercentage=80
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/alfresco
+      SPRING_DATASOURCE_USERNAME: alfresco
+      SPRING_DATASOURCE_PASSWORD: alfresco # pragma: allowlist secret
+      SPRING_ELASTICSEARCH_REST_URIS: http://elasticsearch:9200
+      ELASTICSEARCH_INDEXNAME: alfresco
+      ALFRESCO_ACCEPTEDCONTENTMEDIATYPESCACHE_BASEURL: http://transform-core-aio:8090/transform/config
+      ALFRESCO_REPOSITORY_URL: http://alfresco:8080/alfresco
+      ALFRESCO_CONTENT_TRANSFORM_SHAREDSECRET: secret # pragma: allowlist secret
+      ALFRESCO_REINDEX_CONTINUOUS_POLLINGINTERVAL: 5s
+      ALFRESCO_REINDEX_CONTINUOUS_MAXPOLLINGINTERVAL: 30s
+      ALFRESCO_REINDEX_CONTINUOUS_OVERLAP: 30s
+      ALFRESCO_REINDEX_CONTINUOUS_MAXWINDOW: 876000h
+      ALFRESCO_REINDEX_CONTINUOUS_MAXGAPAGE: 0s
+      ALFRESCO_REINDEX_CONTINUOUS_SEEDFROMEARLIEST: "true"
+      ALFRESCO_REINDEX_CONTENTINDEXINGENABLED: "false"
+    volumes:
+      - ${POSTGRES_DRIVER_PATH}:/opt/db-drivers/postgresql.jar:ro
+    depends_on:
+      alfresco:
+        condition: service_healthy

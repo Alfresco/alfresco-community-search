@@ -1,0 +1,40 @@
+{
+  "locale": "en_",
+  "acl_strategy": "inherit",
+  "user_name": "admin",
+  "metadata_db_config": {
+    "db_type": "postgres",
+    "data_source": {
+      "dataSource.databaseName": "alfresco",
+      "dataSourceClassName": "org.postgresql.ds.PGSimpleDataSource",
+      "dataSource.password": "alfresco",
+      "dataSource.serverName": "postgres",
+      "dataSource.portNumber": "5432",
+      "dataSource.user": "alfresco"
+    }
+  },
+  "search_config": {
+    "enabled": "false"
+  },
+  "folder_config": {
+    "existing_folder_name": "app:company_home",
+    "number_of_folders": 5,
+    "max_folder_depth": 2
+  },
+  "content_config": {
+    "number_of_content_nodes": ${number_of_nodes},
+    "content_source_path": "/usr/data/all.utf8",
+    "namespace_mapping": {},
+    "assigned_aspects": {},
+    "content_types": {
+      "small-txt": {
+        "type": "txt",
+        "weight": 100,
+        "size": "S"
+      }
+    }
+  },
+  "content_store_config": {
+    "name": "none"
+  }
+}

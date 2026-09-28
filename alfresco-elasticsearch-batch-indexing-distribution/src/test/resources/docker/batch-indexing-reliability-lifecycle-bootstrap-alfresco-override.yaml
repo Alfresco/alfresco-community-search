@@ -1,0 +1,14 @@
+# Compose override for BootstrapFromAlfrescoIndexIT. Layered on top of
+# batch-indexing-reliability-lifecycle-compose.yaml.
+#
+# The huge overlap (100y) is what lets the first cycle index the historical dump
+# data — without it the first cycle scans [now − 30s, now] and no dump rows fall
+# in that window, so the Alfresco index stays empty and MAX() has nothing to
+# seed from on the second start. maxWindow bumped to 100y as well so the 100y
+# of history is scanned in ONE window rather than 36500 daily chunks.
+services:
+  batch-indexing:
+    environment:
+      ALFRESCO_REINDEX_CONTINUOUS_BOOTSTRAPFROMALFRESCOINDEX: "true"
+      ALFRESCO_REINDEX_CONTINUOUS_OVERLAP: "36500d"
+      ALFRESCO_REINDEX_CONTINUOUS_MAXWINDOW: "36500d"

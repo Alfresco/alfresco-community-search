@@ -1,0 +1,5334 @@
+{
+  "settings": {
+    "index": {
+      "routing": {
+        "allocation": {
+          "include": {
+            "_tier_preference": "data_content"
+          }
+        }
+      },
+      "number_of_shards": "1",
+      "number_of_replicas": "1",
+      "analysis": {
+        "analyzer": {
+          "general_text_index_analyzer": {
+            "filter": [
+              "asciifolding",
+              "custom_word_delimiter_graph",
+              "lowercase",
+              "flatten_graph"
+            ],
+            "tokenizer": "keyword"
+          },
+          "general_text_query_analyzer": {
+            "filter": [
+              "asciifolding",
+              "custom_word_delimiter_graph",
+              "lowercase"
+            ],
+            "tokenizer": "keyword"
+          },
+          "locale_cross_text_index": {
+            "tokenizer": "whitespace",
+            "filter": [
+              "asciifolding",
+              "custom_word_delimiter_graph",
+              "lowercase",
+              "flatten_graph"
+            ]
+          },
+          "locale_cross_text_query": {
+            "tokenizer": "whitespace",
+            "filter": [
+              "asciifolding",
+              "custom_word_delimiter_graph",
+              "lowercase"
+            ]
+          },
+          "locale_en_text_index": {
+            "tokenizer": "whitespace",
+            "filter": [
+              "asciifolding",
+              "custom_word_delimiter_graph",
+              "lowercase",
+              "flatten_graph",
+              "english_stemmer"
+            ]
+          },
+          "locale_en_text_query": {
+            "tokenizer": "whitespace",
+            "filter": [
+              "asciifolding",
+              "custom_word_delimiter_graph",
+              "lowercase",
+              "english_stemmer"
+            ]
+          },
+          "path_emulator": {
+            "tokenizer": "path_tokenizer",
+            "char_filter": ["line_end_markers"]
+          }
+        },
+        "tokenizer": {
+          "path_tokenizer": {
+            "type": "pattern",
+            "pattern": "(\\{.*?\\}|[^{/:]+)",
+            "group": 1
+          }
+        },
+        "char_filter": {
+          "line_end_markers": {
+            "type": "pattern_replace",
+            "pattern": "^(.*)$",
+            "replacement": "\\^/$1/\\$"
+          }
+        },
+        "filter": {
+          "custom_word_delimiter_graph": {
+            "type": "word_delimiter_graph",
+            "generate_word_parts": true,
+            "generate_number_parts": true,
+            "catenate_all": true,
+            "catenate_numbers": true,
+            "catenate_words": true,
+            "split_on_case_change": true,
+            "split_on_numeric": true,
+            "preserve_original": true,
+            "stem_english_possessive": true
+          },
+          "english_stop": {
+            "type": "stop",
+            "stopwords": "_english_"
+          },
+          "english_stemmer": {
+            "type": "stemmer",
+            "language": "english"
+          }
+        }
+      }
+    }
+  },
+  "mappings": {
+    "dynamic": "false",
+    "properties": {
+      "PATH": {
+        "type": "text",
+        "analyzer": "path_emulator",
+        "fields": {
+          "keyword": {
+            "type": "keyword"
+          }
+        }
+      },
+      "UNPREFIXED_PATH": {
+        "type": "keyword",
+        "copy_to": "PATH"
+      },
+      "ANAME": {
+        "type": "keyword"
+      },
+      "PNAME": {
+        "type": "keyword"
+      },
+      "APATH": {
+        "type": "keyword"
+      },
+      "NPATH": {
+        "type": "keyword"
+      },
+      "ALIVE": {
+        "type": "boolean"
+      },
+      "ASPECT": {
+        "type": "keyword"
+      },
+      "ASPECT_untokenized": {
+        "type": "alias",
+        "path": "ASPECT"
+      },
+      "METADATA_INDEXING_LAST_UPDATE": {
+        "type": "long"
+      },
+      "CONTENT_INDEXING_LAST_UPDATE": {
+        "type": "long"
+      },
+      "PATH_INDEXING_LAST_UPDATE": {
+        "type": "long"
+      },
+      "DENIED": {
+        "type": "keyword"
+      },
+      "DENIED_untokenized": {
+        "type": "alias",
+        "path": "DENIED"
+      },
+      "OWNER": {
+        "type": "keyword"
+      },
+      "OWNER_untokenized": {
+        "type": "alias",
+        "path": "OWNER"
+      },
+      "PROPERTIES": {
+        "type": "keyword"
+      },
+      "PROPERTIES_untokenized": {
+        "type": "alias",
+        "path": "PROPERTIES"
+      },
+      "READER": {
+        "type": "keyword"
+      },
+      "READER_untokenized": {
+        "type": "alias",
+        "path": "READER"
+      },
+      "SITE": {
+        "type": "keyword"
+      },
+      "SITE_untokenized": {
+        "type": "alias",
+        "path": "SITE"
+      },
+      "primaryHierarchy": {
+        "type": "keyword"
+      },
+      "PRIMARYPARENT": {
+        "type": "keyword"
+      },
+      "PARENT": {
+        "type": "keyword"
+      },
+      "ANCESTOR": {
+        "type": "keyword"
+      },
+      "STANDARD_ANCESTOR": {
+        "type": "keyword",
+        "copy_to": "ANCESTOR"
+      },
+      "CATEGORY_ANCESTOR": {
+        "type": "keyword",
+        "copy_to": "ANCESTOR"
+      },
+      "TYPE": {
+        "type": "keyword"
+      },
+      "TYPE_untokenized": {
+        "type": "alias",
+        "path": "TYPE"
+      },
+      "abs%3AappDefinitionName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "abs:appDefinitionName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "act%3AactionDescription": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "act:actionDescription"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "act%3AactionExecutionTitle": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "act:actionExecutionTitle"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "act%3AactionTitle": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "act:actionTitle"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "act%3AdefinitionName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "act:definitionName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "act%3AerrorDetails": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "act:errorDetails"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "act%3AerrorMessage": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "act:errorMessage"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "act%3AexecuteAsynchronously": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "act:executeAsynchronously"
+        }
+      },
+      "act%3AexecuteAsynchronously_untokenized": {
+        "type": "alias",
+        "path": "act%3AexecuteAsynchronously"
+      },
+      "act%3AexecutionActionStatus": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "act:executionActionStatus"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "act%3AexecutionEndDate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "act:executionEndDate"
+        }
+      },
+      "act%3AexecutionEndDate_untokenized": {
+        "type": "alias",
+        "path": "act%3AexecutionEndDate"
+      },
+      "act%3AexecutionFailureMessage": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "act:executionFailureMessage"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "act%3AexecutionStartDate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "act:executionStartDate"
+        }
+      },
+      "act%3AexecutionStartDate_untokenized": {
+        "type": "alias",
+        "path": "act%3AexecutionStartDate"
+      },
+      "act%3AexecutionStatus": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "act:executionStatus"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "act%3AintervalCount": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "act:intervalCount"
+        }
+      },
+      "act%3AintervalCount_untokenized": {
+        "type": "alias",
+        "path": "act%3AintervalCount"
+      },
+      "act%3AintervalPeriod": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "act:intervalPeriod"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "act%3Ainvert": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "act:invert"
+        }
+      },
+      "act%3Ainvert_untokenized": {
+        "type": "alias",
+        "path": "act%3Ainvert"
+      },
+      "act%3AlastExecutedAt": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "act:lastExecutedAt"
+        }
+      },
+      "act%3AlastExecutedAt_untokenized": {
+        "type": "alias",
+        "path": "act%3AlastExecutedAt"
+      },
+      "act%3Aorconditions": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "act:orconditions"
+        }
+      },
+      "act%3Aorconditions_untokenized": {
+        "type": "alias",
+        "path": "act%3Aorconditions"
+      },
+      "act%3AparameterName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "act:parameterName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "act%3ArunAsPassword": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "act:runAsPassword"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "act%3ArunAsUser": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "act:runAsUser"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "act%3AstartDate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "act:startDate"
+        }
+      },
+      "act%3AstartDate_untokenized": {
+        "type": "alias",
+        "path": "act%3AstartDate"
+      },
+      "act%3AtrackStatus": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "act:trackStatus"
+        }
+      },
+      "act%3AtrackStatus_untokenized": {
+        "type": "alias",
+        "path": "act%3AtrackStatus"
+      },
+      "app%3AapproveMove": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "app:approveMove"
+        }
+      },
+      "app%3AapproveMove_untokenized": {
+        "type": "alias",
+        "path": "app%3AapproveMove"
+      },
+      "app%3AapproveStep": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "app:approveStep"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "app%3AdefaultViewId": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "app:defaultViewId"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "app%3AeditInline": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "app:editInline"
+        }
+      },
+      "app%3AeditInline_untokenized": {
+        "type": "alias",
+        "path": "app%3AeditInline"
+      },
+      "app%3Aicon": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "app:icon"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "app%3ArejectMove": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "app:rejectMove"
+        }
+      },
+      "app%3ArejectMove_untokenized": {
+        "type": "alias",
+        "path": "app%3ArejectMove"
+      },
+      "app%3ArejectStep": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "app:rejectStep"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "audio%3Aalbum": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "audio:album"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "audio%3Aartist": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "audio:artist"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "audio%3AchannelType": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "audio:channelType"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "audio%3Acomposer": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "audio:composer"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "audio%3Acompressor": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "audio:compressor"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "audio%3Aengineer": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "audio:engineer"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "audio%3Agenre": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "audio:genre"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "audio%3AreleaseDate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "audio:releaseDate"
+        }
+      },
+      "audio%3AreleaseDate_untokenized": {
+        "type": "alias",
+        "path": "audio%3AreleaseDate"
+      },
+      "audio%3AsampleRate": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "audio:sampleRate"
+        }
+      },
+      "audio%3AsampleRate_untokenized": {
+        "type": "alias",
+        "path": "audio%3AsampleRate"
+      },
+      "audio%3AsampleType": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "audio:sampleType"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "audio%3AtrackNumber": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "audio:trackNumber"
+        }
+      },
+      "audio%3AtrackNumber_untokenized": {
+        "type": "alias",
+        "path": "audio%3AtrackNumber"
+      },
+      "blg%3AblogImplementation": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "blg:blogImplementation"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "blg%3Adescription": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "blg:description"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "blg%3Aid": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "blg:id"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "blg%3AlastUpdate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "blg:lastUpdate"
+        }
+      },
+      "blg%3AlastUpdate_untokenized": {
+        "type": "alias",
+        "path": "blg%3AlastUpdate"
+      },
+      "blg%3Alink": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "blg:link"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "blg%3Aname": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "blg:name"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "blg%3Apassword": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "blg:password"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "blg%3ApostId": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "blg:postId"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "blg%3Aposted": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "blg:posted"
+        }
+      },
+      "blg%3Aposted_untokenized": {
+        "type": "alias",
+        "path": "blg%3Aposted"
+      },
+      "blg%3Apublished": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "blg:published"
+        }
+      },
+      "blg%3Apublished_untokenized": {
+        "type": "alias",
+        "path": "blg%3Apublished"
+      },
+      "blg%3Aurl": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "blg:url"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "blg%3AuserName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "blg:userName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "bpm%3Acomment": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "bpm:comment"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "bpm%3AcompletionDate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "bpm:completionDate"
+        }
+      },
+      "bpm%3AcompletionDate_untokenized": {
+        "type": "alias",
+        "path": "bpm%3AcompletionDate"
+      },
+      "bpm%3AdefinitionDeployed": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "bpm:definitionDeployed"
+        }
+      },
+      "bpm%3AdefinitionDeployed_untokenized": {
+        "type": "alias",
+        "path": "bpm%3AdefinitionDeployed"
+      },
+      "bpm%3AdefinitionName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "bpm:definitionName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "bpm%3Adescription": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "bpm:description"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "bpm%3AdueDate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "bpm:dueDate"
+        }
+      },
+      "bpm%3AdueDate_untokenized": {
+        "type": "alias",
+        "path": "bpm%3AdueDate"
+      },
+      "bpm%3AengineId": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "bpm:engineId"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "bpm%3AhiddenTransitions": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "bpm:hiddenTransitions"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "bpm%3AisSystemPackage": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "bpm:isSystemPackage"
+        }
+      },
+      "bpm%3AisSystemPackage_untokenized": {
+        "type": "alias",
+        "path": "bpm%3AisSystemPackage"
+      },
+      "bpm%3Aoutcome": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "bpm:outcome"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "bpm%3ApackageActionGroup": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "bpm:packageActionGroup"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "bpm%3ApackageItemActionGroup": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "bpm:packageItemActionGroup"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "bpm%3ApercentComplete": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "bpm:percentComplete"
+        }
+      },
+      "bpm%3ApercentComplete_untokenized": {
+        "type": "alias",
+        "path": "bpm%3ApercentComplete"
+      },
+      "bpm%3Apriority": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "bpm:priority"
+        }
+      },
+      "bpm%3Apriority_untokenized": {
+        "type": "alias",
+        "path": "bpm%3Apriority"
+      },
+      "bpm%3Areassignable": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "bpm:reassignable"
+        }
+      },
+      "bpm%3Areassignable_untokenized": {
+        "type": "alias",
+        "path": "bpm%3Areassignable"
+      },
+      "bpm%3AsendEMailNotifications": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "bpm:sendEMailNotifications"
+        }
+      },
+      "bpm%3AsendEMailNotifications_untokenized": {
+        "type": "alias",
+        "path": "bpm%3AsendEMailNotifications"
+      },
+      "bpm%3AstartDate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "bpm:startDate"
+        }
+      },
+      "bpm%3AstartDate_untokenized": {
+        "type": "alias",
+        "path": "bpm%3AstartDate"
+      },
+      "bpm%3Astatus": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "bpm:status"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "bpm%3AtaskId": {
+        "type": "long",
+        "meta": {
+          "DecodedQualifiedName": "bpm:taskId"
+        }
+      },
+      "bpm%3AtaskId_untokenized": {
+        "type": "alias",
+        "path": "bpm%3AtaskId"
+      },
+      "bpm%3AworkflowDefinitionId": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "bpm:workflowDefinitionId"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "bpm%3AworkflowDefinitionName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "bpm:workflowDefinitionName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "bpm%3AworkflowDescription": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "bpm:workflowDescription"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "bpm%3AworkflowDueDate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "bpm:workflowDueDate"
+        }
+      },
+      "bpm%3AworkflowDueDate_untokenized": {
+        "type": "alias",
+        "path": "bpm%3AworkflowDueDate"
+      },
+      "bpm%3AworkflowInstanceId": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "bpm:workflowInstanceId"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "bpm%3AworkflowPriority": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "bpm:workflowPriority"
+        }
+      },
+      "bpm%3AworkflowPriority_untokenized": {
+        "type": "alias",
+        "path": "bpm%3AworkflowPriority"
+      },
+      "cm%3Aaccessed": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "cm:accessed"
+        }
+      },
+      "cm%3Aaccessed_untokenized": {
+        "type": "alias",
+        "path": "cm%3Aaccessed"
+      },
+      "cm%3Aaddressee": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:addressee"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Aaddressees": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:addressees"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Aauthor": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:author"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3AauthorityDisplayName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:authorityDisplayName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3AauthorityName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:authorityName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3AautoVersion": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "cm:autoVersion"
+        }
+      },
+      "cm%3AautoVersionOnUpdateProps": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "cm:autoVersionOnUpdateProps"
+        }
+      },
+      "cm%3AautoVersionOnUpdateProps_untokenized": {
+        "type": "alias",
+        "path": "cm%3AautoVersionOnUpdateProps"
+      },
+      "cm%3AautoVersion_untokenized": {
+        "type": "alias",
+        "path": "cm%3AautoVersion"
+      },
+      "cm%3AautomaticUpdate": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "cm:automaticUpdate"
+        }
+      },
+      "cm%3AautomaticUpdate_untokenized": {
+        "type": "alias",
+        "path": "cm%3AautomaticUpdate"
+      },
+      "cm%3Acompanyaddress1": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:companyaddress1"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Acompanyaddress2": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:companyaddress2"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Acompanyaddress3": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:companyaddress3"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Acompanyemail": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:companyemail"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Acompanyfax": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:companyfax"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Acompanypostcode": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:companypostcode"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Acompanytelephone": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:companytelephone"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Acontent": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:content"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Acontent%2Eencoding": {
+        "type": "keyword"
+      },
+      "cm%3Acontent%2Eencoding_untokenized": {
+        "type": "alias",
+        "path": "cm%3Acontent%2Eencoding"
+      },
+      "cm%3Acontent%2Emimetype": {
+        "type": "keyword"
+      },
+      "cm%3Acontent%2Emimetype_untokenized": {
+        "type": "alias",
+        "path": "cm%3Acontent%2Emimetype"
+      },
+      "cm%3Acontent%2Esize": {
+        "type": "long"
+      },
+      "cm%3Acontent%2Esize_untokenized": {
+        "type": "alias",
+        "path": "cm%3Acontent%2Esize"
+      },
+      "cm%3Acontributor": {
+        "type": "text",
+        "copy_to": ["cm%3Acontributor_untokenized"],
+        "meta": {
+          "DecodedQualifiedName": "cm:contributor"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Acontributor_untokenized": {
+        "type": "keyword"
+      },
+      "cm%3Acounter": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "cm:counter"
+        }
+      },
+      "cm%3Acounter_untokenized": {
+        "type": "alias",
+        "path": "cm%3Acounter"
+      },
+      "cm%3Acoverage": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:coverage"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Acreated": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "cm:created"
+        }
+      },
+      "cm%3Acreated_untokenized": {
+        "type": "alias",
+        "path": "cm%3Acreated"
+      },
+      "cm%3Acreator": {
+        "type": "text",
+        "copy_to": ["cm%3Acreator_untokenized"],
+        "meta": {
+          "DecodedQualifiedName": "cm:creator"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Acreator_untokenized": {
+        "type": "keyword"
+      },
+      "cm%3Adcsource": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:dcsource"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3AdefaultHomeFolderPath": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:defaultHomeFolderPath"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Adescription": {
+        "type": "text",
+        "fields": {
+          "en": {
+            "type": "text",
+            "analyzer": "english"
+          }
+        },
+        "copy_to": ["cm%3Adescription_untokenized"],
+        "meta": {
+          "DecodedQualifiedName": "cm:description"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Adescription_untokenized": {
+        "type": "keyword"
+      },
+      "cm%3Aemail": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:email"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3AemailFeedDisabled": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "cm:emailFeedDisabled"
+        }
+      },
+      "cm%3AemailFeedDisabled_untokenized": {
+        "type": "alias",
+        "path": "cm%3AemailFeedDisabled"
+      },
+      "cm%3AemailFeedId": {
+        "type": "long",
+        "meta": {
+          "DecodedQualifiedName": "cm:emailFeedId"
+        }
+      },
+      "cm%3AemailFeedId_untokenized": {
+        "type": "alias",
+        "path": "cm%3AemailFeedId"
+      },
+      "cm%3AexpiryDate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "cm:expiryDate"
+        }
+      },
+      "cm%3AexpiryDate_untokenized": {
+        "type": "alias",
+        "path": "cm%3AexpiryDate"
+      },
+      "cm%3AfailedThumbnailTime": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "cm:failedThumbnailTime"
+        }
+      },
+      "cm%3AfailedThumbnailTime_untokenized": {
+        "type": "alias",
+        "path": "cm%3AfailedThumbnailTime"
+      },
+      "cm%3AfailureCount": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "cm:failureCount"
+        }
+      },
+      "cm%3AfailureCount_untokenized": {
+        "type": "alias",
+        "path": "cm%3AfailureCount"
+      },
+      "cm%3AfirstName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:firstName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3AfiveStarRatingSchemeCount": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "cm:fiveStarRatingSchemeCount"
+        }
+      },
+      "cm%3AfiveStarRatingSchemeCount_untokenized": {
+        "type": "alias",
+        "path": "cm%3AfiveStarRatingSchemeCount"
+      },
+      "cm%3AfiveStarRatingSchemeTotal": {
+        "type": "float",
+        "meta": {
+          "DecodedQualifiedName": "cm:fiveStarRatingSchemeTotal"
+        }
+      },
+      "cm%3AfiveStarRatingSchemeTotal_untokenized": {
+        "type": "alias",
+        "path": "cm%3AfiveStarRatingSchemeTotal"
+      },
+      "cm%3Afrom": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "cm:from"
+        }
+      },
+      "cm%3Afrom_untokenized": {
+        "type": "alias",
+        "path": "cm%3Afrom"
+      },
+      "cm%3Agoogleusername": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:googleusername"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Ahits": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "cm:hits"
+        }
+      },
+      "cm%3Ahits_untokenized": {
+        "type": "alias",
+        "path": "cm%3Ahits"
+      },
+      "cm%3AhomeFolderProvider": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:homeFolderProvider"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Aidentifier": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:identifier"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3AinitialVersion": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "cm:initialVersion"
+        }
+      },
+      "cm%3AinitialVersion_untokenized": {
+        "type": "alias",
+        "path": "cm%3AinitialVersion"
+      },
+      "cm%3Ainstantmsg": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:instantmsg"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3AisContentIndexed": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "cm:isContentIndexed"
+        }
+      },
+      "cm%3AisContentIndexed_untokenized": {
+        "type": "alias",
+        "path": "cm%3AisContentIndexed"
+      },
+      "cm%3AisIndexed": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "cm:isIndexed"
+        }
+      },
+      "cm%3AisIndexed_untokenized": {
+        "type": "alias",
+        "path": "cm%3AisIndexed"
+      },
+      "cm%3Ajobtitle": {
+        "type": "text",
+        "copy_to": ["cm%3Ajobtitle_untokenized"],
+        "meta": {
+          "DecodedQualifiedName": "cm:jobtitle"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Ajobtitle_untokenized": {
+        "type": "keyword"
+      },
+      "cm%3AlastName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:lastName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3AlastThumbnailModification": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:lastThumbnailModification"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Alatitude": {
+        "type": "double",
+        "meta": {
+          "DecodedQualifiedName": "cm:latitude"
+        }
+      },
+      "cm%3Alatitude_untokenized": {
+        "type": "alias",
+        "path": "cm%3Alatitude"
+      },
+      "cm%3AlikesRatingSchemeCount": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "cm:likesRatingSchemeCount"
+        }
+      },
+      "cm%3AlikesRatingSchemeCount_untokenized": {
+        "type": "alias",
+        "path": "cm%3AlikesRatingSchemeCount"
+      },
+      "cm%3AlikesRatingSchemeTotal": {
+        "type": "float",
+        "meta": {
+          "DecodedQualifiedName": "cm:likesRatingSchemeTotal"
+        }
+      },
+      "cm%3AlikesRatingSchemeTotal_untokenized": {
+        "type": "alias",
+        "path": "cm%3AlikesRatingSchemeTotal"
+      },
+      "cm%3Alocation": {
+        "type": "text",
+        "copy_to": ["cm%3Alocation_untokenized"],
+        "meta": {
+          "DecodedQualifiedName": "cm:location"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Alocation_untokenized": {
+        "type": "keyword"
+      },
+      "cm%3AlockAdditionalInfo": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:lockAdditionalInfo"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3AlockIsDeep": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "cm:lockIsDeep"
+        }
+      },
+      "cm%3AlockIsDeep_untokenized": {
+        "type": "alias",
+        "path": "cm%3AlockIsDeep"
+      },
+      "cm%3AlockLifetime": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:lockLifetime"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3AlockOwner": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:lockOwner"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3AlockType": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:lockType"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Alongitude": {
+        "type": "double",
+        "meta": {
+          "DecodedQualifiedName": "cm:longitude"
+        }
+      },
+      "cm%3Alongitude_untokenized": {
+        "type": "alias",
+        "path": "cm%3Alongitude"
+      },
+      "cm%3AmiddleName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:middleName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Amobile": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:mobile"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3AmodelActive": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "cm:modelActive"
+        }
+      },
+      "cm%3AmodelActive_untokenized": {
+        "type": "alias",
+        "path": "cm%3AmodelActive"
+      },
+      "cm%3AmodelAuthor": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:modelAuthor"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3AmodelDescription": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:modelDescription"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3AmodelPublishedDate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "cm:modelPublishedDate"
+        }
+      },
+      "cm%3AmodelPublishedDate_untokenized": {
+        "type": "alias",
+        "path": "cm%3AmodelPublishedDate"
+      },
+      "cm%3AmodelVersion": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:modelVersion"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Amodified": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "cm:modified"
+        }
+      },
+      "cm%3Amodified_untokenized": {
+        "type": "alias",
+        "path": "cm%3Amodified"
+      },
+      "cm%3Amodifier": {
+        "type": "text",
+        "copy_to": ["cm%3Amodifier_untokenized"],
+        "meta": {
+          "DecodedQualifiedName": "cm:modifier"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Amodifier_untokenized": {
+        "type": "keyword"
+      },
+      "cm%3Aname": {
+        "type": "text",
+        "copy_to": ["cm%3Aname_untokenized"],
+        "meta": {
+          "DecodedQualifiedName": "cm:name"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Aname_untokenized": {
+        "type": "keyword"
+      },
+      "cm%3Aorganization": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:organization"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3AorganizationId": {
+        "type": "text",
+        "copy_to": ["cm%3AorganizationId_untokenized"],
+        "meta": {
+          "DecodedQualifiedName": "cm:organizationId"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3AorganizationId_untokenized": {
+        "type": "keyword"
+      },
+      "cm%3Aoriginator": {
+        "type": "text",
+        "copy_to": ["cm%3Aoriginator_untokenized"],
+        "meta": {
+          "DecodedQualifiedName": "cm:originator"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Aoriginator_untokenized": {
+        "type": "keyword"
+      },
+      "cm%3Aowner": {
+        "type": "text",
+        "copy_to": ["cm%3Aowner_untokenized"],
+        "meta": {
+          "DecodedQualifiedName": "cm:owner"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Aowner_untokenized": {
+        "type": "keyword"
+      },
+      "cm%3Apersondescription": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:persondescription"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3ApreferenceValues": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:preferenceValues"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3ApresenceProvider": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:presenceProvider"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3ApresenceUsername": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:presenceUsername"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Apublished": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "cm:published"
+        }
+      },
+      "cm%3Apublished_untokenized": {
+        "type": "alias",
+        "path": "cm%3Apublished"
+      },
+      "cm%3Apublisher": {
+        "type": "text",
+        "copy_to": ["cm%3Apublisher_untokenized"],
+        "meta": {
+          "DecodedQualifiedName": "cm:publisher"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Apublisher_untokenized": {
+        "type": "keyword"
+      },
+      "cm%3AratedAt": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "cm:ratedAt"
+        }
+      },
+      "cm%3AratedAt_untokenized": {
+        "type": "alias",
+        "path": "cm%3AratedAt"
+      },
+      "cm%3AratingScheme": {
+        "type": "keyword",
+        "meta": {
+          "DecodedQualifiedName": "cm:ratingScheme"
+        }
+      },
+      "cm%3AratingScheme_untokenized": {
+        "type": "alias",
+        "path": "cm%3AratingScheme"
+      },
+      "cm%3AratingScore": {
+        "type": "float",
+        "meta": {
+          "DecodedQualifiedName": "cm:ratingScore"
+        }
+      },
+      "cm%3AratingScore_untokenized": {
+        "type": "alias",
+        "path": "cm%3AratingScore"
+      },
+      "cm%3AremoveAfter": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "cm:removeAfter"
+        }
+      },
+      "cm%3AremoveAfter_untokenized": {
+        "type": "alias",
+        "path": "cm%3AremoveAfter"
+      },
+      "cm%3Arights": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:rights"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Asentdate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "cm:sentdate"
+        }
+      },
+      "cm%3Asentdate_untokenized": {
+        "type": "alias",
+        "path": "cm%3Asentdate"
+      },
+      "cm%3AsizeCurrent": {
+        "type": "long",
+        "meta": {
+          "DecodedQualifiedName": "cm:sizeCurrent"
+        }
+      },
+      "cm%3AsizeCurrent_untokenized": {
+        "type": "alias",
+        "path": "cm%3AsizeCurrent"
+      },
+      "cm%3AsizeQuota": {
+        "type": "long",
+        "meta": {
+          "DecodedQualifiedName": "cm:sizeQuota"
+        }
+      },
+      "cm%3AsizeQuota_untokenized": {
+        "type": "alias",
+        "path": "cm%3AsizeQuota"
+      },
+      "cm%3Askype": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:skype"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3AstoreName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:storeName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Asubject": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:subject"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Asubjectline": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:subjectline"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3AsubscriptionsPrivate": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "cm:subscriptionsPrivate"
+        }
+      },
+      "cm%3AsubscriptionsPrivate_untokenized": {
+        "type": "alias",
+        "path": "cm%3AsubscriptionsPrivate"
+      },
+      "cm%3Asummary": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:summary"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3AsummaryWebscript": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:summaryWebscript"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3AtagScopeCache": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:tagScopeCache"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3AtagScopeSummary": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:tagScopeSummary"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Atelephone": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:telephone"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3AthumbnailName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:thumbnailName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Atitle": {
+        "type": "text",
+        "fields": {
+          "en": {
+            "type": "text",
+            "analyzer": "english"
+          }
+        },
+        "copy_to": ["cm%3Atitle_untokenized"],
+        "meta": {
+          "DecodedQualifiedName": "cm:title"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Atitle_untokenized": {
+        "type": "keyword"
+      },
+      "cm%3Ato": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "cm:to"
+        }
+      },
+      "cm%3Ato_untokenized": {
+        "type": "alias",
+        "path": "cm%3Ato"
+      },
+      "cm%3Atype": {
+        "type": "text",
+        "copy_to": ["cm%3Atype_untokenized"],
+        "meta": {
+          "DecodedQualifiedName": "cm:type"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Atype_untokenized": {
+        "type": "keyword"
+      },
+      "cm%3Aupdated": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "cm:updated"
+        }
+      },
+      "cm%3Aupdated_untokenized": {
+        "type": "alias",
+        "path": "cm%3Aupdated"
+      },
+      "cm%3AuserName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:userName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3AuserStatus": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:userStatus"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3AuserStatusTime": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "cm:userStatusTime"
+        }
+      },
+      "cm%3AuserStatusTime_untokenized": {
+        "type": "alias",
+        "path": "cm%3AuserStatusTime"
+      },
+      "cm%3AversionLabel": {
+        "type": "text",
+        "copy_to": ["cm%3AversionLabel_untokenized"],
+        "meta": {
+          "DecodedQualifiedName": "cm:versionLabel"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3AversionLabel_untokenized": {
+        "type": "keyword"
+      },
+      "cm%3AversionType": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:versionType"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3Awebscript": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:webscript"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3AworkingCopyLabel": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:workingCopyLabel"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3AworkingCopyMode": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cm:workingCopyMode"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cm%3AworkingCopyOwner": {
+        "type": "keyword",
+        "meta": {
+          "DecodedQualifiedName": "cm:workingCopyOwner"
+        }
+      },
+      "cm%3AworkingCopyOwner_untokenized": {
+        "type": "alias",
+        "path": "cm%3AworkingCopyOwner"
+      },
+      "cmis%3AchangeToken": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cmis:changeToken"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cmis%3AcheckinComment": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cmis:checkinComment"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cmis%3AcontentStreamFileName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cmis:contentStreamFileName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cmis%3AcontentStreamLength": {
+        "type": "long",
+        "meta": {
+          "DecodedQualifiedName": "cmis:contentStreamLength"
+        }
+      },
+      "cmis%3AcontentStreamLength_untokenized": {
+        "type": "alias",
+        "path": "cmis%3AcontentStreamLength"
+      },
+      "cmis%3AcontentStreamMimeType": {
+        "type": "keyword",
+        "meta": {
+          "DecodedQualifiedName": "cmis:contentStreamMimeType"
+        }
+      },
+      "cmis%3AcontentStreamMimeType_untokenized": {
+        "type": "alias",
+        "path": "cmis%3AcontentStreamMimeType"
+      },
+      "cmis%3AcreatedBy": {
+        "type": "keyword",
+        "meta": {
+          "DecodedQualifiedName": "cmis:createdBy"
+        }
+      },
+      "cmis%3AcreatedBy_untokenized": {
+        "type": "alias",
+        "path": "cmis%3AcreatedBy"
+      },
+      "cmis%3AcreationDate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "cmis:creationDate"
+        }
+      },
+      "cmis%3AcreationDate_untokenized": {
+        "type": "alias",
+        "path": "cmis%3AcreationDate"
+      },
+      "cmis%3Adescription": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cmis:description"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cmis%3AisImmutable": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "cmis:isImmutable"
+        }
+      },
+      "cmis%3AisImmutable_untokenized": {
+        "type": "alias",
+        "path": "cmis%3AisImmutable"
+      },
+      "cmis%3AisLatestMajorVersion": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "cmis:isLatestMajorVersion"
+        }
+      },
+      "cmis%3AisLatestMajorVersion_untokenized": {
+        "type": "alias",
+        "path": "cmis%3AisLatestMajorVersion"
+      },
+      "cmis%3AisLatestVersion": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "cmis:isLatestVersion"
+        }
+      },
+      "cmis%3AisLatestVersion_untokenized": {
+        "type": "alias",
+        "path": "cmis%3AisLatestVersion"
+      },
+      "cmis%3AisMajorVersion": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "cmis:isMajorVersion"
+        }
+      },
+      "cmis%3AisMajorVersion_untokenized": {
+        "type": "alias",
+        "path": "cmis%3AisMajorVersion"
+      },
+      "cmis%3AisPrivateWorkingCopy": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "cmis:isPrivateWorkingCopy"
+        }
+      },
+      "cmis%3AisPrivateWorkingCopy_untokenized": {
+        "type": "alias",
+        "path": "cmis%3AisPrivateWorkingCopy"
+      },
+      "cmis%3AisVersionSeriesCheckedOut": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "cmis:isVersionSeriesCheckedOut"
+        }
+      },
+      "cmis%3AisVersionSeriesCheckedOut_untokenized": {
+        "type": "alias",
+        "path": "cmis%3AisVersionSeriesCheckedOut"
+      },
+      "cmis%3AlastModificationDate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "cmis:lastModificationDate"
+        }
+      },
+      "cmis%3AlastModificationDate_untokenized": {
+        "type": "alias",
+        "path": "cmis%3AlastModificationDate"
+      },
+      "cmis%3AlastModifiedBy": {
+        "type": "keyword",
+        "meta": {
+          "DecodedQualifiedName": "cmis:lastModifiedBy"
+        }
+      },
+      "cmis%3AlastModifiedBy_untokenized": {
+        "type": "alias",
+        "path": "cmis%3AlastModifiedBy"
+      },
+      "cmis%3Aname": {
+        "type": "text",
+        "copy_to": ["cmis%3Aname_untokenized"],
+        "meta": {
+          "DecodedQualifiedName": "cmis:name"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cmis%3Aname_untokenized": {
+        "type": "keyword"
+      },
+      "cmis%3Apath": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cmis:path"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cmis%3ApolicyText": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cmis:policyText"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cmis%3AversionLabel": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cmis:versionLabel"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cmis%3AversionSeriesCheckedOutBy": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cmis:versionSeriesCheckedOutBy"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cmiscustom%3Adocprop_boolean_multi": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "cmiscustom:docprop_boolean_multi"
+        }
+      },
+      "cmiscustom%3Adocprop_boolean_multi_untokenized": {
+        "type": "alias",
+        "path": "cmiscustom%3Adocprop_boolean_multi"
+      },
+      "cmiscustom%3Adocprop_datetime": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "cmiscustom:docprop_datetime"
+        }
+      },
+      "cmiscustom%3Adocprop_datetime_untokenized": {
+        "type": "alias",
+        "path": "cmiscustom%3Adocprop_datetime"
+      },
+      "cmiscustom%3Adocprop_string": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cmiscustom:docprop_string"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "cmiscustom%3Afolderprop_string": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "cmiscustom:folderprop_string"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "devicesync%3AdeviceOS": {
+        "type": "text",
+        "copy_to": ["devicesync%3AdeviceOS_untokenized"],
+        "meta": {
+          "DecodedQualifiedName": "devicesync:deviceOS"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "devicesync%3AdeviceOS_untokenized": {
+        "type": "keyword"
+      },
+      "devicesync%3AsubscriptionType": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "devicesync:subscriptionType"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AcontactCompany": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:contactCompany"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AcontactEmail": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:contactEmail"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AcontactFirstName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:contactFirstName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AcontactJobTitle": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:contactJobTitle"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AcontactLastName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:contactLastName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AcontactNotes": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:contactNotes"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AcontactPhoneMobile": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:contactPhoneMobile"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AcontactPhoneOffice": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:contactPhoneOffice"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AdataListItemType": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:dataListItemType"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AeventAgendaAudience": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:eventAgendaAudience"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AeventAgendaEndTime": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:eventAgendaEndTime"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AeventAgendaNotes": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:eventAgendaNotes"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AeventAgendaPresenter": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:eventAgendaPresenter"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AeventAgendaRef": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:eventAgendaRef"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AeventAgendaSessionName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:eventAgendaSessionName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AeventAgendaStartTime": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:eventAgendaStartTime"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AeventEndDate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "dl:eventEndDate"
+        }
+      },
+      "dl%3AeventEndDate_untokenized": {
+        "type": "alias",
+        "path": "dl%3AeventEndDate"
+      },
+      "dl%3AeventLocation": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:eventLocation"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AeventNote": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:eventNote"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AeventRegistrations": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:eventRegistrations"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AeventStartDate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "dl:eventStartDate"
+        }
+      },
+      "dl%3AeventStartDate_untokenized": {
+        "type": "alias",
+        "path": "dl%3AeventStartDate"
+      },
+      "dl%3AganttEndDate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "dl:ganttEndDate"
+        }
+      },
+      "dl%3AganttEndDate_untokenized": {
+        "type": "alias",
+        "path": "dl%3AganttEndDate"
+      },
+      "dl%3AganttPercentComplete": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "dl:ganttPercentComplete"
+        }
+      },
+      "dl%3AganttPercentComplete_untokenized": {
+        "type": "alias",
+        "path": "dl%3AganttPercentComplete"
+      },
+      "dl%3AganttStartDate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "dl:ganttStartDate"
+        }
+      },
+      "dl%3AganttStartDate_untokenized": {
+        "type": "alias",
+        "path": "dl%3AganttStartDate"
+      },
+      "dl%3AissueComments": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:issueComments"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AissueDueDate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "dl:issueDueDate"
+        }
+      },
+      "dl%3AissueDueDate_untokenized": {
+        "type": "alias",
+        "path": "dl%3AissueDueDate"
+      },
+      "dl%3AissueID": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:issueID"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AissuePriority": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:issuePriority"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AissueStatus": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:issueStatus"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AlocationAddress1": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:locationAddress1"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AlocationAddress2": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:locationAddress2"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AlocationAddress3": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:locationAddress3"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AlocationCountry": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:locationCountry"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AlocationState": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:locationState"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AlocationZip": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:locationZip"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AmeetingAgendaOwner": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:meetingAgendaOwner"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AmeetingAgendaRef": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:meetingAgendaRef"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AmeetingAgendaTime": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:meetingAgendaTime"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AsimpletaskComments": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:simpletaskComments"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AsimpletaskDueDate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "dl:simpletaskDueDate"
+        }
+      },
+      "dl%3AsimpletaskDueDate_untokenized": {
+        "type": "alias",
+        "path": "dl%3AsimpletaskDueDate"
+      },
+      "dl%3AsimpletaskPriority": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:simpletaskPriority"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AsimpletaskStatus": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:simpletaskStatus"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AtaskComments": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:taskComments"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AtaskPriority": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:taskPriority"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AtaskStatus": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:taskStatus"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AtodoDueDate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "dl:todoDueDate"
+        }
+      },
+      "dl%3AtodoDueDate_untokenized": {
+        "type": "alias",
+        "path": "dl%3AtodoDueDate"
+      },
+      "dl%3AtodoNotes": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:todoNotes"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AtodoPriority": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "dl:todoPriority"
+        }
+      },
+      "dl%3AtodoPriority_untokenized": {
+        "type": "alias",
+        "path": "dl%3AtodoPriority"
+      },
+      "dl%3AtodoStatus": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:todoStatus"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "dl%3AtodoTitle": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "dl:todoTitle"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "download%3Acancelled": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "download:cancelled"
+        }
+      },
+      "download%3Acancelled_untokenized": {
+        "type": "alias",
+        "path": "download%3Acancelled"
+      },
+      "download%3Adone": {
+        "type": "long",
+        "meta": {
+          "DecodedQualifiedName": "download:done"
+        }
+      },
+      "download%3Adone_untokenized": {
+        "type": "alias",
+        "path": "download%3Adone"
+      },
+      "download%3AfilesAdded": {
+        "type": "long",
+        "meta": {
+          "DecodedQualifiedName": "download:filesAdded"
+        }
+      },
+      "download%3AfilesAdded_untokenized": {
+        "type": "alias",
+        "path": "download%3AfilesAdded"
+      },
+      "download%3Arecursive": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "download:recursive"
+        }
+      },
+      "download%3Arecursive_untokenized": {
+        "type": "alias",
+        "path": "download%3Arecursive"
+      },
+      "download%3AsequenceNumber": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "download:sequenceNumber"
+        }
+      },
+      "download%3AsequenceNumber_untokenized": {
+        "type": "alias",
+        "path": "download%3AsequenceNumber"
+      },
+      "download%3Astatus": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "download:status"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "download%3Atotal": {
+        "type": "long",
+        "meta": {
+          "DecodedQualifiedName": "download:total"
+        }
+      },
+      "download%3AtotalFiles": {
+        "type": "long",
+        "meta": {
+          "DecodedQualifiedName": "download:totalFiles"
+        }
+      },
+      "download%3AtotalFiles_untokenized": {
+        "type": "alias",
+        "path": "download%3AtotalFiles"
+      },
+      "download%3Atotal_untokenized": {
+        "type": "alias",
+        "path": "download%3Atotal"
+      },
+      "dp%3AofflineExpiresAfter": {
+        "type": "long",
+        "meta": {
+          "DecodedQualifiedName": "dp:offlineExpiresAfter"
+        }
+      },
+      "dp%3AofflineExpiresAfter_untokenized": {
+        "type": "alias",
+        "path": "dp%3AofflineExpiresAfter"
+      },
+      "emailserver%3Aalias": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "emailserver:alias"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "exif%3AdateTimeOriginal": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "exif:dateTimeOriginal"
+        }
+      },
+      "exif%3AdateTimeOriginal_untokenized": {
+        "type": "alias",
+        "path": "exif%3AdateTimeOriginal"
+      },
+      "exif%3AexposureTime": {
+        "type": "double",
+        "meta": {
+          "DecodedQualifiedName": "exif:exposureTime"
+        }
+      },
+      "exif%3AexposureTime_untokenized": {
+        "type": "alias",
+        "path": "exif%3AexposureTime"
+      },
+      "exif%3AfNumber": {
+        "type": "double",
+        "meta": {
+          "DecodedQualifiedName": "exif:fNumber"
+        }
+      },
+      "exif%3AfNumber_untokenized": {
+        "type": "alias",
+        "path": "exif%3AfNumber"
+      },
+      "exif%3Aflash": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "exif:flash"
+        }
+      },
+      "exif%3Aflash_untokenized": {
+        "type": "alias",
+        "path": "exif%3Aflash"
+      },
+      "exif%3AfocalLength": {
+        "type": "double",
+        "meta": {
+          "DecodedQualifiedName": "exif:focalLength"
+        }
+      },
+      "exif%3AfocalLength_untokenized": {
+        "type": "alias",
+        "path": "exif%3AfocalLength"
+      },
+      "exif%3AisoSpeedRatings": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "exif:isoSpeedRatings"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "exif%3Amanufacturer": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "exif:manufacturer"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "exif%3Amodel": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "exif:model"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "exif%3Aorientation": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "exif:orientation"
+        }
+      },
+      "exif%3Aorientation_untokenized": {
+        "type": "alias",
+        "path": "exif%3Aorientation"
+      },
+      "exif%3ApixelXDimension": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "exif:pixelXDimension"
+        }
+      },
+      "exif%3ApixelXDimension_untokenized": {
+        "type": "alias",
+        "path": "exif%3ApixelXDimension"
+      },
+      "exif%3ApixelYDimension": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "exif:pixelYDimension"
+        }
+      },
+      "exif%3ApixelYDimension_untokenized": {
+        "type": "alias",
+        "path": "exif%3ApixelYDimension"
+      },
+      "exif%3AresolutionUnit": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "exif:resolutionUnit"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "exif%3Asoftware": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "exif:software"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "exif%3AxResolution": {
+        "type": "double",
+        "meta": {
+          "DecodedQualifiedName": "exif:xResolution"
+        }
+      },
+      "exif%3AxResolution_untokenized": {
+        "type": "alias",
+        "path": "exif%3AxResolution"
+      },
+      "exif%3AyResolution": {
+        "type": "double",
+        "meta": {
+          "DecodedQualifiedName": "exif:yResolution"
+        }
+      },
+      "exif%3AyResolution_untokenized": {
+        "type": "alias",
+        "path": "exif%3AyResolution"
+      },
+      "fm%3AcommentCount": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "fm:commentCount"
+        }
+      },
+      "fm%3AcommentCount_untokenized": {
+        "type": "alias",
+        "path": "fm%3AcommentCount"
+      },
+      "gd2%3AcurrentPermissions": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "gd2:currentPermissions"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "gd2%3AdriveWorkingDir": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "gd2:driveWorkingDir"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "gd2%3AeditorURL": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "gd2:editorURL"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "gd2%3Alocked": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "gd2:locked"
+        }
+      },
+      "gd2%3Alocked_untokenized": {
+        "type": "alias",
+        "path": "gd2%3Alocked"
+      },
+      "gd2%3Apermissions": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "gd2:permissions"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "gd2%3AresourceID": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "gd2:resourceID"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "gd2%3ArevisionID": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "gd2:revisionID"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "hwf%3AactualApprovalPercentage": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "hwf:actualApprovalPercentage"
+        }
+      },
+      "hwf%3AactualApprovalPercentage_untokenized": {
+        "type": "alias",
+        "path": "hwf%3AactualApprovalPercentage"
+      },
+      "hwf%3Aassignment": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "hwf:assignment"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "hwf%3AcloudDestination": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "hwf:cloudDestination"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "hwf%3AcloudWorkflowType": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "hwf:cloudWorkflowType"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "hwf%3Acomments": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "hwf:comments"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "hwf%3AlockOnPremiseCopy": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "hwf:lockOnPremiseCopy"
+        }
+      },
+      "hwf%3AlockOnPremiseCopy_untokenized": {
+        "type": "alias",
+        "path": "hwf%3AlockOnPremiseCopy"
+      },
+      "hwf%3AonPremiseWorkflowId": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "hwf:onPremiseWorkflowId"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "hwf%3ArequiredApprovalPercentage": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "hwf:requiredApprovalPercentage"
+        }
+      },
+      "hwf%3ArequiredApprovalPercentage_untokenized": {
+        "type": "alias",
+        "path": "hwf%3ArequiredApprovalPercentage"
+      },
+      "hwf%3Aresult": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "hwf:result"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "hwf%3AretainStrategy": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "hwf:retainStrategy"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "hwf%3AworkflowDescription": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "hwf:workflowDescription"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "hwf%3AworkflowDueDate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "hwf:workflowDueDate"
+        }
+      },
+      "hwf%3AworkflowDueDate_untokenized": {
+        "type": "alias",
+        "path": "hwf%3AworkflowDueDate"
+      },
+      "hwf%3AworkflowPriority": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "hwf:workflowPriority"
+        }
+      },
+      "hwf%3AworkflowPriority_untokenized": {
+        "type": "alias",
+        "path": "hwf%3AworkflowPriority"
+      },
+      "hwf%3AworkflowStatus": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "hwf:workflowStatus"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "ia%3AcolorEvent": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "ia:colorEvent"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "ia%3AcolorEventDefault": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "ia:colorEventDefault"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "ia%3Adate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "ia:date"
+        }
+      },
+      "ia%3Adate_untokenized": {
+        "type": "alias",
+        "path": "ia%3Adate"
+      },
+      "ia%3AdescriptionEvent": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "ia:descriptionEvent"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "ia%3AdocFolder": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "ia:docFolder"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "ia%3AfromDate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "ia:fromDate"
+        }
+      },
+      "ia%3AfromDateDefault": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "ia:fromDateDefault"
+        }
+      },
+      "ia%3AfromDateDefault_untokenized": {
+        "type": "alias",
+        "path": "ia%3AfromDateDefault"
+      },
+      "ia%3AfromDate_untokenized": {
+        "type": "alias",
+        "path": "ia%3AfromDate"
+      },
+      "ia%3AisOutlook": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "ia:isOutlook"
+        }
+      },
+      "ia%3AisOutlook_untokenized": {
+        "type": "alias",
+        "path": "ia%3AisOutlook"
+      },
+      "ia%3AnewEnd": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "ia:newEnd"
+        }
+      },
+      "ia%3AnewEnd_untokenized": {
+        "type": "alias",
+        "path": "ia%3AnewEnd"
+      },
+      "ia%3AnewStart": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "ia:newStart"
+        }
+      },
+      "ia%3AnewStart_untokenized": {
+        "type": "alias",
+        "path": "ia%3AnewStart"
+      },
+      "ia%3AnewWhatEvent": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "ia:newWhatEvent"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "ia%3AnewWhereEvent": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "ia:newWhereEvent"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "ia%3AoutlookUID": {
+        "type": "keyword",
+        "meta": {
+          "DecodedQualifiedName": "ia:outlookUID"
+        }
+      },
+      "ia%3AoutlookUID_untokenized": {
+        "type": "alias",
+        "path": "ia%3AoutlookUID"
+      },
+      "ia%3ArecurrenceLastMeeting": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "ia:recurrenceLastMeeting"
+        }
+      },
+      "ia%3ArecurrenceLastMeeting_untokenized": {
+        "type": "alias",
+        "path": "ia%3ArecurrenceLastMeeting"
+      },
+      "ia%3ArecurrenceRule": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "ia:recurrenceRule"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "ia%3AtoDate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "ia:toDate"
+        }
+      },
+      "ia%3AtoDateDefault": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "ia:toDateDefault"
+        }
+      },
+      "ia%3AtoDateDefault_untokenized": {
+        "type": "alias",
+        "path": "ia%3AtoDateDefault"
+      },
+      "ia%3AtoDate_untokenized": {
+        "type": "alias",
+        "path": "ia%3AtoDate"
+      },
+      "ia%3AupdatedDate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "ia:updatedDate"
+        }
+      },
+      "ia%3AupdatedDate_untokenized": {
+        "type": "alias",
+        "path": "ia%3AupdatedDate"
+      },
+      "ia%3AwhatEvent": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "ia:whatEvent"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "ia%3AwhatEventDefault": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "ia:whatEventDefault"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "ia%3AwhereEvent": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "ia:whereEvent"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "ia%3AwhereEventDefault": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "ia:whereEventDefault"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "imap%3AattachID": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "imap:attachID"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "imap%3AchangeToken": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "imap:changeToken"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "imap%3AdateReceived": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "imap:dateReceived"
+        }
+      },
+      "imap%3AdateReceived_untokenized": {
+        "type": "alias",
+        "path": "imap%3AdateReceived"
+      },
+      "imap%3AdateSent": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "imap:dateSent"
+        }
+      },
+      "imap%3AdateSent_untokenized": {
+        "type": "alias",
+        "path": "imap%3AdateSent"
+      },
+      "imap%3AflagAnswered": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "imap:flagAnswered"
+        }
+      },
+      "imap%3AflagAnswered_untokenized": {
+        "type": "alias",
+        "path": "imap%3AflagAnswered"
+      },
+      "imap%3AflagDeleted": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "imap:flagDeleted"
+        }
+      },
+      "imap%3AflagDeleted_untokenized": {
+        "type": "alias",
+        "path": "imap%3AflagDeleted"
+      },
+      "imap%3AflagDraft": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "imap:flagDraft"
+        }
+      },
+      "imap%3AflagDraft_untokenized": {
+        "type": "alias",
+        "path": "imap%3AflagDraft"
+      },
+      "imap%3AflagFlagged": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "imap:flagFlagged"
+        }
+      },
+      "imap%3AflagFlagged_untokenized": {
+        "type": "alias",
+        "path": "imap%3AflagFlagged"
+      },
+      "imap%3AflagRecent": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "imap:flagRecent"
+        }
+      },
+      "imap%3AflagRecent_untokenized": {
+        "type": "alias",
+        "path": "imap%3AflagRecent"
+      },
+      "imap%3AflagSeen": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "imap:flagSeen"
+        }
+      },
+      "imap%3AflagSeen_untokenized": {
+        "type": "alias",
+        "path": "imap%3AflagSeen"
+      },
+      "imap%3AmaxUid": {
+        "type": "long",
+        "meta": {
+          "DecodedQualifiedName": "imap:maxUid"
+        }
+      },
+      "imap%3AmaxUid_untokenized": {
+        "type": "alias",
+        "path": "imap%3AmaxUid"
+      },
+      "imap%3AmessageCc": {
+        "type": "text",
+        "copy_to": ["imap%3AmessageCc_untokenized"],
+        "meta": {
+          "DecodedQualifiedName": "imap:messageCc"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "imap%3AmessageCc_untokenized": {
+        "type": "keyword"
+      },
+      "imap%3AmessageFrom": {
+        "type": "text",
+        "copy_to": ["imap%3AmessageFrom_untokenized"],
+        "meta": {
+          "DecodedQualifiedName": "imap:messageFrom"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "imap%3AmessageFrom_untokenized": {
+        "type": "keyword"
+      },
+      "imap%3AmessageHeaders": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "imap:messageHeaders"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "imap%3AmessageId": {
+        "type": "text",
+        "copy_to": ["imap%3AmessageId_untokenized"],
+        "meta": {
+          "DecodedQualifiedName": "imap:messageId"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "imap%3AmessageId_untokenized": {
+        "type": "keyword"
+      },
+      "imap%3AmessageSubject": {
+        "type": "text",
+        "copy_to": ["imap%3AmessageSubject_untokenized"],
+        "meta": {
+          "DecodedQualifiedName": "imap:messageSubject"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "imap%3AmessageSubject_untokenized": {
+        "type": "keyword"
+      },
+      "imap%3AmessageTo": {
+        "type": "text",
+        "copy_to": ["imap%3AmessageTo_untokenized"],
+        "meta": {
+          "DecodedQualifiedName": "imap:messageTo"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "imap%3AmessageTo_untokenized": {
+        "type": "keyword"
+      },
+      "imap%3AthreadIndex": {
+        "type": "text",
+        "copy_to": ["imap%3AthreadIndex_untokenized"],
+        "meta": {
+          "DecodedQualifiedName": "imap:threadIndex"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "imap%3AthreadIndex_untokenized": {
+        "type": "keyword"
+      },
+      "imap%3AuidValidity": {
+        "type": "long",
+        "meta": {
+          "DecodedQualifiedName": "imap:uidValidity"
+        }
+      },
+      "imap%3AuidValidity_untokenized": {
+        "type": "alias",
+        "path": "imap%3AuidValidity"
+      },
+      "imwf%3AclientName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "imwf:clientName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "imwf%3AinviteeComments": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "imwf:inviteeComments"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "imwf%3AinviteeRole": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "imwf:inviteeRole"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "imwf%3AinviteeUserName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "imwf:inviteeUserName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "imwf%3AmodifiedAt": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "imwf:modifiedAt"
+        }
+      },
+      "imwf%3AmodifiedAt_untokenized": {
+        "type": "alias",
+        "path": "imwf%3AmodifiedAt"
+      },
+      "imwf%3AresourceName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "imwf:resourceName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "imwf%3AresourceType": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "imwf:resourceType"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "imwf%3AreviewComments": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "imwf:reviewComments"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "imwf%3AreviewOutcome": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "imwf:reviewOutcome"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "inwf%3AacceptUrl": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "inwf:acceptUrl"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "inwf%3AinviteOutcome": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "inwf:inviteOutcome"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "inwf%3AinviteTicket": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "inwf:inviteTicket"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "inwf%3AinviteeEmail": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "inwf:inviteeEmail"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "inwf%3AinviteeFirstName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "inwf:inviteeFirstName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "inwf%3AinviteeGenPassword": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "inwf:inviteeGenPassword"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "inwf%3AinviteeLastName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "inwf:inviteeLastName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "inwf%3AinviteeRole": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "inwf:inviteeRole"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "inwf%3AinviteeUserName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "inwf:inviteeUserName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "inwf%3AinviterUserName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "inwf:inviterUserName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "inwf%3ArejectUrl": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "inwf:rejectUrl"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "inwf%3AresourceDescription": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "inwf:resourceDescription"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "inwf%3AresourceName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "inwf:resourceName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "inwf%3AresourceTitle": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "inwf:resourceTitle"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "inwf%3AresourceType": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "inwf:resourceType"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "inwf%3AserverPath": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "inwf:serverPath"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "lnk%3Adescription": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "lnk:description"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "lnk%3AisInternal": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "lnk:isInternal"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "lnk%3Atitle": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "lnk:title"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "lnk%3Aurl": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "lnk:url"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "pub%3AaccessToken": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "pub:accessToken"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "pub%3AassetId": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "pub:assetId"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "pub%3AassetUrl": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "pub:assetUrl"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "pub%3AauthorisationComplete": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "pub:authorisationComplete"
+        }
+      },
+      "pub%3AauthorisationComplete_untokenized": {
+        "type": "alias",
+        "path": "pub%3AauthorisationComplete"
+      },
+      "pub%3AchannelPassword": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "pub:channelPassword"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "pub%3AchannelType": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "pub:channelType"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "pub%3AchannelTypeId": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "pub:channelTypeId"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "pub%3AchannelUsername": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "pub:channelUsername"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "pub%3Aoauth1TokenSecret": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "pub:oauth1TokenSecret"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "pub%3Aoauth1TokenValue": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "pub:oauth1TokenValue"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "pub%3Aoauth2Token": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "pub:oauth2Token"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "pub%3AproviderAccountId": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "pub:providerAccountId"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "pub%3AproviderId": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "pub:providerId"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "pub%3ApublishingEventChannel": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "pub:publishingEventChannel"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "pub%3ApublishingEventComment": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "pub:publishingEventComment"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "pub%3ApublishingEventNodesDependedOn": {
+        "type": "keyword",
+        "meta": {
+          "DecodedQualifiedName": "pub:publishingEventNodesDependedOn"
+        }
+      },
+      "pub%3ApublishingEventNodesDependedOn_untokenized": {
+        "type": "alias",
+        "path": "pub%3ApublishingEventNodesDependedOn"
+      },
+      "pub%3ApublishingEventNodesToPublish": {
+        "type": "keyword",
+        "meta": {
+          "DecodedQualifiedName": "pub:publishingEventNodesToPublish"
+        }
+      },
+      "pub%3ApublishingEventNodesToPublish_untokenized": {
+        "type": "alias",
+        "path": "pub%3ApublishingEventNodesToPublish"
+      },
+      "pub%3ApublishingEventNodesToUnpublish": {
+        "type": "keyword",
+        "meta": {
+          "DecodedQualifiedName": "pub:publishingEventNodesToUnpublish"
+        }
+      },
+      "pub%3ApublishingEventNodesToUnpublish_untokenized": {
+        "type": "alias",
+        "path": "pub%3ApublishingEventNodesToUnpublish"
+      },
+      "pub%3ApublishingEventPayload": {
+        "type": "keyword",
+        "meta": {
+          "DecodedQualifiedName": "pub:publishingEventPayload"
+        }
+      },
+      "pub%3ApublishingEventPayload_untokenized": {
+        "type": "alias",
+        "path": "pub%3ApublishingEventPayload"
+      },
+      "pub%3ApublishingEventStatus": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "pub:publishingEventStatus"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "pub%3ApublishingEventTime": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "pub:publishingEventTime"
+        }
+      },
+      "pub%3ApublishingEventTimeZone": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "pub:publishingEventTimeZone"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "pub%3ApublishingEventTime_untokenized": {
+        "type": "alias",
+        "path": "pub%3ApublishingEventTime"
+      },
+      "pub%3ApublishingEventWorkflowId": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "pub:publishingEventWorkflowId"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "pub%3ArefreshToken": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "pub:refreshToken"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "pub%3Asecret": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "pub:secret"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "pub%3AstatusUpdateChannelNames": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "pub:statusUpdateChannelNames"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "pub%3AstatusUpdateMessage": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "pub:statusUpdateMessage"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "pub%3AstatusUpdateNodeRef": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "pub:statusUpdateNodeRef"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "qshare%3AexpiryDate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "qshare:expiryDate"
+        }
+      },
+      "qshare%3AexpiryDate_untokenized": {
+        "type": "alias",
+        "path": "qshare%3AexpiryDate"
+      },
+      "qshare%3AsharedBy": {
+        "type": "keyword",
+        "meta": {
+          "DecodedQualifiedName": "qshare:sharedBy"
+        }
+      },
+      "qshare%3AsharedBy_untokenized": {
+        "type": "alias",
+        "path": "qshare%3AsharedBy"
+      },
+      "qshare%3AsharedId": {
+        "type": "keyword",
+        "meta": {
+          "DecodedQualifiedName": "qshare:sharedId"
+        }
+      },
+      "qshare%3AsharedId_untokenized": {
+        "type": "alias",
+        "path": "qshare%3AsharedId"
+      },
+      "rc%3AlastAuthenticationSucceeded": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "rc:lastAuthenticationSucceeded"
+        }
+      },
+      "rc%3AlastAuthenticationSucceeded_untokenized": {
+        "type": "alias",
+        "path": "rc%3AlastAuthenticationSucceeded"
+      },
+      "rc%3Aoauth1Token": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "rc:oauth1Token"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "rc%3Aoauth1TokenSecret": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "rc:oauth1TokenSecret"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "rc%3Aoauth2AccessToken": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "rc:oauth2AccessToken"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "rc%3Aoauth2RefreshToken": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "rc:oauth2RefreshToken"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "rc%3Aoauth2TokenExpiresAt": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "rc:oauth2TokenExpiresAt"
+        }
+      },
+      "rc%3Aoauth2TokenExpiresAt_untokenized": {
+        "type": "alias",
+        "path": "rc%3Aoauth2TokenExpiresAt"
+      },
+      "rc%3Aoauth2TokenIssuedAt": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "rc:oauth2TokenIssuedAt"
+        }
+      },
+      "rc%3Aoauth2TokenIssuedAt_untokenized": {
+        "type": "alias",
+        "path": "rc%3Aoauth2TokenIssuedAt"
+      },
+      "rc%3AremotePassword": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "rc:remotePassword"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "rc%3AremoteUsername": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "rc:remoteUsername"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "resetpasswordwf%3AclientName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "resetpasswordwf:clientName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "resetpasswordwf%3Akey": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "resetpasswordwf:key"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "resetpasswordwf%3AuserEmail": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "resetpasswordwf:userEmail"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "resetpasswordwf%3AuserName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "resetpasswordwf:userName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "rn%3AcontentUrlHashCode": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "rn:contentUrlHashCode"
+        }
+      },
+      "rn%3AcontentUrlHashCode_untokenized": {
+        "type": "alias",
+        "path": "rn%3AcontentUrlHashCode"
+      },
+      "rule%3AapplyToChildren": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "rule:applyToChildren"
+        }
+      },
+      "rule%3AapplyToChildren_untokenized": {
+        "type": "alias",
+        "path": "rule%3AapplyToChildren"
+      },
+      "rule%3Adisabled": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "rule:disabled"
+        }
+      },
+      "rule%3Adisabled_untokenized": {
+        "type": "alias",
+        "path": "rule%3Adisabled"
+      },
+      "rule%3AexecuteAsynchronously": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "rule:executeAsynchronously"
+        }
+      },
+      "rule%3AexecuteAsynchronously_untokenized": {
+        "type": "alias",
+        "path": "rule%3AexecuteAsynchronously"
+      },
+      "rule%3AruleType": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "rule:ruleType"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "smf%3Asystem%2Dtemplate%2Dlocation": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "smf:system-template-location"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "srft%3AdisplayControl": {
+        "type": "keyword",
+        "meta": {
+          "DecodedQualifiedName": "srft:displayControl"
+        }
+      },
+      "srft%3AdisplayControl_untokenized": {
+        "type": "alias",
+        "path": "srft%3AdisplayControl"
+      },
+      "srft%3AfacetOrder": {
+        "type": "keyword",
+        "meta": {
+          "DecodedQualifiedName": "srft:facetOrder"
+        }
+      },
+      "srft%3AfacetOrder_untokenized": {
+        "type": "alias",
+        "path": "srft%3AfacetOrder"
+      },
+      "srft%3AfieldLabel": {
+        "type": "keyword",
+        "meta": {
+          "DecodedQualifiedName": "srft:fieldLabel"
+        }
+      },
+      "srft%3AfieldLabel_untokenized": {
+        "type": "alias",
+        "path": "srft%3AfieldLabel"
+      },
+      "srft%3AhitThreshold": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "srft:hitThreshold"
+        }
+      },
+      "srft%3AhitThreshold_untokenized": {
+        "type": "alias",
+        "path": "srft%3AhitThreshold"
+      },
+      "srft%3AisDefault": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "srft:isDefault"
+        }
+      },
+      "srft%3AisDefault_untokenized": {
+        "type": "alias",
+        "path": "srft%3AisDefault"
+      },
+      "srft%3AisEnabled": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "srft:isEnabled"
+        }
+      },
+      "srft%3AisEnabled_untokenized": {
+        "type": "alias",
+        "path": "srft%3AisEnabled"
+      },
+      "srft%3AmaxFilters": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "srft:maxFilters"
+        }
+      },
+      "srft%3AmaxFilters_untokenized": {
+        "type": "alias",
+        "path": "srft%3AmaxFilters"
+      },
+      "srft%3AminFilterValueLength": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "srft:minFilterValueLength"
+        }
+      },
+      "srft%3AminFilterValueLength_untokenized": {
+        "type": "alias",
+        "path": "srft%3AminFilterValueLength"
+      },
+      "srft%3Ascope": {
+        "type": "keyword",
+        "meta": {
+          "DecodedQualifiedName": "srft:scope"
+        }
+      },
+      "srft%3Ascope_untokenized": {
+        "type": "alias",
+        "path": "srft%3Ascope"
+      },
+      "srft%3AscopedSites": {
+        "type": "keyword",
+        "meta": {
+          "DecodedQualifiedName": "srft:scopedSites"
+        }
+      },
+      "srft%3AscopedSites_untokenized": {
+        "type": "alias",
+        "path": "srft%3AscopedSites"
+      },
+      "srft%3AsortBy": {
+        "type": "keyword",
+        "meta": {
+          "DecodedQualifiedName": "srft:sortBy"
+        }
+      },
+      "srft%3AsortBy_untokenized": {
+        "type": "alias",
+        "path": "srft%3AsortBy"
+      },
+      "st%3AcomponentId": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "st:componentId"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "st%3AsitePreset": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "st:sitePreset"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "st%3AsiteVisibility": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "st:siteVisibility"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "stcp%3AadditionalInformation": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "stcp:additionalInformation"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "surf%3AgroupVisibility": {
+        "type": "keyword",
+        "meta": {
+          "DecodedQualifiedName": "surf:groupVisibility"
+        }
+      },
+      "surf%3AgroupVisibility_untokenized": {
+        "type": "alias",
+        "path": "surf%3AgroupVisibility"
+      },
+      "surf%3Alabel": {
+        "type": "keyword",
+        "meta": {
+          "DecodedQualifiedName": "surf:label"
+        }
+      },
+      "surf%3Alabel_untokenized": {
+        "type": "alias",
+        "path": "surf%3Alabel"
+      },
+      "surf%3Amid": {
+        "type": "keyword",
+        "meta": {
+          "DecodedQualifiedName": "surf:mid"
+        }
+      },
+      "surf%3Amid_untokenized": {
+        "type": "alias",
+        "path": "surf%3Amid"
+      },
+      "surf%3ArootRage": {
+        "type": "keyword",
+        "meta": {
+          "DecodedQualifiedName": "surf:rootRage"
+        }
+      },
+      "surf%3ArootRage_untokenized": {
+        "type": "alias",
+        "path": "surf%3ArootRage"
+      },
+      "surf%3AwidgetType": {
+        "type": "keyword",
+        "meta": {
+          "DecodedQualifiedName": "surf:widgetType"
+        }
+      },
+      "surf%3AwidgetType_untokenized": {
+        "type": "alias",
+        "path": "surf%3AwidgetType"
+      },
+      "sync%3AdirectSync": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "sync:directSync"
+        }
+      },
+      "sync%3AdirectSync_untokenized": {
+        "type": "alias",
+        "path": "sync%3AdirectSync"
+      },
+      "sync%3AerrorCode": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sync:errorCode"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sync%3AerrorDetails": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sync:errorDetails"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sync%3AerrorTime": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "sync:errorTime"
+        }
+      },
+      "sync%3AerrorTime_untokenized": {
+        "type": "alias",
+        "path": "sync%3AerrorTime"
+      },
+      "sync%3AincludeSubFolders": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "sync:includeSubFolders"
+        }
+      },
+      "sync%3AincludeSubFolders_untokenized": {
+        "type": "alias",
+        "path": "sync%3AincludeSubFolders"
+      },
+      "sync%3AisDeleteOnCloud": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "sync:isDeleteOnCloud"
+        }
+      },
+      "sync%3AisDeleteOnCloud_untokenized": {
+        "type": "alias",
+        "path": "sync%3AisDeleteOnCloud"
+      },
+      "sync%3AisDeleteOnPrem": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "sync:isDeleteOnPrem"
+        }
+      },
+      "sync%3AisDeleteOnPrem_untokenized": {
+        "type": "alias",
+        "path": "sync%3AisDeleteOnPrem"
+      },
+      "sync%3AotherNodeRefString": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sync:otherNodeRefString"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sync%3AremoteModified": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "sync:remoteModified"
+        }
+      },
+      "sync%3AremoteModified_untokenized": {
+        "type": "alias",
+        "path": "sync%3AremoteModified"
+      },
+      "sync%3AremoteModifier": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sync:remoteModifier"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sync%3AremoteVersionLabel": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sync:remoteVersionLabel"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sync%3AsourceRepoId": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sync:sourceRepoId"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sync%3AsyncCreatorUsername": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sync:syncCreatorUsername"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sync%3AsyncGuid": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sync:syncGuid"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sync%3AsyncLock": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "sync:syncLock"
+        }
+      },
+      "sync%3AsyncLock_untokenized": {
+        "type": "alias",
+        "path": "sync%3AsyncLock"
+      },
+      "sync%3AsyncOwner": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sync:syncOwner"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sync%3AsyncRequested": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "sync:syncRequested"
+        }
+      },
+      "sync%3AsyncRequested_untokenized": {
+        "type": "alias",
+        "path": "sync%3AsyncRequested"
+      },
+      "sync%3AsyncSetIsLockedOnPremise": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "sync:syncSetIsLockedOnPremise"
+        }
+      },
+      "sync%3AsyncSetIsLockedOnPremise_untokenized": {
+        "type": "alias",
+        "path": "sync%3AsyncSetIsLockedOnPremise"
+      },
+      "sync%3AsyncTime": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "sync:syncTime"
+        }
+      },
+      "sync%3AsyncTime_untokenized": {
+        "type": "alias",
+        "path": "sync%3AsyncTime"
+      },
+      "sync%3AtargetNetworkId": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sync:targetNetworkId"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sync%3AtargetRootFolder": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sync:targetRootFolder"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sync%3AthisVersionLabel": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sync:thisVersionLabel"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sync%3AtransientErrorCode": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sync:transientErrorCode"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sys%3AarchivedBy": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sys:archivedBy"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sys%3AarchivedDate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "sys:archivedDate"
+        }
+      },
+      "sys%3AarchivedDate_untokenized": {
+        "type": "alias",
+        "path": "sys%3AarchivedDate"
+      },
+      "sys%3AarchivedExpiryDate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "sys:archivedExpiryDate"
+        }
+      },
+      "sys%3AarchivedExpiryDate_untokenized": {
+        "type": "alias",
+        "path": "sys%3AarchivedExpiryDate"
+      },
+      "sys%3AarchivedLockAdditionalInfo": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sys:archivedLockAdditionalInfo"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sys%3AarchivedLockLifetime": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sys:archivedLockLifetime"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sys%3AarchivedLockOwner": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sys:archivedLockOwner"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sys%3AarchivedLockType": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sys:archivedLockType"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sys%3AarchivedOriginalOwner": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sys:archivedOriginalOwner"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sys%3AcascadeCRC": {
+        "type": "long",
+        "meta": {
+          "DecodedQualifiedName": "sys:cascadeCRC"
+        }
+      },
+      "sys%3AcascadeCRC_untokenized": {
+        "type": "alias",
+        "path": "sys%3AcascadeCRC"
+      },
+      "sys%3AcascadeHidden": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "sys:cascadeHidden"
+        }
+      },
+      "sys%3AcascadeHidden_untokenized": {
+        "type": "alias",
+        "path": "sys%3AcascadeHidden"
+      },
+      "sys%3AcascadeIndexControl": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "sys:cascadeIndexControl"
+        }
+      },
+      "sys%3AcascadeIndexControl_untokenized": {
+        "type": "alias",
+        "path": "sys%3AcascadeIndexControl"
+      },
+      "sys%3AcascadeTx": {
+        "type": "long",
+        "meta": {
+          "DecodedQualifiedName": "sys:cascadeTx"
+        }
+      },
+      "sys%3AcascadeTx_untokenized": {
+        "type": "alias",
+        "path": "sys%3AcascadeTx"
+      },
+      "sys%3AclientControlled": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "sys:clientControlled"
+        }
+      },
+      "sys%3AclientControlled_untokenized": {
+        "type": "alias",
+        "path": "sys%3AclientControlled"
+      },
+      "sys%3AclientVisibilityMask": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "sys:clientVisibilityMask"
+        }
+      },
+      "sys%3AclientVisibilityMask_untokenized": {
+        "type": "alias",
+        "path": "sys%3AclientVisibilityMask"
+      },
+      "sys%3AgotFirstChunk": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "sys:gotFirstChunk"
+        }
+      },
+      "sys%3AgotFirstChunk_untokenized": {
+        "type": "alias",
+        "path": "sys%3AgotFirstChunk"
+      },
+      "sys%3AhiddenFlag": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "sys:hiddenFlag"
+        }
+      },
+      "sys%3AhiddenFlag_untokenized": {
+        "type": "alias",
+        "path": "sys%3AhiddenFlag"
+      },
+      "sys%3AinheritFromAcl": {
+        "type": "long",
+        "meta": {
+          "DecodedQualifiedName": "sys:inheritFromAcl"
+        }
+      },
+      "sys%3AinheritFromAcl_untokenized": {
+        "type": "alias",
+        "path": "sys%3AinheritFromAcl"
+      },
+      "sys%3AkeyStore": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sys:keyStore"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sys%3AlicenseMode": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sys:licenseMode"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sys%3Aname": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sys:name"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sys%3Anode%2Ddbid": {
+        "type": "long",
+        "meta": {
+          "DecodedQualifiedName": "sys:node-dbid"
+        }
+      },
+      "sys%3Anode%2Ddbid_untokenized": {
+        "type": "alias",
+        "path": "sys%3Anode%2Ddbid"
+      },
+      "sys%3Anode%2Duuid": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sys:node-uuid"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sys%3AoriginalId": {
+        "type": "long",
+        "meta": {
+          "DecodedQualifiedName": "sys:originalId"
+        }
+      },
+      "sys%3AoriginalId_untokenized": {
+        "type": "alias",
+        "path": "sys%3AoriginalId"
+      },
+      "sys%3AsharedAclToReplace": {
+        "type": "long",
+        "meta": {
+          "DecodedQualifiedName": "sys:sharedAclToReplace"
+        }
+      },
+      "sys%3AsharedAclToReplace_untokenized": {
+        "type": "alias",
+        "path": "sys%3AsharedAclToReplace"
+      },
+      "sys%3Astore%2Didentifier": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sys:store-identifier"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sys%3Astore%2Dprotocol": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sys:store-protocol"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sys%3AversionBuild": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sys:versionBuild"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sys%3AversionEdition": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sys:versionEdition"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sys%3AversionLabel": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sys:versionLabel"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sys%3AversionMajor": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sys:versionMajor"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sys%3AversionMinor": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sys:versionMinor"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sys%3AversionProperties": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sys:versionProperties"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sys%3AversionRevision": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "sys:versionRevision"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "sys%3AversionSchema": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "sys:versionSchema"
+        }
+      },
+      "sys%3AversionSchema_untokenized": {
+        "type": "alias",
+        "path": "sys%3AversionSchema"
+      },
+      "trx%3Aenabled": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "trx:enabled"
+        }
+      },
+      "trx%3Aenabled_untokenized": {
+        "type": "alias",
+        "path": "trx%3Aenabled"
+      },
+      "trx%3Aendpointhost": {
+        "type": "keyword",
+        "meta": {
+          "DecodedQualifiedName": "trx:endpointhost"
+        }
+      },
+      "trx%3Aendpointhost_untokenized": {
+        "type": "alias",
+        "path": "trx%3Aendpointhost"
+      },
+      "trx%3Aendpointpath": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "trx:endpointpath"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "trx%3Aendpointport": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "trx:endpointport"
+        }
+      },
+      "trx%3Aendpointport_untokenized": {
+        "type": "alias",
+        "path": "trx%3Aendpointport"
+      },
+      "trx%3Aendpointprotocol": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "trx:endpointprotocol"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "trx%3AfromContent": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "trx:fromContent"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "trx%3AfromRepositoryId": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "trx:fromRepositoryId"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "trx%3AinvadedBy": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "trx:invadedBy"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "trx%3AprogressEndpoint": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "trx:progressEndpoint"
+        }
+      },
+      "trx%3AprogressEndpoint_untokenized": {
+        "type": "alias",
+        "path": "trx%3AprogressEndpoint"
+      },
+      "trx%3AprogressPosition": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "trx:progressPosition"
+        }
+      },
+      "trx%3AprogressPosition_untokenized": {
+        "type": "alias",
+        "path": "trx%3AprogressPosition"
+      },
+      "trx%3ArepositoryId": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "trx:repositoryId"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "trx%3AtransferId": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "trx:transferId"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "trx%3AtransferStatus": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "trx:transferStatus"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "trx%3Ausername": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "trx:username"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "usr%3AaccountExpires": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "usr:accountExpires"
+        }
+      },
+      "usr%3AaccountExpires_untokenized": {
+        "type": "alias",
+        "path": "usr%3AaccountExpires"
+      },
+      "usr%3AaccountExpiryDate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "usr:accountExpiryDate"
+        }
+      },
+      "usr%3AaccountExpiryDate_untokenized": {
+        "type": "alias",
+        "path": "usr%3AaccountExpiryDate"
+      },
+      "usr%3AaccountLocked": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "usr:accountLocked"
+        }
+      },
+      "usr%3AaccountLocked_untokenized": {
+        "type": "alias",
+        "path": "usr%3AaccountLocked"
+      },
+      "usr%3AauthorityDisplayName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "usr:authorityDisplayName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "usr%3AauthorityName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "usr:authorityName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "usr%3AcredentialsExpire": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "usr:credentialsExpire"
+        }
+      },
+      "usr%3AcredentialsExpire_untokenized": {
+        "type": "alias",
+        "path": "usr%3AcredentialsExpire"
+      },
+      "usr%3AcredentialsExpiryDate": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "usr:credentialsExpiryDate"
+        }
+      },
+      "usr%3AcredentialsExpiryDate_untokenized": {
+        "type": "alias",
+        "path": "usr%3AcredentialsExpiryDate"
+      },
+      "usr%3Aenabled": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "usr:enabled"
+        }
+      },
+      "usr%3Aenabled_untokenized": {
+        "type": "alias",
+        "path": "usr%3Aenabled"
+      },
+      "usr%3AhashIndicator": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "usr:hashIndicator"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "usr%3Amembers": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "usr:members"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "usr%3Apassword": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "usr:password"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "usr%3Apassword2": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "usr:password2"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "usr%3ApasswordHash": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "usr:passwordHash"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "usr%3Asalt": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "usr:salt"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "usr%3Ausername": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "usr:username"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "ver%3AfrozenNodeId": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "ver:frozenNodeId"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "ver%3AfrozenNodeStoreId": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "ver:frozenNodeStoreId"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "ver%3AfrozenNodeStoreProtocol": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "ver:frozenNodeStoreProtocol"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "ver%3AisMultiValue": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "ver:isMultiValue"
+        }
+      },
+      "ver%3AisMultiValue_untokenized": {
+        "type": "alias",
+        "path": "ver%3AisMultiValue"
+      },
+      "ver%3AisPrimary": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "ver:isPrimary"
+        }
+      },
+      "ver%3AisPrimary_untokenized": {
+        "type": "alias",
+        "path": "ver%3AisPrimary"
+      },
+      "ver%3AmetaDataName": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "ver:metaDataName"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "ver%3AnthSibling": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "ver:nthSibling"
+        }
+      },
+      "ver%3AnthSibling_untokenized": {
+        "type": "alias",
+        "path": "ver%3AnthSibling"
+      },
+      "ver%3AversionLabel": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "ver:versionLabel"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "ver%3AversionNumber": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "ver:versionNumber"
+        }
+      },
+      "ver%3AversionNumber_untokenized": {
+        "type": "alias",
+        "path": "ver%3AversionNumber"
+      },
+      "ver%3AversionedNodeId": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "ver:versionedNodeId"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "ver2%3AassocDbId": {
+        "type": "long",
+        "meta": {
+          "DecodedQualifiedName": "ver2:assocDbId"
+        }
+      },
+      "ver2%3AassocDbId_untokenized": {
+        "type": "alias",
+        "path": "ver2%3AassocDbId"
+      },
+      "ver2%3Adescription": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "ver2:description"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "ver2%3AfrozenAccessed": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "ver2:frozenAccessed"
+        }
+      },
+      "ver2%3AfrozenAccessed_untokenized": {
+        "type": "alias",
+        "path": "ver2%3AfrozenAccessed"
+      },
+      "ver2%3AfrozenCreated": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "ver2:frozenCreated"
+        }
+      },
+      "ver2%3AfrozenCreated_untokenized": {
+        "type": "alias",
+        "path": "ver2%3AfrozenCreated"
+      },
+      "ver2%3AfrozenCreator": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "ver2:frozenCreator"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "ver2%3AfrozenModified": {
+        "type": "date",
+        "meta": {
+          "DecodedQualifiedName": "ver2:frozenModified"
+        }
+      },
+      "ver2%3AfrozenModified_untokenized": {
+        "type": "alias",
+        "path": "ver2%3AfrozenModified"
+      },
+      "ver2%3AfrozenModifier": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "ver2:frozenModifier"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "ver2%3AfrozenNodeDbId": {
+        "type": "long",
+        "meta": {
+          "DecodedQualifiedName": "ver2:frozenNodeDbId"
+        }
+      },
+      "ver2%3AfrozenNodeDbId_untokenized": {
+        "type": "alias",
+        "path": "ver2%3AfrozenNodeDbId"
+      },
+      "ver2%3AfrozenNodeId": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "ver2:frozenNodeId"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "ver2%3AfrozenNodeStoreId": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "ver2:frozenNodeStoreId"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "ver2%3AfrozenNodeStoreProtocol": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "ver2:frozenNodeStoreProtocol"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "ver2%3AversionLabel": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "ver2:versionLabel"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "ver2%3AversionNumber": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "ver2:versionNumber"
+        }
+      },
+      "ver2%3AversionNumber_untokenized": {
+        "type": "alias",
+        "path": "ver2%3AversionNumber"
+      },
+      "ver2%3AversionedNodeId": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "ver2:versionedNodeId"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "webdav%3Adeadproperties": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "webdav:deadproperties"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "wf%3AactualPercent": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "wf:actualPercent"
+        }
+      },
+      "wf%3AactualPercent_untokenized": {
+        "type": "alias",
+        "path": "wf%3AactualPercent"
+      },
+      "wf%3AapproveCount": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "wf:approveCount"
+        }
+      },
+      "wf%3AapproveCount_untokenized": {
+        "type": "alias",
+        "path": "wf%3AapproveCount"
+      },
+      "wf%3AnotifyMe": {
+        "type": "boolean",
+        "meta": {
+          "DecodedQualifiedName": "wf:notifyMe"
+        }
+      },
+      "wf%3AnotifyMe_untokenized": {
+        "type": "alias",
+        "path": "wf%3AnotifyMe"
+      },
+      "wf%3ArequiredApprovePercent": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "wf:requiredApprovePercent"
+        }
+      },
+      "wf%3ArequiredApprovePercent_untokenized": {
+        "type": "alias",
+        "path": "wf%3ArequiredApprovePercent"
+      },
+      "wf%3ArequiredPercent": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "wf:requiredPercent"
+        }
+      },
+      "wf%3ArequiredPercent_untokenized": {
+        "type": "alias",
+        "path": "wf%3ArequiredPercent"
+      },
+      "wf%3AreviewOutcome": {
+        "type": "text",
+        "meta": {
+          "DecodedQualifiedName": "wf:reviewOutcome"
+        },
+        "analyzer": "general_text_index_analyzer",
+        "search_analyzer": "general_text_query_analyzer"
+      },
+      "wf%3AreviewerCount": {
+        "type": "integer",
+        "meta": {
+          "DecodedQualifiedName": "wf:reviewerCount"
+        }
+      },
+      "wf%3AreviewerCount_untokenized": {
+        "type": "alias",
+        "path": "wf%3AreviewerCount"
+      }
+    }
+  }
+}

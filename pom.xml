@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
@@ -302,9 +303,15 @@
                             <excludedScopes>provided,test</excludedScopes>
                             <excludedGroups>org.alfresco</excludedGroups>
                             <failIfWarning>true</failIfWarning>
-                            <includedLicenses>https://raw.githubusercontent.com/Alfresco/third-party-license-overrides/master/includedLicenses.txt</includedLicenses>
-                            <licenseMergesUrl>https://raw.githubusercontent.com/Alfresco/third-party-license-overrides/master/licenseMerges.txt</licenseMergesUrl>
-                            <overrideUrl>https://raw.githubusercontent.com/Alfresco/third-party-license-overrides/master/override-THIRD-PARTY.properties</overrideUrl>
+                            <includedLicenses>
+                                https://raw.githubusercontent.com/Alfresco/third-party-license-overrides/master/includedLicenses.txt
+                            </includedLicenses>
+                            <licenseMergesUrl>
+                                https://raw.githubusercontent.com/Alfresco/third-party-license-overrides/master/licenseMerges.txt
+                            </licenseMergesUrl>
+                            <overrideUrl>
+                                https://raw.githubusercontent.com/Alfresco/third-party-license-overrides/master/override-THIRD-PARTY.properties
+                            </overrideUrl>
                         </configuration>
                     </execution>
                     <execution>
@@ -344,49 +351,32 @@
                 <configuration>
                     <java>
                         <eclipse>
-                            <file>https://raw.githubusercontent.com/Alfresco/alfresco-community-repo/refs/heads/master/alfresco-formatter.xml</file>
+                            <file>
+                                https://raw.githubusercontent.com/Alfresco/alfresco-community-repo/refs/heads/master/alfresco-formatter.xml
+                            </file>
                         </eclipse>
                         <importOrder>
                             <order>\#java|\#javax|\#jakarta,\#,\#org.alfresco,java|javax|jakarta,,org.alfresco</order>
                         </importOrder>
-                        <removeUnusedImports />
-                        <formatAnnotations />
+                        <removeUnusedImports/>
+                        <formatAnnotations/>
                     </java>
                 </configuration>
             </plugin>
-
-            <!-- Failsafe does not bind to the lifecycle on its own; without these executions
-
-                 `mvn verify` silently runs no integration tests at all. -->
-
             <plugin>
-
                 <groupId>org.apache.maven.plugins</groupId>
-
                 <artifactId>maven-failsafe-plugin</artifactId>
-
                 <executions>
-
                     <execution>
-
                         <goals>
-
                             <goal>integration-test</goal>
-
                             <goal>verify</goal>
-
                         </goals>
-
                     </execution>
-
                 </executions>
-
                 <configuration>
-
                     <argLine>-Xmx1024m</argLine>
-
                 </configuration>
-
             </plugin>
         </plugins>
     </build>

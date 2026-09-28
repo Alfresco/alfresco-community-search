@@ -73,16 +73,16 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
       # Installs .ci.settings.xml, which maps the alfresco-public-* server ids
       # onto MAVEN_USERNAME / MAVEN_PASSWORD.
-      - uses: Alfresco/alfresco-build-tools/.github/actions/setup-java-build@v18.27.0
+      - uses: Alfresco/alfresco-build-tools/.github/actions/setup-java-build@567a9393acca033008ce34eafcb200469e4ea2f5 # v18.27.0
         with:
           java-version: ${{ env.JAVA_VERSION }}
-      - uses: Alfresco/alfresco-build-tools/.github/actions/configure-git-author@v18.27.0
+      - uses: Alfresco/alfresco-build-tools/.github/actions/configure-git-author@567a9393acca033008ce34eafcb200469e4ea2f5 # v18.27.0
         with:
           username: ${{ secrets.BOT_GITHUB_USERNAME }}
           email: ${{ secrets.BOT_GITHUB_EMAIL }}
       - name: "Release"
         timeout-minutes: ${{ fromJSON(env.GITHUB_ACTIONS_DEPLOY_TIMEOUT) }}
-        uses: Alfresco/alfresco-build-tools/.github/actions/maven-release-slim@v18.27.0
+        uses: Alfresco/alfresco-build-tools/.github/actions/maven-release-slim@567a9393acca033008ce34eafcb200469e4ea2f5 # v18.27.0
         with:
           token: ${{ steps.app-token.outputs.token }}
           release-version: ${{ env.RELEASE_VERSION }}

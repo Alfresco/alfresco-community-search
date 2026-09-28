@@ -143,7 +143,7 @@ public class WatermarkBootstrap
             return;
         }
         long overlapMs = safeOverlapMs();
-        long bootstrappedCursor = maxCursor - overlapMs;
+        long bootstrappedCursor = Math.max(maxCursor - overlapMs, MIN_SEED_CURSOR_MS);
         WatermarkDocument seed = new WatermarkDocument();
         seed.setLastSuccessfulToTimeEpochMs(bootstrappedCursor);
         seed.setLastRunStatus(BOOTSTRAP_STATUS);

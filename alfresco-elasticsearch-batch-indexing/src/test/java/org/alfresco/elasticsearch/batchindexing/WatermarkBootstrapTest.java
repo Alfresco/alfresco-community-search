@@ -173,6 +173,28 @@ class WatermarkBootstrapTest
         }
 
         @Test
+        @DisplayName("clamps the seeded cursor to a positive value when overlap exceeds the Alfresco max")
+        void clampsSeedCursorWhenOverlapExceedsAlfrescoMax() throws Exception
+        {
+            properties.setAutoCreateStateIndex(true);
+            properties.setBootstrapFromAlfrescoIndex(true);
+            properties.setRequireAlfrescoIndex(false);
+            // 36500d with alfrescomax will make max - overlap negative.
+            properties.setOverlap(Duration.ofDays(36500));
+
+            when(store.read()).thenReturn(Optional.empty());
+            simulateAlfrescoMax(1_500_000_000_000L);
+
+            new WatermarkBootstrap(store, openSearchClient, properties, elasticsearchProperties, metadataRepository).bootstrap();
+
+            ArgumentCaptor<WatermarkDocument> captor = ArgumentCaptor.forClass(WatermarkDocument.class);
+            verify(store).write(captor.capture());
+            
+            assertThat(captor.getValue().getLastSuccessfulToTimeEpochMs())
+                    .isEqualTo(WatermarkBootstrap.MIN_SEED_CURSOR_MS);
+        }
+
+        @Test
         @DisplayName("state doc missing + alfresco empty -> no seed, falls through to first-run bootstrap")
         void skips_when_alfresco_returns_no_value() throws Exception
         {

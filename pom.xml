@@ -49,7 +49,7 @@
         <toxiproxy.version>2.1.11</toxiproxy.version>
         <wiremock.version>3.9.2</wiremock.version>
         <awaitility.version>4.3.0</awaitility.version>
-        <postgresql.version>42.7.11</postgresql.version>
+        <postgresql.version>42.7.12</postgresql.version>
         <dependency.hsqldb.version>2.7.4</dependency.hsqldb.version>
         <dependency.commons-compress.version>1.27.1</dependency.commons-compress.version>
     </properties>

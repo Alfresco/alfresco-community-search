@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # No maven credentials: every dependency of the community modules resolves from Maven Central
       # or the Alfresco public Nexus. The empty settings file keeps that honest.
-      - uses: Alfresco/alfresco-build-tools/.github/actions/maven-dependency-scan@567a9393acca033008ce34eafcb200469e4ea2f5 # v18.27.0
+      - uses: Alfresco/alfresco-build-tools/.github/actions/maven-dependency-scan@f1bae5a4bdb3b12030a350e52b8f661dbcb2f849 # v18.28.3
         with:
           java-version: '17'
           maven-version: '3.9.9'

@@ -36,6 +36,38 @@ jobs:
     steps:
       - uses: Alfresco/alfresco-build-tools/.github/actions/pre-commit@567a9393acca033008ce34eafcb200469e4ea2f5 # v18.27.0
 
+  test_run_check:
+    name: "Test run check"
+    runs-on: ubuntu-latest
+    outputs:
+      tests: ${{ steps.check.outputs.tests }}
+    steps:
+      - id: check
+        run: |
+          echo "tests=true" >> "$GITHUB_OUTPUT"
+        if: >
+          (
+            (github.ref_name == 'master' || startsWith(github.ref_name, 'release/') || github.event_name == 'pull_request') &&
+            !contains(github.event.head_commit.message, '[skip build]') &&
+            !contains(github.event.head_commit.message, '[skip tests]')
+          ) ||
+          contains(github.event.head_commit.message, '[run tests]')
+
+  pmd_scan:
+    name: "PMD Scan"
+    runs-on: ubuntu-latest
+    needs: [test_run_check]
+    if: needs.test_run_check.outputs.tests == 'true' && github.event_name == 'pull_request'
+    steps:
+      - uses: Alfresco/alfresco-build-tools/.github/actions/get-build-info@567a9393acca033008ce34eafcb200469e4ea2f5 # v18.27.0
+      - uses: Alfresco/alfresco-build-tools/.github/actions/free-hosted-runner-disk-space@567a9393acca033008ce34eafcb200469e4ea2f5 # v18.27.0
+      - uses: Alfresco/alfresco-build-tools/.github/actions/setup-java-build@567a9393acca033008ce34eafcb200469e4ea2f5 # v18.27.0
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: Alfresco/ya-pmd-scan@v4.4.1
+        with:
+          create-github-annotations: "false"
+
   build:
     name: "Build and test"
     runs-on: ubuntu-latest
@@ -48,19 +80,125 @@ jobs:
       - name: "Build and test"
         run: mvn ${{ env.MAVEN_CLI_OPTS }} ${{ env.MAVEN_SETTINGS_OPTS }} clean verify
 
-  release:
-    name: "Release and deploy to Nexus"
+  batch_indexing_e2e:
+    name: "Batch Indexing E2E"
     runs-on: ubuntu-latest
-    needs: [pre_commit, build]
+    needs: [pre_commit, test_run_check]
+    if: needs.test_run_check.outputs.tests == 'true'
+    steps:
+      # No registry login: every image this stack pulls is public, which is what lets a
+      # fork pull request run the whole suite with no secrets.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: Alfresco/alfresco-build-tools/.github/actions/get-build-info@567a9393acca033008ce34eafcb200469e4ea2f5 # v18.27.0
+      - uses: Alfresco/alfresco-build-tools/.github/actions/free-hosted-runner-disk-space@567a9393acca033008ce34eafcb200469e4ea2f5 # v18.27.0
+      - uses: Alfresco/alfresco-build-tools/.github/actions/setup-java-build@567a9393acca033008ce34eafcb200469e4ea2f5 # v18.27.0
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+      - name: "Build application"
+        run: mvn ${{ env.MAVEN_CLI_OPTS }} ${{ env.MAVEN_SETTINGS_OPTS }} clean install -DskipTests -P docker-image
+      - name: "Build docker images"
+        run: bash ./scripts/ci/buildDockerImagesCi.sh
+        env:
+          COMMIT_MESSAGE: ${{ github.sha }}
+      - name: "Run BatchIndexingDockerComposeIT"
+        run: |
+          mvn ${{ env.MAVEN_CLI_OPTS }} ${{ env.MAVEN_SETTINGS_OPTS }} verify -Dlogging.root.level=off \
+            -pl alfresco-elasticsearch-batch-indexing-distribution \
+            -P docker-compose-test
+      - name: "Dump all Docker containers logs"
+        if: failure()
+        uses: Alfresco/alfresco-build-tools/.github/actions/docker-dump-containers-logs@567a9393acca033008ce34eafcb200469e4ea2f5 # v18.27.0
+      - name: "Clean Maven cache"
+        run: bash ./scripts/ci/cleanup_cache.sh
+
+  batch_indexing_reliability_tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        tests:
+          - name: "Capacity"
+            params: '"-Dit.test=CapacityReliabilityIT.java"'
+          - name: "Capacity With Content"
+            params: '"-Dit.test=CapacityWithContentReliabilityIT.java"'
+          - name: "Memory"
+            params: '"-Dit.test=MemoryReliabilityIT.java"'
+          - name: "Lifecycle"
+            params: '"-Dit.groups=lifecycle"'
+          - name: "Infra Recovery"
+            params: '"-Dit.groups=infra-recovery"'
+          - name: "Large Single Window"
+            params: '"-Dit.test=LargeSingleWindowIT.java"'
+    name: "Batch Indexing Reliability - ${{ matrix.tests.name }}"
+    runs-on: ubuntu-latest-8-cores
+    needs: [pre_commit, test_run_check]
+    if: needs.test_run_check.outputs.tests == 'true'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: Alfresco/alfresco-build-tools/.github/actions/get-build-info@567a9393acca033008ce34eafcb200469e4ea2f5 # v18.27.0
+      - uses: Alfresco/alfresco-build-tools/.github/actions/free-hosted-runner-disk-space@567a9393acca033008ce34eafcb200469e4ea2f5 # v18.27.0
+      - uses: Alfresco/alfresco-build-tools/.github/actions/setup-java-build@567a9393acca033008ce34eafcb200469e4ea2f5 # v18.27.0
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+      - name: "Build application"
+        run: mvn ${{ env.MAVEN_CLI_OPTS }} ${{ env.MAVEN_SETTINGS_OPTS }} clean install -DskipTests -P docker-image
+      - name: "Build docker images"
+        run: bash ./scripts/ci/buildDockerImagesCi.sh
+        env:
+          COMMIT_MESSAGE: ${{ github.sha }}
+      - name: "Run reliability IT"
+        run: |
+          mvn ${{ env.MAVEN_CLI_OPTS }} ${{ env.MAVEN_SETTINGS_OPTS }} verify -Dlogging.root.level=off \
+            -pl alfresco-elasticsearch-batch-indexing-distribution \
+            -P reliability-tests ${{ matrix.tests.params }}
+        env:
+          RELIABILITY_TESTS: true
+      - name: "Dump all Docker containers logs"
+        if: failure()
+        uses: Alfresco/alfresco-build-tools/.github/actions/docker-dump-containers-logs@567a9393acca033008ce34eafcb200469e4ea2f5 # v18.27.0
+      - name: "Upload reliability output"
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: reliability-${{ matrix.tests.name }}-${{ github.run_attempt }}
+          path: |
+            alfresco-elasticsearch-batch-indexing-distribution/target/reliability/**
+            alfresco-elasticsearch-batch-indexing-distribution/target/failsafe-reports/**
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: "Clean Maven cache"
+        run: bash ./scripts/ci/cleanup_cache.sh
+
+  release:
+    name: "Release and deploy to Nexus and S3 Staging Bucket"
+    runs-on: ubuntu-latest
+    needs: [pre_commit, build, batch_indexing_e2e, batch_indexing_reliability_tests]
+    permissions:
+      id-token: write
+      contents: read
     if: >
       !(failure() || cancelled()) &&
       github.event_name != 'pull_request' &&
-      github.ref_name == 'master' &&
+      (github.ref_name == 'master' || startsWith(github.ref_name, 'release/')) &&
       contains(github.event.head_commit.message, '[release]')
     env:
       MAVEN_USERNAME: ${{ secrets.NEXUS_USERNAME }}
       MAVEN_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
     steps:
+      # Fail before the release starts rather than half-way through: a missing bucket makes
+      # the upload target "s3://" and the release completes with nothing published.
+      - name: "Check the S3 variables are set"
+        run: |
+          missing=""
+          [ -n "${{ vars.AWS_STAGING_ARTIFACT_UPLOAD_BUCKET }}" ] || missing="$missing AWS_STAGING_ARTIFACT_UPLOAD_BUCKET"
+          [ -n "${{ vars.AWS_STAGING_ARTIFACT_UPLOAD_REGION }}" ] || missing="$missing AWS_STAGING_ARTIFACT_UPLOAD_REGION"
+          [ -n "${{ vars.AWS_STAGING_ARTIFACT_UPLOAD_ROLE_ARN }}" ] || missing="$missing AWS_STAGING_ARTIFACT_UPLOAD_ROLE_ARN"
+          [ -n "${{ vars.AWS_RELEASE_ARTIFACT_UPLOAD_BUCKET }}" ] || missing="$missing AWS_RELEASE_ARTIFACT_UPLOAD_BUCKET"
+          [ -n "${{ vars.AWS_RELEASE_ARTIFACT_UPLOAD_REGION }}" ] || missing="$missing AWS_RELEASE_ARTIFACT_UPLOAD_REGION"
+          [ -n "${{ vars.AWS_RELEASE_ARTIFACT_UPLOAD_ROLE_ARN }}" ] || missing="$missing AWS_RELEASE_ARTIFACT_UPLOAD_ROLE_ARN"
+          if [ -n "$missing" ]; then
+            echo "::error::Org variables not visible to this repository:$missing"
+            exit 1
+          fi
       - name: "Generate GitHub App token"
         id: app-token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
@@ -87,3 +225,61 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           release-version: ${{ env.RELEASE_VERSION }}
           development-version: ${{ env.DEVELOPMENT_VERSION }}
+      # Same S3 layout the connector used to publish this artifact under, so the
+      # download URL does not change when publication moves here.
+      - run: mkdir -p deploy_dir/community/alfresco-elasticsearch-batch-indexing/${{ env.RELEASE_VERSION }}
+      - name: "Move the distribution zip into deploy_dir"
+        run: |
+          mv "alfresco-elasticsearch-batch-indexing-distribution/target/alfresco-elasticsearch-batch-indexing-distribution-${{ env.RELEASE_VERSION }}.zip" \
+             "deploy_dir/community/alfresco-elasticsearch-batch-indexing/${{ env.RELEASE_VERSION }}/"
+      - name: "Clone Alfresco/third-party-license-overrides"
+        run: git clone --depth=1 https://github.com/Alfresco/third-party-license-overrides.git
+      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+      - name: "Create third party license csv file and add it to the deploy directory"
+        run: |
+          python3 ./third-party-license-overrides/thirdPartyLicenseCSVCreator.py \
+            --project "${{ github.workspace }}/alfresco-elasticsearch-batch-indexing" \
+            --version "${{ env.RELEASE_VERSION }}" --combined \
+            --output "deploy_dir/community/alfresco-elasticsearch-batch-indexing/${{ env.RELEASE_VERSION }}"
+      - name: "Deploy to S3 Staging Bucket"
+        uses: Alfresco/alfresco-build-tools/.github/actions/s3-upload@567a9393acca033008ce34eafcb200469e4ea2f5 # v18.27.0
+        with:
+          aws-region: ${{ vars.AWS_STAGING_ARTIFACT_UPLOAD_REGION }}
+          aws-role-arn: ${{ vars.AWS_STAGING_ARTIFACT_UPLOAD_ROLE_ARN }}
+          destination: s3://${{ vars.AWS_STAGING_ARTIFACT_UPLOAD_BUCKET }}
+          source: ./deploy_dir
+      - name: "Clean Maven cache"
+        run: bash ./scripts/ci/cleanup_cache.sh
+
+  deploy_release:
+    name: "Copy to S3 Downloads Bucket"
+    runs-on: ubuntu-latest
+    needs: [release]
+    permissions:
+      id-token: write
+      contents: read
+    if: >
+      !(failure() || cancelled()) &&
+      github.event_name != 'pull_request' &&
+      (github.ref_name == 'master' || startsWith(github.ref_name, 'release/')) &&
+      contains(github.event.head_commit.message, '[release]')
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Alphas stage but never reach the downloads bucket; only x.y.z(.n) is a real release.
+      - name: "Check release version"
+        id: check-release-version
+        run: |
+          if [[ ${{ env.RELEASE_VERSION }} =~ ^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
+            echo "is-release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is-release=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: "Copy community release to S3 Downloads Bucket"
+        if: steps.check-release-version.outputs.is-release == 'true'
+        uses: Alfresco/alfresco-build-tools/.github/actions/s3-upload@567a9393acca033008ce34eafcb200469e4ea2f5 # v18.27.0
+        with:
+          aws-region: ${{ vars.AWS_RELEASE_ARTIFACT_UPLOAD_REGION }}
+          aws-role-arn: ${{ vars.AWS_RELEASE_ARTIFACT_UPLOAD_ROLE_ARN }}
+          destination: s3://${{ vars.AWS_RELEASE_ARTIFACT_UPLOAD_BUCKET }}/release/community/alfresco-elasticsearch-batch-indexing/${{ env.RELEASE_VERSION }}
+          source: s3://${{ vars.AWS_STAGING_ARTIFACT_UPLOAD_BUCKET }}/community/alfresco-elasticsearch-batch-indexing/${{ env.RELEASE_VERSION }}/
+          copy-props: none

@@ -43,9 +43,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import org.alfresco.database.connector.AlfrescoMetadataRepository;
 import org.alfresco.elasticsearch.batchindexing.DlqReader.DlqEntry;
 import org.alfresco.elasticsearch.batchindexing.config.DlqRecoveryProperties;
-import org.alfresco.database.connector.AlfrescoMetadataRepository;
 import org.alfresco.elasticsearch.batchindexing.listeners.DlqPageReadFailureListener;
 import org.alfresco.elasticsearch.batchindexing.model.DeadLetterDocument;
 import org.alfresco.elasticsearch.batchindexing.model.DeadLetterDocument.FailureStage;

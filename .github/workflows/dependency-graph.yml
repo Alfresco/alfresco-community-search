@@ -1,0 +1,29 @@
+name: "Load Dependency Graph"
+
+on:
+  push:
+    branches:
+      - "master"
+      - "release/**"
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  scan-dependencies:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # No maven credentials: every dependency of the community modules resolves from Maven Central
+      # or the Alfresco public Nexus. The empty settings file keeps that honest.
+      - uses: Alfresco/alfresco-build-tools/.github/actions/maven-dependency-scan@f1bae5a4bdb3b12030a350e52b8f661dbcb2f849 # v18.28.3
+        with:
+          java-version: '17'
+          maven-version: '3.9.9'
+          maven-args: -Dscopes=compile,runtime
+          maven-settings-path: ".github/empty-settings.xml"

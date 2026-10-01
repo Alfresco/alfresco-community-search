@@ -189,7 +189,7 @@ class WatermarkBootstrapTest
 
             ArgumentCaptor<WatermarkDocument> captor = ArgumentCaptor.forClass(WatermarkDocument.class);
             verify(store).write(captor.capture());
-            
+
             assertThat(captor.getValue().getLastSuccessfulToTimeEpochMs())
                     .isEqualTo(WatermarkBootstrap.MIN_SEED_CURSOR_MS);
         }

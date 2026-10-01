@@ -25,7 +25,7 @@
  */
 package org.alfresco.indexing.shared.model;
 
-public enum ElastichSearchQueryType
+public enum ElasticSearchQueryType
 {
     MATCH, TERM, EXISTS
 }

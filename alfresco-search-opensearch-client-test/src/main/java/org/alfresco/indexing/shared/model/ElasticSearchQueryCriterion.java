@@ -45,7 +45,7 @@ public class ElasticSearchQueryCriterion
 
     private String value;
 
-    private ElastichSearchQueryType queryType;
+    private ElasticSearchQueryType queryType;
 
     private ElasticSearchCondition condition;
 }

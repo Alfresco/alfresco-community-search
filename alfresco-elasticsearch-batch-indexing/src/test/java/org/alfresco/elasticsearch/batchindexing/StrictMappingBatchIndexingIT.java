@@ -60,7 +60,7 @@ import org.alfresco.reindexing.domain.namespace.response.PrefixUriMapping;
 /**
  * Resolving a namespace the index mapping does not know about.
  * <p>
- * Production mappings are strict, so a field missing from the mapping makes Elasticsearch reject the whole document rather than ignore the field. Adding a namespace to the prefix map before ACS has extended the mapping therefore turns an incomplete document into no document at all.
+ * This test sets the mapping to strict itself; it is not the shipped default. ACS creates the index from basicFields.json with {@code dynamic: false}, so an unknown field is stored but not indexed and the node still lands — silently unsearchable rather than rejected. Strict is a configuration an operator can choose, and under it a single unknown field costs the whole document.
  * <p>
  * Setup indexes once with the mapping open so every legitimate field is registered, closes it, then resolves the custom namespace so only that field is unknown.
  */

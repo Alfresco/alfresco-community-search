@@ -38,6 +38,8 @@ import org.alfresco.reindexing.readers.PageReadFailureListener;
 
 /**
  * Reads an explicit, non-contiguous set of node ids (e.g. draining a DLQ by {@code dbId}), paging through a sorted copy of the set. Unlike {@code AlfrescoPagingItemReaderById} the ids need not be contiguous or ordered on input.
+ * <p>
+ * Not restartable, and does not need to be: the id set comes from a fresh scan on every run, so there is no stored position worth restoring. Contrast {@code FolderHierarchyNodeIdsItemReader}, which resumes from a durable watermark.
  */
 public class AlfrescoExplicitIdSetItemReader extends AbstractAlfrescoNodeReader
 {
@@ -54,6 +56,9 @@ public class AlfrescoExplicitIdSetItemReader extends AbstractAlfrescoNodeReader
         super(metadataRepository, pageReadFailureListener);
         this.sortedIds = ids.stream().sorted().collect(Collectors.toUnmodifiableList());
         setName(ClassUtils.getShortName(AlfrescoExplicitIdSetItemReader.class));
+        // The paging cursor this reader keeps is its own, so a position stored by the
+        // superclass would be restored into fields it does not drive. Start clean instead.
+        setSaveState(false);
     }
 
     @Override

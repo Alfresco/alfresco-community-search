@@ -87,8 +87,10 @@ public class StepConfigurer
                     .retryListener(new LoggingRetryListener(stepName, reindexingMetrics))
                     .retryPolicy(RetryPolicy.builder()
                             .backOff(backOff)
-                            // Deterministic: the prefix map will not change mid-cycle, so retrying only sleeps.
-                            .excludes(UnresolvedNamespaceException.class)
+                            // Deterministic failures. The prefix map will not change mid-cycle, and a
+                            // terminal write failure is raised only after the writer exhausted its own
+                            // retries, so a chunk retry just repeats the writes that already succeeded.
+                            .excludes(UnresolvedNamespaceException.class, TerminalWriteFailureException.class)
                             .build())
                     .retry(Exception.class);
         }

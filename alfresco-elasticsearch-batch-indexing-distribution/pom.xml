@@ -3,7 +3,7 @@
     <parent>
         <artifactId>alfresco-search-community-parent</artifactId>
         <groupId>org.alfresco</groupId>
-        <version>5.9.0-A.5-SNAPSHOT</version>
+        <version>5.9.0-A.8-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <name>Alfresco Community Search :: Batch Indexing Distribution</name>
@@ -75,6 +75,20 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <!-- Published publicly: this is the community deliverable. -->
+    <distributionManagement>
+        <repository>
+            <id>alfresco-public-releases</id>
+            <name>Alfresco Releases Repository</name>
+            <url>https://artifacts.alfresco.com/nexus/content/repositories/releases</url>
+        </repository>
+        <snapshotRepository>
+            <id>alfresco-public-snapshots</id>
+            <name>Alfresco Snapshots Repository</name>
+            <url>https://artifacts.alfresco.com/nexus/content/repositories/snapshots</url>
+        </snapshotRepository>
+    </distributionManagement>
 
     <build>
         <plugins>

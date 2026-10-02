@@ -34,6 +34,7 @@ import org.alfresco.elasticsearch.batchindexing.DlqReader;
 import org.alfresco.elasticsearch.batchindexing.DlqWriter;
 import org.alfresco.elasticsearch.batchindexing.listeners.DlqBulkItemFailureListener;
 import org.alfresco.elasticsearch.batchindexing.listeners.DlqContentTransformFailureListener;
+import org.alfresco.elasticsearch.batchindexing.listeners.DlqMergedBulkItemFailureListener;
 import org.alfresco.elasticsearch.batchindexing.listeners.DlqPageReadFailureListener;
 import org.alfresco.elasticsearch.batchindexing.listeners.DlqPathBulkItemFailureListener;
 import org.alfresco.elasticsearch.batchindexing.listeners.DlqSkipListener;
@@ -76,6 +77,12 @@ public class DeadLetterConfig
     public DlqPathBulkItemFailureListener dlqPathBulkItemFailureListener(DlqWriter dlqWriter)
     {
         return new DlqPathBulkItemFailureListener(dlqWriter);
+    }
+
+    @Bean
+    public DlqMergedBulkItemFailureListener dlqMergedBulkItemFailureListener(DlqWriter dlqWriter)
+    {
+        return new DlqMergedBulkItemFailureListener(dlqWriter);
     }
 
     @Bean

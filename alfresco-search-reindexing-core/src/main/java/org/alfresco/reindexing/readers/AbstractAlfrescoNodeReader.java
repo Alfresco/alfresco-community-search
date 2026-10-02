@@ -46,6 +46,9 @@ public abstract class AbstractAlfrescoNodeReader extends AbstractPagingItemReade
 
     private boolean readerExhausted;
 
+    /** Index into the current page, advanced by rows served rather than by page size. */
+    private int currentResult;
+
     protected AbstractAlfrescoNodeReader(AlfrescoMetadataRepository metadataRepository)
     {
         this(metadataRepository, null);
@@ -77,15 +80,17 @@ public abstract class AbstractAlfrescoNodeReader extends AbstractPagingItemReade
                     // one-shot CLI). Fail loudly so the operator sees it.
                     throw e;
                 }
-                // Continuous-scan behaviour (batch-indexing): route to the listener and
-                // stop this reader. The step commits an empty page, the watermark
-                // advances past the window, and the next cycle moves on. Good rows in
-                // the same page are lost — the trade-off is that the pipeline never
-                // gets stuck on a single poison row. Follow-up: per-row isolation.
-                log.error("[{}] Page read failed for params={}; advancing past the page.",
-                        getName(), params, e);
+                // Batch-indexing: hand the failure to the listener and stop. The by-date
+                // reader's params carry the whole window, so the listener records that
+                // window in the DLQ and the next cycle moves on. Readers with a finite
+                // cursor skip the page and carry on — see pagesUntilCursorExhausted().
+                log.error("[{}] Page read failed for params={}; {}.", getName(), params,
+                        pagesUntilCursorExhausted() ? "skipping this page" : "stopping this reader", e);
                 pageReadFailureListener.onPageReadFailure(getName(), params, e);
-                readerExhausted = true;
+                if (!pagesUntilCursorExhausted())
+                {
+                    readerExhausted = true;
+                }
             }
         }
 
@@ -101,7 +106,52 @@ public abstract class AbstractAlfrescoNodeReader extends AbstractPagingItemReade
         results.addAll(resultList);
     }
 
+    @Override
+    protected void doOpen() throws Exception
+    {
+        super.doOpen();
+        currentResult = 0;
+    }
+
+    /**
+     * Advances by rows returned rather than by page size, because a page of explicit ids comes back short when some of those ids have been deleted. Range readers keep Spring's behaviour, where a short page really is the end of the data.
+     */
+    @Override
+    protected synchronized AlfrescoNode doRead() throws Exception
+    {
+        if (!pagesUntilCursorExhausted())
+        {
+            return super.doRead();
+        }
+
+        List<AlfrescoNode> currentResults = results;
+        while (currentResults == null || currentResult >= currentResults.size())
+        {
+            if (!needMoreNodes() || readerExhausted)
+            {
+                return null;
+            }
+            doReadPage();
+            currentResult = 0;
+            currentResults = results;
+        }
+        return currentResults.get(currentResult++);
+    }
+
     protected abstract NodeParams getParams();
 
     protected abstract boolean needMoreNodes();
+
+    protected final boolean isReaderExhausted()
+    {
+        return readerExhausted;
+    }
+
+    /**
+     * Whether {@link #needMoreNodes()} alone decides when this reader is done, so a page that fails or comes back empty is skipped rather than taken as end of data. Only safe when {@link #getParams()} advances its own cursor; a reader paging off {@code getPage()} would re-read the same page forever.
+     */
+    protected boolean pagesUntilCursorExhausted()
+    {
+        return false;
+    }
 }

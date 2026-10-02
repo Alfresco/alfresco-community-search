@@ -47,6 +47,8 @@ import org.alfresco.reindexing.writers.RepositoryDescriptorItemWriter;
 
 /**
  * Base class including a common validation step (validateDbSchemaStep) for re-indexing jobs.
+ * <p>
+ * Shared retry configuration lives in {@link RetryBackOffConfig} to avoid a data-source initialization cycle.
  */
 @SuppressWarnings("PMD.AbstractClassWithoutAbstractMethod")
 public abstract class ElasticsearchReindexValidateDbStepConfig

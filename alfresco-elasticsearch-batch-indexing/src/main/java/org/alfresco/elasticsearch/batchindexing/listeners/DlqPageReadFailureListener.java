@@ -34,10 +34,7 @@ import org.alfresco.elasticsearch.batchindexing.model.DeadLetterDocument.Failure
 import org.alfresco.reindexing.readers.PageReadFailureListener;
 
 /**
- * Bridges page-level read failures (a bad row in a JDBC page fails the whole page — see reindexing {@code AbstractAlfrescoNodeReader}) into {@link DlqWriter}. The reader has already swallowed the failure and advanced past the page, so recording here is the only trail the incident leaves.
- *
- * <p>
- * Both page shapes must be recorded. A window page becomes one record keyed by the time window. An id page becomes one record per id: the DLQ drain reads those same ids back, and {@code DlqDrainService.cleanup()} deletes any entry whose {@code failureCount} did not rise during the run. Staying silent on an id page would therefore let cleanup read "no new failure" as "recovered" and delete records for nodes that were never reindexed.
+ * Bridges page-level read failures (a bad row in a JDBC page fails the whole page — see reindexing {@code AbstractAlfrescoNodeReader}) into {@link DlqWriter} as a {@code READER} record: keyed by the failed time window for a by-date page, or one record per id for the DLQ drain's id-shaped pages. The reader has already swallowed the failure and advanced the cursor past the window; this listener's only job is to leave an operator-visible trail so the incident isn't silent.
  *
  * <p>
  * Not registered when the DLQ config is disabled — with no listener bean the reindexing reader rethrows the page exception.

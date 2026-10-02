@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import jakarta.json.Json;
+import jakarta.json.stream.JsonGenerator;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -192,7 +193,7 @@ class ReindexingEventSerializationTest
         try
         {
             StringWriter writer = new StringWriter();
-            jakarta.json.stream.JsonGenerator generator = Json.createGenerator(writer);
+            JsonGenerator generator = Json.createGenerator(writer);
             bulkRequest.serialize(generator, new JacksonJsonpMapper());
             generator.close();
             String json = writer.toString();

@@ -58,7 +58,6 @@ import org.alfresco.indexing.shared.tag.AddTagsPostProcessor;
 import org.alfresco.indexing.shared.tag.MeasuringTagRepository;
 import org.alfresco.indexing.shared.tag.TagRepository;
 import org.alfresco.indexing.shared.transform.TransformStatusExtender;
-import org.alfresco.metrics.MetricsConstants;
 import org.alfresco.metrics.ReindexingMetrics;
 import org.alfresco.reindexing.StandardPathsResolver;
 import org.alfresco.reindexing.domain.transform.ContentTransformSupportService;
@@ -67,6 +66,7 @@ import org.alfresco.reindexing.listeners.JobExitStatusAggregatorListener;
 import org.alfresco.reindexing.listeners.JobLifecycleListener;
 import org.alfresco.reindexing.listeners.ReadCountingListener;
 import org.alfresco.reindexing.listeners.ReindexMetricsStepListener;
+import org.alfresco.reindexing.listeners.ReindexSummaryStepListener;
 import org.alfresco.reindexing.listeners.StepLifecycleListener;
 import org.alfresco.reindexing.listeners.WriteMetricsFlushListener;
 import org.alfresco.reindexing.model.ReindexingEvent;
@@ -78,6 +78,8 @@ import org.alfresco.reindexing.processors.ReindexEventPathAdderProcessor;
 import org.alfresco.reindexing.processors.ReindexEventTrStatusAdderProcessor;
 import org.alfresco.reindexing.processors.UnresolvedNamespaceListener;
 import org.alfresco.reindexing.writers.ChunkWriteMetricsAccumulator;
+import org.alfresco.reindexing.writers.FailureSummary;
+import org.alfresco.reindexing.writers.WriterTimingSummary;
 import org.alfresco.repo.event.databind.ObjectMapperFactory;
 
 /**
@@ -86,7 +88,7 @@ import org.alfresco.repo.event.databind.ObjectMapperFactory;
  * Module-specific bits — JMS template + content event writer, or the direct-HTTP writer, plus the writer composition that picks between them — stay in each module's own {@code @Configuration}.
  */
 @Configuration
-@SuppressWarnings("PMD.CouplingBetweenObjects")
+@SuppressWarnings({"PMD.CouplingBetweenObjects", "PMD.TooManyMethods"})
 @EnableConfigurationProperties({ElasticsearchProperties.class, AcceptedContentMediaTypesCacheProperties.class})
 @Import({FilteringConfig.class,
         MultilingualSupportSharedConfig.class,
@@ -157,12 +159,20 @@ public class SharedBatchProcessingConfig
     }
 
     @Bean
+    public WriterTimingSummary writerTimingSummary()
+    {
+        return new WriterTimingSummary(reindexingProperties.isWriterTimingSummaryLogEnabled());
+    }
+
+    @Bean
     public WriteMetricsFlushListener writeMetricsFlushListener(
             ChunkWriteMetricsAccumulator chunkWriteMetricsAccumulator,
             ReindexingMetrics reindexingMetrics,
-            ReindexingCoreProperties elasticsearchReindexProperties)
+            ReindexingCoreProperties elasticsearchReindexProperties,
+            WriterTimingSummary writerTimingSummary)
     {
-        return new WriteMetricsFlushListener(chunkWriteMetricsAccumulator, reindexingMetrics, elasticsearchReindexProperties);
+        return new WriteMetricsFlushListener(chunkWriteMetricsAccumulator, reindexingMetrics, elasticsearchReindexProperties,
+                writerTimingSummary);
     }
 
     @Bean(name = "reindexTaskExecutor")
@@ -210,20 +220,14 @@ public class SharedBatchProcessingConfig
     @Bean
     public ReindexMetricsStepListener reindexMetricsStepListener(ReindexingMetrics reindexingMetrics)
     {
-        List<String> enabledWriters = new ArrayList<>();
-        if (reindexingProperties.isMetadataIndexingEnabled())
-        {
-            enabledWriters.add(MetricsConstants.METADATA);
-        }
-        if (reindexingProperties.isPathIndexingEnabled())
-        {
-            enabledWriters.add(MetricsConstants.PATH);
-        }
-        if (reindexingProperties.isContentIndexingEnabled())
-        {
-            enabledWriters.add(MetricsConstants.CONTENT);
-        }
-        return new ReindexMetricsStepListener(reindexingMetrics, List.copyOf(enabledWriters));
+        return new ReindexMetricsStepListener(reindexingMetrics, reindexingProperties.getEnabledWriterKeys());
+    }
+
+    @Bean
+    public ReindexSummaryStepListener reindexSummaryStepListener(WriterTimingSummary writerTimingSummary,
+            FailureSummary failureSummary)
+    {
+        return new ReindexSummaryStepListener(writerTimingSummary, failureSummary);
     }
 
     @Bean

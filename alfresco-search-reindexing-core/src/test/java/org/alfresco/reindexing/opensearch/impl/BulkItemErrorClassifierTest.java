@@ -42,6 +42,8 @@ class BulkItemErrorClassifierTest
     @ParameterizedTest(name = "type {0} → terminal")
     @CsvSource({
             "mapper_parsing_exception",
+            "document_parsing_exception",
+            "document_mapping_exception",
             "strict_dynamic_mapping_exception",
             "illegal_argument_exception"})
     @DisplayName("known permanent error types are terminal")

@@ -40,7 +40,10 @@ import static org.alfresco.repo.event.v1.model.EventType.PERMISSION_UPDATED;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
+import org.opensearch.client.opensearch._types.Script;
 import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.slf4j.Logger;
@@ -96,12 +99,44 @@ public class ReindexingRequestBuilder extends AbstractElasticsearchRequestBuilde
 
     private BulkOperation createReindexingMetadataUpsertRequest(RepoEvent event, long reindexingStartTime)
     {
+        var fieldsMapping = buildMetadataFields(event, reindexingStartTime);
+        return buildReindexUpsertOperation(event, fieldsMapping);
+    }
+
+    /**
+     * Build the metadata field set for a node: the encoded node properties plus the reindex housekeeping fields (ALIVE, the metadata last-update timestamp and the reindexing start time used by the conflict-resolution script). Exposed so the merged writer can fold these into a single scripted upsert alongside the path fields.
+     */
+    public Map<String, Object> buildMetadataFields(RepoEvent event, long reindexingStartTime)
+    {
         var encodedFields = encodedFieldsExtractor.extract(event);
         encodedFields.put(ALIVE, true);
         encodedFields.put(METADATA_INDEXING_LAST_UPDATE, getEventTimestamp(event));
         encodedFields.put(REINDEXING_START_TIME, reindexingStartTime);
-        var fieldsMapping = encodedFields.getEncodedMapping();
-        var script = EsScriptUtils.buildInlineScript(fieldsMapping, reindexingUpdateScriptSource(fieldsMapping.keySet()));
+        return encodedFields.getEncodedMapping();
+    }
+
+    /**
+     * Build a reindex scripted-upsert operation for the given fields. The script assigns every supplied field, guarded by the reindex conflict-resolution condition (noop when live indexing has touched the document since the reindex started). The upsert seeds the same fields when the document does not yet exist, so the operation never fails with {@code document_missing_exception}. Used both for the metadata-only op and, in merged mode, for the combined metadata+path field set.
+     */
+    public BulkOperation buildReindexUpsertOperation(RepoEvent event, Map<String, Object> fieldsMapping)
+    {
+        Script script = EsScriptUtils.buildInlineScript(fieldsMapping, reindexingUpdateScriptSource(fieldsMapping.keySet()));
         return createUpsertOperation(getIdFromEvent(event), fieldsMapping, script);
+    }
+
+    /**
+     * Build the optional content transform-status upsert operation for a node (empty when the node has no content). Exposed so the merged writer can keep issuing it as its own bulk operation.
+     */
+    public Optional<BulkOperation> buildContentUpsertOperation(RepoEvent event)
+    {
+        return createContentUpsertRequest(event);
+    }
+
+    /**
+     * Build the delete (soft-delete) operation for a node. Exposed so the merged writer, which replaces the metadata writer, can still handle {@code NODE_DELETED} events.
+     */
+    public BulkOperation buildDeleteOperation(RepoEvent event)
+    {
+        return createDeleteRequest(event);
     }
 }

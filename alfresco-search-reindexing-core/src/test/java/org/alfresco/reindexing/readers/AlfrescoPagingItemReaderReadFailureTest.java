@@ -29,10 +29,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -116,7 +119,7 @@ class AlfrescoPagingItemReaderReadFailureTest
         // If the listener itself blows up, the reader propagates that — a bug in the DLQ bridge
         // shouldn't be swallowed silently.
         RuntimeException listenerFailure = new RuntimeException("listener down");
-        org.mockito.Mockito.doThrow(listenerFailure).when(listener).onPageReadFailure(any(), any(), any());
+        doThrow(listenerFailure).when(listener).onPageReadFailure(any(), any(), any());
 
         AlfrescoPagingItemReader reader = new AlfrescoPagingItemReader(
                 metadataRepository,
@@ -132,7 +135,7 @@ class AlfrescoPagingItemReaderReadFailureTest
     @Test
     void successfulReadIsUnaffectedByListenerPresence() throws Exception
     {
-        when(metadataRepository.getAlfrescoNodes(any())).thenReturn(java.util.List.of());
+        when(metadataRepository.getAlfrescoNodes(any())).thenReturn(List.of());
 
         AlfrescoPagingItemReader reader = new AlfrescoPagingItemReader(
                 metadataRepository,

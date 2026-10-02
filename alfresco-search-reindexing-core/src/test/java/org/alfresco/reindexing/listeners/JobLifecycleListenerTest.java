@@ -26,6 +26,7 @@
 package org.alfresco.reindexing.listeners;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -109,8 +110,8 @@ class JobLifecycleListenerTest
         listener.afterJob(jobExecution(BatchStatus.STOPPED));
 
         verify(metrics).recordJobStopped();
-        verify(metrics, org.mockito.Mockito.never()).recordJobComplete();
-        verify(metrics, org.mockito.Mockito.never()).recordJobFailed();
+        verify(metrics, never()).recordJobComplete();
+        verify(metrics, never()).recordJobFailed();
     }
 
     @Test
@@ -119,7 +120,7 @@ class JobLifecycleListenerTest
         listener.afterJob(jobExecution(BatchStatus.ABANDONED));
 
         verify(metrics).recordJobFailed();
-        verify(metrics, org.mockito.Mockito.never()).recordJobStopped();
+        verify(metrics, never()).recordJobStopped();
     }
 
     @Test
@@ -128,7 +129,7 @@ class JobLifecycleListenerTest
         listener.afterJob(jobExecution(BatchStatus.UNKNOWN));
 
         verify(metrics).recordJobFailed();
-        verify(metrics, org.mockito.Mockito.never()).recordJobStopped();
+        verify(metrics, never()).recordJobStopped();
     }
 
     private static JobExecution jobExecution(BatchStatus status)

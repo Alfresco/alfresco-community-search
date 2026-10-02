@@ -26,10 +26,11 @@
 package org.alfresco.elasticsearch.batchindexing.config;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.batch.infrastructure.item.ItemWriter;
-import org.springframework.batch.infrastructure.item.support.CompositeItemWriter;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -49,9 +50,10 @@ import org.alfresco.reindexing.config.SharedBatchProcessingConfig;
 import org.alfresco.reindexing.domain.transform.ContentTransformSupportService;
 import org.alfresco.reindexing.model.ReindexingEvent;
 import org.alfresco.reindexing.writers.ChunkWriteMetricsAccumulator;
+import org.alfresco.reindexing.writers.ElasticsearchMergedReindexWriter;
 import org.alfresco.reindexing.writers.ElasticsearchPathWriter;
 import org.alfresco.reindexing.writers.ElasticsearchRepoEventItemWriter;
-import org.alfresco.reindexing.writers.MetricsTrackingItemWriter;
+import org.alfresco.reindexing.writers.ReindexWriterComposer;
 
 /**
  * Bean wiring for the batch-indexing processing pipeline. Imports {@link SharedBatchProcessingConfig} for processors, listeners, executor and the metadata/path writers; this class only contributes the direct-HTTP content writer and the composite writer that selects them.
@@ -88,35 +90,29 @@ public class BatchIndexingBatchConfig
             ElasticsearchRepoEventItemWriter elasticsearchRepoEventItemWriter,
             ContentTransformDirectWriter contentTransformDirectWriter,
             ElasticsearchPathWriter elasticsearchPathWriter,
+            ElasticsearchMergedReindexWriter elasticsearchMergedReindexWriter,
             CascadeProperties cascadeProperties,
             CascadeCollectorWriter cascadeCollectorWriter,
             ChunkWriteMetricsAccumulator chunkWriteMetricsAccumulator)
     {
-        CompositeItemWriter<ReindexingEvent> repoEventCompositeItemWriter = new CompositeItemWriter<>();
-        List<ItemWriter<? super ReindexingEvent>> writers = new ArrayList<>();
+        // Cascade collector runs FIRST (as a leading writer): it inspects each event for rename /
+        // category-delete signals before downstream writers overwrite Elasticsearch. Phase 1 is log-only,
+        // but the head position is required for Phase 2 (mget of pre-overwrite ES state).
+        List<ItemWriter<? super ReindexingEvent>> leadingWriters = new ArrayList<>();
         if (cascadeProperties.isEnabled())
         {
-            // Cascade collector runs FIRST: it inspects each event for rename / category-delete
-            // signals before downstream writers overwrite Elasticsearch. Phase 1 is log-only,
-            // but the head position is required for Phase 2 (mget of pre-overwrite ES state).
-            writers.add(cascadeCollectorWriter);
+            leadingWriters.add(cascadeCollectorWriter);
         }
-        if (elasticsearchReindexProperties.isMetadataIndexingEnabled())
-        {
-            writers.add(new MetricsTrackingItemWriter<>(elasticsearchRepoEventItemWriter,
-                    chunkWriteMetricsAccumulator, MetricsConstants.METADATA));
-        }
-        if (elasticsearchReindexProperties.isPathIndexingEnabled())
-        {
-            writers.add(new MetricsTrackingItemWriter<>(elasticsearchPathWriter,
-                    chunkWriteMetricsAccumulator, MetricsConstants.PATH));
-        }
-        if (elasticsearchReindexProperties.isContentIndexingEnabled())
-        {
-            writers.add(new MetricsTrackingItemWriter<>(contentTransformDirectWriter,
-                    chunkWriteMetricsAccumulator, MetricsConstants.CONTENT));
-        }
-        repoEventCompositeItemWriter.setDelegates(writers);
-        return repoEventCompositeItemWriter;
+        // Merged / metadata+path / content selection is centralised in ReindexWriterComposer, driven by
+        // ReindexingCoreProperties#getEnabledWriterKeys(). Merged mode folds the metadata + path writes
+        // into a single scripted-upsert bulk (its failures are dead-lettered under the MERGED_WRITER stage).
+        // Batch-indexing does not use the concurrent writer, so no executor is supplied.
+        Map<String, ItemWriter<? super ReindexingEvent>> writersByKey = new HashMap<>();
+        writersByKey.put(MetricsConstants.MERGED, elasticsearchMergedReindexWriter);
+        writersByKey.put(MetricsConstants.METADATA, elasticsearchRepoEventItemWriter);
+        writersByKey.put(MetricsConstants.PATH, elasticsearchPathWriter);
+        writersByKey.put(MetricsConstants.CONTENT, contentTransformDirectWriter);
+        return ReindexWriterComposer.compose(elasticsearchReindexProperties, writersByKey, leadingWriters,
+                chunkWriteMetricsAccumulator, null);
     }
 }

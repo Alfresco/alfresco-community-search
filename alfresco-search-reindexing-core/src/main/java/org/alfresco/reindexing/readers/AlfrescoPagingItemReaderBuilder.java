@@ -54,6 +54,13 @@ public class AlfrescoPagingItemReaderBuilder
         return builder;
     }
 
+    public static AlfrescoPagingItemReaderBuilder forFolderNodeId(String folderNodeId)
+    {
+        final AlfrescoPagingItemReaderBuilder builder = new AlfrescoPagingItemReaderBuilder();
+        builder.nodeParams = NodeParams.searchByFolderId(folderNodeId);
+        return builder;
+    }
+
     public static AlfrescoPagingItemReaderBuilder forTimestampRange(LocalDateTime from, LocalDateTime to)
     {
         final AlfrescoPagingItemReaderBuilder builder = new AlfrescoPagingItemReaderBuilder();

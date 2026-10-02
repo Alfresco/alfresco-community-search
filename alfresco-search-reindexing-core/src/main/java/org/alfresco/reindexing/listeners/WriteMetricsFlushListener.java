@@ -25,13 +25,15 @@
  */
 package org.alfresco.reindexing.listeners;
 
+import java.util.Map;
+
 import org.springframework.batch.core.listener.ItemWriteListener;
 import org.springframework.batch.infrastructure.item.Chunk;
 
-import org.alfresco.metrics.MetricsConstants;
 import org.alfresco.metrics.ReindexingMetrics;
 import org.alfresco.reindexing.config.ReindexingCoreProperties;
 import org.alfresco.reindexing.writers.ChunkWriteMetricsAccumulator;
+import org.alfresco.reindexing.writers.WriterTimingSummary;
 import org.alfresco.repo.event.EventAttributes;
 
 public class WriteMetricsFlushListener implements ItemWriteListener<EventAttributes>
@@ -39,13 +41,15 @@ public class WriteMetricsFlushListener implements ItemWriteListener<EventAttribu
     private final ChunkWriteMetricsAccumulator accumulator;
     private final ReindexingMetrics metrics;
     private final ReindexingCoreProperties reindexProperties;
+    private final WriterTimingSummary writerTimingSummary;
 
     public WriteMetricsFlushListener(ChunkWriteMetricsAccumulator accumulator, ReindexingMetrics metrics,
-            ReindexingCoreProperties reindexProperties)
+            ReindexingCoreProperties reindexProperties, WriterTimingSummary writerTimingSummary)
     {
         this.accumulator = accumulator;
         this.metrics = metrics;
         this.reindexProperties = reindexProperties;
+        this.writerTimingSummary = writerTimingSummary;
     }
 
     @Override
@@ -57,27 +61,24 @@ public class WriteMetricsFlushListener implements ItemWriteListener<EventAttribu
     @Override
     public void afterWrite(Chunk<? extends EventAttributes> items)
     {
-        accumulator.flush(metrics);
+        Map<String, Long> published = accumulator.flush(metrics);
+        if (writerTimingSummary != null && published != null)
+        {
+            published.forEach(writerTimingSummary::record);
+        }
     }
 
     @Override
     public void onWriteError(Exception exception, Chunk<? extends EventAttributes> items)
     {
         // Retries are exhausted and the chunk will not commit. Discard the buffered successes/durations and charge a
-        // whole-chunk failure to every enabled module, so the failed chunk is visible across all writers.
+        // whole-chunk failure to every enabled writer, so the failed chunk is visible across all writers. The enabled
+        // set (merged vs metadata/path, plus content) comes from the single source of truth on the properties.
         accumulator.reset();
         long chunkSize = items.size();
-        if (reindexProperties.isMetadataIndexingEnabled())
+        for (String writerKey : reindexProperties.getEnabledWriterKeys())
         {
-            metrics.reindexWriteFailure(MetricsConstants.METADATA, chunkSize);
-        }
-        if (reindexProperties.isPathIndexingEnabled())
-        {
-            metrics.reindexWriteFailure(MetricsConstants.PATH, chunkSize);
-        }
-        if (reindexProperties.isContentIndexingEnabled())
-        {
-            metrics.reindexWriteFailure(MetricsConstants.CONTENT, chunkSize);
+            metrics.reindexWriteFailure(writerKey, chunkSize);
         }
     }
 }

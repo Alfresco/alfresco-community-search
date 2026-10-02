@@ -140,6 +140,7 @@ public class ContinuousReindexingService implements SmartLifecycle
             do
             {
                 catchingUp = runCycle();
+                monitor.notifyCycleSuccess();
                 if (consecutiveFailureCount.getAndSet(0) > 0)
                 {
                     LOGGER.info("Continuous reindexing recovered after previous failures");
@@ -370,6 +371,7 @@ public class ContinuousReindexingService implements SmartLifecycle
     private void handleCycleFailure(Exception e)
     {
         int failures = consecutiveFailureCount.incrementAndGet();
+        monitor.notifyCycleFailure(failures);
         long backoff = computeBackoff(failures);
         LOGGER.warn("Continuous reindexing cycle failed (consecutiveFailures={}). "
                 + "Next retry in {}ms. Error: {}", failures, backoff, e.getMessage(), e);

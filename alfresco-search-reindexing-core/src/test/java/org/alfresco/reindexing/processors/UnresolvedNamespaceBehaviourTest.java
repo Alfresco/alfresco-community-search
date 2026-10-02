@@ -41,15 +41,11 @@ import java.util.Map;
 import java.util.Set;
 
 import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
 import org.springframework.batch.infrastructure.item.Chunk;
 import org.springframework.batch.infrastructure.item.ExecutionContext;
 
@@ -69,6 +65,7 @@ import org.alfresco.reindexing.config.PrefixNamespaceConfig;
 import org.alfresco.reindexing.config.ReindexingCoreProperties;
 import org.alfresco.reindexing.model.ReindexingEvent;
 import org.alfresco.reindexing.opensearch.ElasticSearchUpdateOperations;
+import org.alfresco.reindexing.util.QNamePrefixResolver;
 import org.alfresco.reindexing.writers.ElasticsearchPathWriter;
 import org.alfresco.repo.event.v1.model.EventData;
 import org.alfresco.repo.event.v1.model.NodeResource;
@@ -104,7 +101,9 @@ class UnresolvedNamespaceBehaviourTest
     @DisplayName("on a property")
     class UnmappedProperty
     {
-        private final LogSpy log = LogSpy.of(AlfrescoNodeProcessor.class);
+        // Reporting lives in QNamePrefixResolver, the single place that decides what an unmapped
+        // namespace means. AlfrescoNodeProcessor only supplies the kind of item being named.
+        private final LogSpy log = LogSpy.of(QNamePrefixResolver.class);
 
         @BeforeEach
         void attach()
@@ -141,7 +140,7 @@ class UnresolvedNamespaceBehaviourTest
     @DisplayName("on an aspect")
     class UnmappedAspect
     {
-        private final LogSpy log = LogSpy.of(AlfrescoNodeProcessor.class);
+        private final LogSpy log = LogSpy.of(QNamePrefixResolver.class);
 
         @BeforeEach
         void attach()
@@ -464,51 +463,5 @@ class UnresolvedNamespaceBehaviourTest
         property.setPropertyKey(key);
         property.setPropertyValue(propertyValue);
         return property;
-    }
-
-    /** Captures logback events for one logger so a test can assert on absence as well as presence. */
-    private static final class LogSpy
-    {
-        private final Logger logger;
-        private final ListAppender<ILoggingEvent> appender = new ListAppender<>();
-        private Level originalLevel;
-
-        private LogSpy(Logger logger)
-        {
-            this.logger = logger;
-        }
-
-        private static LogSpy of(Class<?> loggerClass)
-        {
-            return new LogSpy((Logger) LoggerFactory.getLogger(loggerClass));
-        }
-
-        private static LogSpy ofRoot()
-        {
-            return new LogSpy((Logger) LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME));
-        }
-
-        private void attach()
-        {
-            originalLevel = logger.getLevel();
-            logger.setLevel(Level.TRACE);
-            appender.start();
-            logger.addAppender(appender);
-        }
-
-        private void detach()
-        {
-            logger.detachAppender(appender);
-            logger.setLevel(originalLevel);
-            appender.stop();
-        }
-
-        private List<String> formattedAtOrAbove(Level level)
-        {
-            return appender.list.stream()
-                    .filter(event -> event.getLevel().isGreaterOrEqual(level))
-                    .map(ILoggingEvent::getFormattedMessage)
-                    .toList();
-        }
     }
 }

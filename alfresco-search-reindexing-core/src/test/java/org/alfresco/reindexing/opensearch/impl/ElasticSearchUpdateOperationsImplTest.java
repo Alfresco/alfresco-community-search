@@ -35,11 +35,13 @@ import static org.mockito.Mockito.when;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.ErrorCause;
 import org.opensearch.client.opensearch.core.BulkRequest;
@@ -50,6 +52,7 @@ import org.opensearch.client.opensearch.core.bulk.OperationType;
 import org.alfresco.indexing.shared.ElasticsearchProperties;
 import org.alfresco.indexing.shared.model.NodeResourceDto;
 import org.alfresco.reindexing.opensearch.request.ReindexingRequestBuilder;
+import org.alfresco.reindexing.writers.ReindexPathFieldsBuilder;
 
 /**
  * Focused unit tests for the writer-side retry loop in {@link ElasticSearchUpdateOperationsImpl}. The retry loop is shared by the metadata and path bulk paths; exercising it through {@link ElasticSearchUpdateOperationsImpl#updateElasticSearchWithBulkRequests} (the path-writer entry point) is enough to pin every branch of the classifier + retry contract.
@@ -207,12 +210,71 @@ class ElasticSearchUpdateOperationsImplTest
         }
     }
 
+    @Nested
+    @DisplayName("path scripted-upsert branch")
+    class PathScriptedUpsert
+    {
+        @Test
+        @DisplayName("pathUpsertEnabled=true builds each path update as a scripted upsert with retryOnConflict")
+        void pathUpsertEnabledBuildsScriptedUpsert() throws Exception
+        {
+            ElasticsearchProperties props = mock(ElasticsearchProperties.class);
+            when(props.getRetryOnConflict()).thenReturn(5);
+            ReindexingRequestBuilder builder = mock(ReindexingRequestBuilder.class);
+            ReindexPathFieldsBuilder pathFieldsBuilder = mock(ReindexPathFieldsBuilder.class);
+            var upsertOps = new ElasticSearchUpdateOperationsImpl(openSearchClient, props, builder, true, pathFieldsBuilder);
+            when(openSearchClient.bulk(any(BulkRequest.class))).thenReturn(bulkResponse(successItem("id-1")));
+
+            upsertOps.updateElasticSearchWithBulkRequests(List.of(nodeWithFields("id-1")), 3, 1L);
+
+            ArgumentCaptor<BulkRequest> captor = ArgumentCaptor.forClass(BulkRequest.class);
+            verify(openSearchClient).bulk(captor.capture());
+            var op = captor.getValue().operations().get(0);
+            assertThat(op.isUpdate()).isTrue();
+            // retryOnConflict is set in the SAME branch as the upsert seed, so it is a faithful
+            // discriminator that the scripted-upsert path (upsert + retryOnConflict) was taken: the doc
+            // is seeded on create (no document_missing 404) and version conflicts retry in-place instead
+            // of burning a writer retry round. The upsert body itself has no public getter to assert on.
+            assertThat(op.update().retryOnConflict()).isEqualTo(5);
+        }
+
+        @Test
+        @DisplayName("pathUpsert disabled builds a plain scripted update (no upsert, no retryOnConflict)")
+        void pathUpsertDisabledBuildsPlainUpdate() throws Exception
+        {
+            ElasticsearchProperties props = mock(ElasticsearchProperties.class);
+            ReindexingRequestBuilder builder = mock(ReindexingRequestBuilder.class);
+            var plainOps = new ElasticSearchUpdateOperationsImpl(openSearchClient, props, builder);
+            when(openSearchClient.bulk(any(BulkRequest.class))).thenReturn(bulkResponse(successItem("id-1")));
+
+            plainOps.updateElasticSearchWithBulkRequests(List.of(nodeWithFields("id-1")), 3, 1L);
+
+            ArgumentCaptor<BulkRequest> captor = ArgumentCaptor.forClass(BulkRequest.class);
+            verify(openSearchClient).bulk(captor.capture());
+            var op = captor.getValue().operations().get(0);
+            assertThat(op.isUpdate()).isTrue();
+            // No upsert branch taken: retryOnConflict stays null, matching the historical plain path-update.
+            assertThat(op.update().retryOnConflict()).isNull();
+        }
+    }
+
     private static NodeResourceDto node(String id)
     {
         NodeResourceDto dto = new NodeResourceDto();
         dto.setResourceId(id);
         dto.setIndexName(INDEX);
         dto.setFields(new HashMap<>());
+        return dto;
+    }
+
+    private static NodeResourceDto nodeWithFields(String id)
+    {
+        NodeResourceDto dto = new NodeResourceDto();
+        dto.setResourceId(id);
+        dto.setIndexName(INDEX);
+        Map<String, Object> fields = new HashMap<>();
+        fields.put("PATH", List.of("/a/b"));
+        dto.setFields(fields);
         return dto;
     }
 

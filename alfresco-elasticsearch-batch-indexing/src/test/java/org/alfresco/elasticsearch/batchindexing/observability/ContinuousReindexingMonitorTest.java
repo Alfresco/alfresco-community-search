@@ -98,6 +98,73 @@ class ContinuousReindexingMonitorTest
     }
 
     @Test
+    @DisplayName("repeated cycle failures — DOWN with state=failing, even while activity keeps ticking")
+    void repeatedCycleFailuresReportDown()
+    {
+        ContinuousReindexingMonitor monitor = newMonitor();
+
+        // Every failed cycle still ticks activity, which is why the idle-based check alone sees nothing wrong.
+        for (int failures = 1; failures <= 3; failures++)
+        {
+            monitor.notifyCycleStart();
+            monitor.notifyCycleFailure(failures);
+            monitor.notifyCycleEnd();
+        }
+
+        Health health = monitor.health();
+
+        assertThat(health.getStatus()).isEqualTo(Status.DOWN);
+        assertThat(health.getDetails()).containsEntry("state", "failing");
+        assertThat(health.getDetails()).containsEntry("consecutiveFailures", 3);
+    }
+
+    @Test
+    @DisplayName("failures below the limit stay UP — a transient blip must not flap the probe")
+    void failuresBelowTheLimitStayUp()
+    {
+        ContinuousReindexingMonitor monitor = newMonitor();
+        monitor.notifyCycleStart();
+        monitor.notifyCycleFailure(1);
+        monitor.notifyCycleEnd();
+        monitor.notifyCycleStart();
+        monitor.notifyCycleFailure(2);
+        monitor.notifyCycleEnd();
+
+        Health health = monitor.health();
+
+        assertThat(health.getStatus()).isEqualTo(Status.UP);
+        assertThat(health.getDetails()).containsEntry("state", "progressing");
+    }
+
+    @Test
+    @DisplayName("a successful cycle clears the failure state")
+    void successClearsTheFailureState()
+    {
+        ContinuousReindexingMonitor monitor = newMonitor();
+        monitor.notifyCycleStart();
+        monitor.notifyCycleFailure(3);
+        monitor.notifyCycleEnd();
+        assertThat(monitor.health().getStatus()).isEqualTo(Status.DOWN);
+
+        monitor.notifyCycleSuccess();
+
+        assertThat(monitor.health().getStatus()).isEqualTo(Status.UP);
+    }
+
+    @Test
+    @DisplayName("a limit of zero disables the check")
+    void zeroLimitDisablesTheCheck()
+    {
+        properties.setUnhealthyAfterConsecutiveFailures(0);
+        ContinuousReindexingMonitor monitor = newMonitor();
+        monitor.notifyCycleStart();
+        monitor.notifyCycleFailure(99);
+        monitor.notifyCycleEnd();
+
+        assertThat(monitor.health().getStatus()).isEqualTo(Status.UP);
+    }
+
+    @Test
     @DisplayName("recordActivity refreshes the heartbeat — recovers from near-stuck")
     void recordActivityRefreshes()
     {

@@ -97,6 +97,12 @@ public class AlfrescoNodeToReindexingEventProcessor extends AlfrescoNodeProcesso
         {
             return buildEvent(node);
         }
+        catch (UnresolvedNamespaceException expected)
+        {
+            // Already reported at WARN with the URI, the kind and the name, and the configured
+            // policy chose to fail the item. A second line with a stack trace is noise.
+            throw expected;
+        }
         catch (RuntimeException exception)
         {
             LOGGER.error("impossible to get event for node "

@@ -28,6 +28,7 @@ package org.alfresco.elasticsearch.batchindexing.observability;
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.LongSupplier;
@@ -42,9 +43,13 @@ import org.alfresco.elasticsearch.batchindexing.config.ContinuousReindexingPrope
 /**
  * Observability hub for the continuous reindexing scheduler. The scheduling service calls {@code notify*} methods at cycle and job boundaries; the monitor records heartbeats for its own {@link HealthIndicator} view and fans the event out to registered {@link ReindexCycleListener}s (e.g. {@code CascadeSweepService}).
  * <p>
- * Reports DOWN when no sign of life has been seen within {@code alfresco.reindex.continuous.stuckThreshold}. Signs of life are cycle start/end, job start/success/end, and each committed chunk (fed in via {@link #recordActivity()} from {@code ProgressHeartbeatListener}).
+ * Reports DOWN in two independent cases.
  * <p>
- * {@link #health()} is a non-blocking read of two {@link AtomicLong}s, so a stuck scheduler thread does not block this indicator from answering.
+ * {@code state=stuck} — no sign of life within {@code alfresco.reindex.continuous.stuckThreshold}. Signs of life are cycle start/end, job start/success/end, and each committed chunk (fed in via {@link #recordActivity()} from {@code ProgressHeartbeatListener}).
+ * <p>
+ * {@code state=failing} — at least {@code alfresco.reindex.continuous.unhealthyAfterConsecutiveFailures} cycles have failed in a row. Idleness alone cannot see this: a failing cycle still ticks activity, and the retry backoff caps below {@code stuckThreshold}, so an indexer that is getting nowhere never looks idle. Zero disables this check.
+ * <p>
+ * {@link #health()} is a non-blocking read of two {@link AtomicLong}s and one {@link AtomicInteger}, so a stuck scheduler thread does not block this indicator from answering.
  */
 public class ContinuousReindexingMonitor implements HealthIndicator
 {
@@ -56,6 +61,7 @@ public class ContinuousReindexingMonitor implements HealthIndicator
 
     private final AtomicLong lastActivityAtEpochMillis = new AtomicLong();
     private final AtomicLong lastCycleFinishedAtEpochMillis = new AtomicLong();
+    private final AtomicInteger consecutiveCycleFailures = new AtomicInteger();
 
     public ContinuousReindexingMonitor(ContinuousReindexingProperties properties,
             List<ReindexCycleListener> listeners)
@@ -84,6 +90,17 @@ public class ContinuousReindexingMonitor implements HealthIndicator
         lastActivityAtEpochMillis.set(now);
         lastCycleFinishedAtEpochMillis.set(now);
         invokeListeners("onCycleEnd", ReindexCycleListener::onCycleEnd);
+    }
+
+    /** Mirrors the service's own counter so health can see a cycle that keeps failing. */
+    public void notifyCycleFailure(int consecutiveFailures)
+    {
+        consecutiveCycleFailures.set(consecutiveFailures);
+    }
+
+    public void notifyCycleSuccess()
+    {
+        consecutiveCycleFailures.set(0);
     }
 
     public void notifyJobStart()
@@ -141,6 +158,19 @@ public class ContinuousReindexingMonitor implements HealthIndicator
             return Health.up()
                     .withDetail("state", "starting")
                     .withDetail("stuckThreshold", threshold.toString())
+                    .build();
+        }
+
+        int failures = consecutiveCycleFailures.get();
+        int failureLimit = properties.getUnhealthyAfterConsecutiveFailures();
+        if (failureLimit > 0 && failures >= failureLimit)
+        {
+            // Deliberately checked before the idle test: a failing cycle ticks activity every time,
+            // so it never looks idle however long it has been getting nowhere.
+            return Health.down()
+                    .withDetail("state", "failing")
+                    .withDetail("consecutiveFailures", failures)
+                    .withDetail("unhealthyAfterConsecutiveFailures", failureLimit)
                     .build();
         }
 

@@ -40,6 +40,8 @@ import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.TYPE_DELE
 import java.util.Map;
 import java.util.Set;
 
+import ch.qos.logback.classic.Level;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -206,6 +208,71 @@ class UnresolvedNamespaceReportingTest
             when(node.getType()).thenReturn(QName.newTransientInstance(CM_URI, "content"));
 
             assertThatCode(() -> process(node, UnresolvedNamespaceAction.SKIP)).doesNotThrowAnyException();
+        }
+    }
+
+    /**
+     * An unresolved namespace is expected, deterministic and already reported at WARN with the URI, the kind and the name. The generic catch-all in {@code process()} must not add a second line at ERROR with a stack trace on top of it, or the quieter default mode and the louder ones disagree about severity for identical data loss.
+     */
+    @Nested
+    @DisplayName("log noise")
+    class LogNoise
+    {
+        private final LogSpy anywhere = LogSpy.ofRoot();
+
+        @BeforeEach
+        void attach()
+        {
+            anywhere.attach();
+        }
+
+        @AfterEach
+        void detach()
+        {
+            anywhere.detach();
+        }
+
+        @Test
+        @DisplayName("filter reports the loss without logging an ERROR")
+        void filterLogsNoError()
+        {
+            process(nodeOfCustomType(), UnresolvedNamespaceAction.FILTER);
+
+            assertThat(anywhere.formattedAtOrAbove(Level.WARN)).isNotEmpty();
+            assertThat(anywhere.formattedAtOrAbove(Level.ERROR)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("skip reports the same loss, without adding an ERROR")
+        void skipLogsNoError()
+        {
+            assertThatThrownBy(() -> process(nodeOfCustomType(), UnresolvedNamespaceAction.SKIP))
+                    .isInstanceOf(UnresolvedNamespaceException.class);
+
+            assertThat(anywhere.formattedAtOrAbove(Level.ERROR)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("stop reports the same loss, without adding an ERROR")
+        void stopLogsNoError()
+        {
+            assertThatThrownBy(() -> process(nodeOfCustomType(), UnresolvedNamespaceAction.STOP))
+                    .isInstanceOf(UnresolvedNamespaceException.class);
+
+            assertThat(anywhere.formattedAtOrAbove(Level.ERROR)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("an unexpected failure is still logged at ERROR")
+        void unexpectedFailureStillLogsAnError()
+        {
+            AlfrescoNode exploding = nodeOfCustomType();
+            when(exploding.getNodeProperties()).thenThrow(new IllegalStateException("boom"));
+
+            assertThatThrownBy(() -> process(exploding, UnresolvedNamespaceAction.FILTER))
+                    .isInstanceOf(IllegalStateException.class);
+
+            assertThat(anywhere.formattedAtOrAbove(Level.ERROR)).isNotEmpty();
         }
     }
 

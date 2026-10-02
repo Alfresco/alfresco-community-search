@@ -40,9 +40,12 @@ import org.alfresco.indexing.shared.opensearch.ElasticsearchContentModifyPort;
 import org.alfresco.indexing.shared.opensearch.adapter.OpensearchContentModifier;
 import org.alfresco.indexing.shared.opensearch.adapter.OpensearchUpdater;
 import org.alfresco.indexing.shared.opensearch.request.ContentRequestBuilder;
+import org.alfresco.metrics.ReindexingMetrics;
 import org.alfresco.reindexing.opensearch.ElasticSearchUpdateOperations;
 import org.alfresco.reindexing.opensearch.impl.ElasticSearchUpdateOperationsImpl;
 import org.alfresco.reindexing.opensearch.request.ReindexingRequestBuilder;
+import org.alfresco.reindexing.writers.FailureSummary;
+import org.alfresco.reindexing.writers.ReindexPathFieldsBuilder;
 
 @Configuration
 @Import(MultilingualSupportSharedConfig.class)
@@ -65,10 +68,27 @@ public class ElasticSearchReIndexConfig
     }
 
     @Bean
-    public ElasticSearchUpdateOperations elasticSearchUpdateOperations(OpenSearchClient opensearchClient, ElasticsearchProperties elasticsearchProperties,
-            ReindexingRequestBuilder reindexingRequestBuilder)
+    public ReindexPathFieldsBuilder reindexPathFieldsBuilder(
+            ElasticsearchProperties elasticsearchProperties,
+            PrefixNamespaceConfig prefixNamespaceConfig,
+            ReindexingMetrics reindexingMetrics)
     {
-        return new ElasticSearchUpdateOperationsImpl(opensearchClient, elasticsearchProperties, reindexingRequestBuilder);
+        return new ReindexPathFieldsBuilder(elasticsearchProperties, prefixNamespaceConfig, reindexingMetrics);
+    }
+
+    @Bean
+    public FailureSummary failureSummary(ReindexingCoreProperties reindexingProperties)
+    {
+        return new FailureSummary(reindexingProperties.isFailureSummaryLogEnabled());
+    }
+
+    @Bean
+    public ElasticSearchUpdateOperations elasticSearchUpdateOperations(OpenSearchClient opensearchClient, ElasticsearchProperties elasticsearchProperties,
+            ReindexingRequestBuilder reindexingRequestBuilder, ReindexingCoreProperties reindexingProperties,
+            ReindexPathFieldsBuilder reindexPathFieldsBuilder, FailureSummary failureSummary)
+    {
+        return new ElasticSearchUpdateOperationsImpl(opensearchClient, elasticsearchProperties, reindexingRequestBuilder,
+                reindexingProperties.isPathUpsertEffective(), reindexPathFieldsBuilder, failureSummary);
     }
 
     @Bean

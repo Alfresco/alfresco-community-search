@@ -28,6 +28,8 @@ package org.alfresco.elasticsearch.batchindexing.listeners;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import java.util.Set;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -36,6 +38,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import org.alfresco.database.connector.NodeParams;
 import org.alfresco.elasticsearch.batchindexing.DlqWriter;
+import org.alfresco.elasticsearch.batchindexing.model.DeadLetterDocument.FailureStage;
 
 @ExtendWith(MockitoExtension.class)
 class DlqPageReadFailureListenerTest
@@ -69,6 +72,21 @@ class DlqPageReadFailureListenerTest
 
         listener.onPageReadFailure("reindexingByIdReader", params, new RuntimeException("bad row"));
 
+        verify(dlqWriter, never()).recordWindowFailure(anyLong(), anyLong(), any());
+    }
+
+    @Test
+    void recordsOneSkipPerIdWhenPageIsIdShaped()
+    {
+        // One record per id so the drain's cleanup sees the failureCount rise on the very
+        // entries it is about to evaluate.
+        RuntimeException cause = new RuntimeException("connection reset");
+        NodeParams params = NodeParams.searchByIds(Set.of(42L, 99L));
+
+        listener.onPageReadFailure("reindexDlqReader", params, cause);
+
+        verify(dlqWriter).recordSkip(42L, null, null, FailureStage.READER, cause);
+        verify(dlqWriter).recordSkip(99L, null, null, FailureStage.READER, cause);
         verify(dlqWriter, never()).recordWindowFailure(anyLong(), anyLong(), any());
     }
 

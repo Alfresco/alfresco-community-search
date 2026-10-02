@@ -25,9 +25,9 @@
  */
 package org.alfresco.reindexing.config.utils;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Answers.RETURNS_SELF;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -35,15 +35,21 @@ import static org.mockito.Mockito.when;
 
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.batch.core.listener.SkipListener;
 import org.springframework.batch.core.step.builder.ChunkOrientedStepBuilder;
+import org.springframework.batch.core.step.skip.LimitCheckingItemSkipPolicy;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.core.retry.RetryPolicy;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.backoff.ExponentialBackOff;
 
 import org.alfresco.metrics.ReindexingMetrics;
 import org.alfresco.reindexing.config.ReindexingCoreProperties;
+import org.alfresco.reindexing.processors.UnresolvedNamespaceException;
+import org.alfresco.reindexing.writers.TerminalWriteFailureException;
 
 class StepConfigurerTest
 {
@@ -58,8 +64,7 @@ class StepConfigurerTest
         StepConfigurer.withRetryingAndMultithreadSettings(builder, STEP_NAME, props, backOff(), executor(), metrics());
 
         verify(builder).retry(Exception.class);
-        verify(builder, never()).skip(any(Class.class));
-        verify(builder, never()).skipLimit(anyLong());
+        verify(builder, never()).skipPolicy(any());
         verify(builder, never()).skipListener(any());
     }
 
@@ -73,8 +78,7 @@ class StepConfigurerTest
         StepConfigurer.withRetrySkipAndMultithreadSettings(builder, STEP_NAME, props, backOff(), executor(), metrics(), provider);
 
         verify(builder).retry(Exception.class);
-        verify(builder).skip(Exception.class);
-        verify(builder).skipLimit(100L);
+        verify(builder).skipPolicy(any(LimitCheckingItemSkipPolicy.class));
         verify(builder, never()).skipListener(any());
     }
 
@@ -102,8 +106,7 @@ class StepConfigurerTest
         StepConfigurer.withRetrySkipAndMultithreadSettings(builder, STEP_NAME, props, backOff(), executor(), metrics(), provider);
 
         verify(builder).retry(Exception.class);
-        verify(builder, never()).skip(any(Class.class));
-        verify(builder, never()).skipLimit(anyLong());
+        verify(builder, never()).skipPolicy(any());
         verify(builder, never()).skipListener(any());
     }
 
@@ -117,8 +120,25 @@ class StepConfigurerTest
         StepConfigurer.withRetrySkipAndMultithreadSettings(builder, STEP_NAME, props, backOff(), executor(), metrics(), provider);
 
         verify(builder, never()).retry(any(Class.class));
-        verify(builder).skip(Exception.class);
-        verify(builder).skipLimit(100L);
+        verify(builder).skipPolicy(any(LimitCheckingItemSkipPolicy.class));
+    }
+
+    @Test
+    @DisplayName("a terminal write failure is not retried: the writer already exhausted its own retries")
+    void terminalWriteFailureIsNotRetried()
+    {
+        var builder = mock(ChunkOrientedStepBuilder.class, RETURNS_SELF);
+
+        StepConfigurer.withRetryingAndMultithreadSettings(builder, STEP_NAME, props(true, 100), backOff(), executor(), metrics());
+
+        ArgumentCaptor<RetryPolicy> policy = ArgumentCaptor.forClass(RetryPolicy.class);
+        verify(builder).retryPolicy(policy.capture());
+
+        // A transient fault is worth another chunk attempt.
+        assertThat(policy.getValue().shouldRetry(new RuntimeException("connection reset"))).isTrue();
+        // These two are deterministic: retrying only repeats the writes that already succeeded.
+        assertThat(policy.getValue().shouldRetry(new UnresolvedNamespaceException(1L, "http://acme", "foo", true))).isFalse();
+        assertThat(policy.getValue().shouldRetry(new TerminalWriteFailureException("metadata", 3))).isFalse();
     }
 
     private static ReindexingMetrics metrics()

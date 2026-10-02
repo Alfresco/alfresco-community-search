@@ -33,8 +33,10 @@ import org.alfresco.metrics.ReindexingMetrics;
 import org.alfresco.reindexing.opensearch.ElasticSearchUpdateOperations;
 import org.alfresco.reindexing.writers.BulkItemFailureListener;
 import org.alfresco.reindexing.writers.ChunkWriteMetricsAccumulator;
+import org.alfresco.reindexing.writers.ElasticsearchMergedReindexWriter;
 import org.alfresco.reindexing.writers.ElasticsearchPathWriter;
 import org.alfresco.reindexing.writers.ElasticsearchRepoEventItemWriter;
+import org.alfresco.reindexing.writers.MergedBulkItemFailureListener;
 import org.alfresco.reindexing.writers.PathBulkItemFailureListener;
 
 /**
@@ -69,5 +71,18 @@ public class ReindexWriterConfig
         return new ElasticsearchPathWriter(elasticsearchProperties, elasticsearchReindexProperties,
                 prefixNamespaceConfig, elasticSearchUpdateOperations, chunkWriteMetricsAccumulator,
                 failureListener.getIfAvailable(), reindexingMetrics);
+    }
+
+    @Bean(destroyMethod = "")
+    public ElasticsearchMergedReindexWriter elasticsearchMergedReindexWriter(
+            ElasticSearchUpdateOperations elasticSearchUpdateOperations,
+            ReindexingCoreProperties elasticsearchReindexProperties,
+            ChunkWriteMetricsAccumulator chunkWriteMetricsAccumulator,
+            ObjectProvider<MergedBulkItemFailureListener> failureListener)
+    {
+        // ObjectProvider keeps the listener optional — the reindexing module ships without a bean,
+        // batch-indexing registers one to feed its DLQ.
+        return new ElasticsearchMergedReindexWriter(elasticSearchUpdateOperations, elasticsearchReindexProperties,
+                chunkWriteMetricsAccumulator, failureListener.getIfAvailable());
     }
 }

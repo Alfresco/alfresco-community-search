@@ -27,9 +27,14 @@
 package org.alfresco.reindexing.opensearch.impl;
 
 import static org.alfresco.indexing.shared.utils.EsScriptUtils.reindexingUpdateScriptSource;
+import static org.alfresco.repo.event.v1.model.EventType.NODE_CREATED;
+import static org.alfresco.repo.event.v1.model.EventType.NODE_DELETED;
+import static org.alfresco.repo.event.v1.model.EventType.NODE_UPDATED;
+import static org.alfresco.repo.event.v1.model.EventType.PERMISSION_UPDATED;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -58,8 +63,11 @@ import org.alfresco.indexing.shared.model.BulkItemFailure;
 import org.alfresco.indexing.shared.model.BulkRequestDto;
 import org.alfresco.indexing.shared.model.NodeResourceDto;
 import org.alfresco.indexing.shared.utils.EsScriptUtils;
+import org.alfresco.reindexing.model.ReindexingEvent;
 import org.alfresco.reindexing.opensearch.ElasticSearchUpdateOperations;
 import org.alfresco.reindexing.opensearch.request.ReindexingRequestBuilder;
+import org.alfresco.reindexing.writers.FailureSummary;
+import org.alfresco.reindexing.writers.ReindexPathFieldsBuilder;
 import org.alfresco.repo.event.v1.model.RepoEvent;
 
 @Slf4j
@@ -72,12 +80,45 @@ public class ElasticSearchUpdateOperationsImpl implements ElasticSearchUpdateOpe
 
     private final ReindexingRequestBuilder reindexingRequestBuilder;
 
+    /**
+     * When true the path bulk is built as a scripted upsert so it no longer fails with {@code document_missing_exception} if the metadata document is not yet present.
+     */
+    private final boolean pathUpsertEnabled;
+
+    /**
+     * Builds the path field set. Only required for {@link #getMergedBulkRequest}; nullable for the metadata/path-only entry points (and their unit tests).
+     */
+    private final ReindexPathFieldsBuilder reindexPathFieldsBuilder;
+
+    /**
+     * Aggregates terminal bulk-item failures by writer + error type for the end-of-step failure summary. Nullable (defaults to a disabled instance) so existing constructors and unit tests are unaffected.
+     */
+    private final FailureSummary failureSummary;
+
     public ElasticSearchUpdateOperationsImpl(OpenSearchClient openSearchClient,
             ElasticsearchProperties elasticsearchProperties, ReindexingRequestBuilder reindexingRequestBuilder)
+    {
+        this(openSearchClient, elasticsearchProperties, reindexingRequestBuilder, false, null);
+    }
+
+    public ElasticSearchUpdateOperationsImpl(OpenSearchClient openSearchClient,
+            ElasticsearchProperties elasticsearchProperties, ReindexingRequestBuilder reindexingRequestBuilder,
+            boolean pathUpsertEnabled, ReindexPathFieldsBuilder reindexPathFieldsBuilder)
+    {
+        this(openSearchClient, elasticsearchProperties, reindexingRequestBuilder, pathUpsertEnabled,
+                reindexPathFieldsBuilder, null);
+    }
+
+    public ElasticSearchUpdateOperationsImpl(OpenSearchClient openSearchClient,
+            ElasticsearchProperties elasticsearchProperties, ReindexingRequestBuilder reindexingRequestBuilder,
+            boolean pathUpsertEnabled, ReindexPathFieldsBuilder reindexPathFieldsBuilder, FailureSummary failureSummary)
     {
         this.openSearchClient = openSearchClient;
         this.elasticsearchProperties = elasticsearchProperties;
         this.reindexingRequestBuilder = reindexingRequestBuilder;
+        this.pathUpsertEnabled = pathUpsertEnabled;
+        this.reindexPathFieldsBuilder = reindexPathFieldsBuilder;
+        this.failureSummary = failureSummary != null ? failureSummary : new FailureSummary(false);
     }
 
     @Override
@@ -161,6 +202,69 @@ public class ElasticSearchUpdateOperationsImpl implements ElasticSearchUpdateOpe
         return dto;
     }
 
+    @Override
+    @SuppressWarnings("rawtypes")
+    public BulkRequestDto getMergedBulkRequest(List<ReindexingEvent> events, long reindexingStartTime, int retryCount,
+            long retryDelay) throws IOException, InterruptedException
+    {
+        if (reindexPathFieldsBuilder == null)
+        {
+            throw new IllegalStateException(
+                    "Merged reindex writer requires a ReindexPathFieldsBuilder; none was configured.");
+        }
+        BulkRequestDto dto = new BulkRequestDto();
+        List<BulkOperation> ops = new ArrayList<>();
+        int nodeCount = 0;
+        for (ReindexingEvent event : events)
+        {
+            RepoEvent repoEvent = event.getRepoEvent();
+            String eventType = repoEvent.getType();
+            if (isMetadataUpsertType(eventType))
+            {
+                // One scripted upsert carrying BOTH metadata and path fields. Both writers already
+                // targeted the same document id under the same (metadata-timestamp) guard, so folding
+                // the field sets is behaviour-preserving; putting the path fields last mirrors the
+                // sequential order (path writer ran after metadata) for any overlapping keys.
+                Map<String, Object> combinedFields = new HashMap<>(
+                        reindexingRequestBuilder.buildMetadataFields(repoEvent, reindexingStartTime));
+                if (event.getAllPaths() != null)
+                {
+                    combinedFields.putAll(reindexPathFieldsBuilder.buildFields(event, reindexingStartTime));
+                }
+                ops.add(reindexingRequestBuilder.buildReindexUpsertOperation(repoEvent, combinedFields));
+                reindexingRequestBuilder.buildContentUpsertOperation(repoEvent).ifPresent(ops::add);
+                nodeCount++;
+            }
+            else if (NODE_DELETED.getType().equals(eventType))
+            {
+                ops.add(reindexingRequestBuilder.buildDeleteOperation(repoEvent));
+                nodeCount++;
+            }
+            else
+            {
+                log.warn("Not supported eventType found in event '{}'", repoEvent);
+            }
+        }
+        dto.setNumberOfActions(nodeCount);
+        if (ops.isEmpty())
+        {
+            return dto;
+        }
+        if (log.isTraceEnabled())
+        {
+            log.trace("Sending merged metadata+path bulk request containing {} actions for {} nodes", ops.size(), nodeCount);
+        }
+        writeWithRetry(dto, ops, retryCount, retryDelay, "merged");
+        return dto;
+    }
+
+    private static boolean isMetadataUpsertType(String eventType)
+    {
+        return NODE_CREATED.getType().equals(eventType)
+                || NODE_UPDATED.getType().equals(eventType)
+                || PERMISSION_UPDATED.getType().equals(eventType);
+    }
+
     private Map<String, UpdateRequest> buildRequestMap(List<NodeResourceDto> items)
     {
         return items.stream()
@@ -171,10 +275,21 @@ public class ElasticSearchUpdateOperationsImpl implements ElasticSearchUpdateOpe
     private UpdateRequest createUpdateRequest(NodeResourceDto nodeResourceDto)
     {
         var script = EsScriptUtils.buildInlineScript(nodeResourceDto.getFields(), reindexingUpdateScriptSource(nodeResourceDto.getFields().keySet()));
-        return new UpdateRequest.Builder<>().index(nodeResourceDto.getIndexName())
+        var builder = new UpdateRequest.Builder<>().index(nodeResourceDto.getIndexName())
                 .id(nodeResourceDto.getResourceId())
-                .script(script)
-                .build();
+                .script(script);
+        if (pathUpsertEnabled)
+        {
+            // Seed the doc with the path fields on create (upsert) so an update against a
+            // not-yet-created document does not fail with document_missing_exception, and let ES
+            // retry version conflicts (metadata + path racing on the same doc) in-place via
+            // retryOnConflict instead of consuming a full writer retry round. Note the update path
+            // still uses reindexingUpdateScriptSource (guarded by the metadata timestamp), i.e. the
+            // pre-existing reindex path-update behaviour; only the upsert/retryOnConflict is added here.
+            builder.upsert(nodeResourceDto.getFields())
+                    .retryOnConflict(elasticsearchProperties.getRetryOnConflict());
+        }
+        return builder.build();
     }
 
     /**
@@ -190,14 +305,27 @@ public class ElasticSearchUpdateOperationsImpl implements ElasticSearchUpdateOpe
             return dto;
         }
         List<BulkOperation> ops = updateRequestMap.values().stream()
-                .map(request -> new UpdateOperation.Builder<>()
-                        .id(request.id())
-                        .index(request.index())
-                        .script(request.script())
-                        .build()._toBulkOperation())
+                .map(this::toBulkOperation)
                 .toList();
         writeWithRetry(dto, ops, retryCount, retryDelay, "path");
         return dto;
+    }
+
+    private BulkOperation toBulkOperation(UpdateRequest request)
+    {
+        var builder = new UpdateOperation.Builder<>()
+                .id(request.id())
+                .index(request.index())
+                .script(request.script());
+        if (request.upsert() != null)
+        {
+            builder.upsert(request.upsert());
+        }
+        if (request.retryOnConflict() != null)
+        {
+            builder.retryOnConflict(request.retryOnConflict());
+        }
+        return builder.build()._toBulkOperation();
     }
 
     /**
@@ -263,7 +391,7 @@ public class ElasticSearchUpdateOperationsImpl implements ElasticSearchUpdateOpe
         dto.setInitialFailuresCount(firstRoundErrorsCount);
     }
 
-    private static void recordFailure(BulkRequestDto dto, BulkResponseItem item, String label, int round)
+    private void recordFailure(BulkRequestDto dto, BulkResponseItem item, String label, int round)
     {
         ErrorCause errorCause = item.error();
         log.warn("Node {} {} bulk failure (round {}, terminal): {}.",
@@ -272,6 +400,7 @@ public class ElasticSearchUpdateOperationsImpl implements ElasticSearchUpdateOpe
         {
             log.debug("{} bulk error cause: {}", label, errorCause.toJsonString());
         }
+        failureSummary.record(label, errorCause.type());
         dto.addFailure(new BulkItemFailure(item.id(), errorCause.type(), errorCause.reason()));
     }
 

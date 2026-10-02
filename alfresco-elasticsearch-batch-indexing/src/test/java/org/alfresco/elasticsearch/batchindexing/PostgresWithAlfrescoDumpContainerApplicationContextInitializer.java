@@ -42,7 +42,7 @@ public class PostgresWithAlfrescoDumpContainerApplicationContextInitializer impl
 {
 
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>(parse("postgres:16.5").asCompatibleSubstituteFor("postgres"))
-            .withFileSystemBind("src/test/resources/docker/alfresco-dump.sql",
+            .withFileSystemBind("../alfresco-elasticsearch-reindexing/src/main/docker/alfresco-dump.sql",
                     "/docker-entrypoint-initdb.d/init-postgres.sql", BindMode.READ_ONLY)
             .withPassword("alfresco")
             .withUsername("alfresco")

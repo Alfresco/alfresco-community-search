@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -68,7 +69,15 @@ public class ElasticsearchRepoEventItemWriter implements ItemStreamWriter<Reinde
 
     private final AtomicLong totalIndexedCounter = new AtomicLong();
     private final AtomicLong totalFailedCounter = new AtomicLong();
-    private ExecutionContext executionContext;
+    // Baseline snapshots taken in open() so close() can report only this step run's delta. We snapshot rather
+    // than reset the cumulative counters because in local partitioning a single writer instance is shared by
+    // several partition worker steps running concurrently; a destructive reset in one partition's open() would
+    // wipe another partition's in-flight counts. addAndGet on the cumulative counters stays atomic, so no count
+    // is ever lost; the close() delta is exact for single-step JVMs (standalone/manager/worker) and a safe
+    // aggregate under concurrent local partitions.
+    private final AtomicLong indexedAtOpen = new AtomicLong();
+    private final AtomicLong failedAtOpen = new AtomicLong();
+    private volatile ExecutionContext executionContext;
 
     public ElasticsearchRepoEventItemWriter(ElasticSearchUpdateOperations elasticSearchUpdateOperations,
             ReindexingCoreProperties elasticsearchReindexProperties)
@@ -110,7 +119,7 @@ public class ElasticsearchRepoEventItemWriter implements ItemStreamWriter<Reinde
         long failuresCount = bulkRequestDto.getFailuresCount();
         if (bulkRequestDto.getNumberOfActions() > 0)
         {
-            long failedNodes = Math.min(failuresCount, chunk.size());
+            long failedNodes = Math.min(failedNodeCount(bulkRequestDto.getFailures()), chunk.size());
             long successCount = chunk.size() - failedNodes;
             totalIndexedCounter.addAndGet(successCount);
             totalFailedCounter.addAndGet(failedNodes);
@@ -125,7 +134,34 @@ public class ElasticsearchRepoEventItemWriter implements ItemStreamWriter<Reinde
                         + "These nodes are recorded per-item on the returned DTO for observability sinks (e.g. DLQ).",
                         failuresCount);
                 dispatchFailures(items, bulkRequestDto.getFailures());
+                failIfUnhandled(failuresCount, "metadata");
             }
+        }
+    }
+
+    /**
+     * Count failed <em>nodes</em>, not failed bulk operations: one node emits a metadata and a content op under the same document id, so a node failing both would otherwise count twice. A failure with no document id can't be attributed, so each counts as its own node rather than being dropped from the total.
+     */
+    private static long failedNodeCount(List<BulkItemFailure> failures)
+    {
+        long unattributed = failures.stream().filter(failure -> failure.documentId() == null).count();
+        long distinctNodes = failures.stream()
+                .map(BulkItemFailure::documentId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .count();
+        return distinctNodes + unattributed;
+    }
+
+    /**
+     * Fail the chunk when per-item bulk failures remain and no dead-letter listener is configured, so the reindex ends FAILED rather than silently dropping the nodes. Gated by {@code alfresco.reindex.failOnTerminalWriteErrors}; a no-op when a listener is present or the flag is off.
+     */
+    private void failIfUnhandled(long failuresCount, String stage)
+    {
+        if (failuresCount > 0 && failureListener == null
+                && elasticsearchReindexProperties.isFailOnTerminalWriteErrors())
+        {
+            throw new TerminalWriteFailureException(stage, failuresCount);
         }
     }
 
@@ -194,6 +230,10 @@ public class ElasticsearchRepoEventItemWriter implements ItemStreamWriter<Reinde
     public void open(ExecutionContext executionContext) throws ItemStreamException
     {
         this.executionContext = executionContext;
+        // Snapshot the cumulative counters at the start of this run (non-destructive; see field comment) so the
+        // totals logged in close() cover only this run rather than the writer instance's whole lifetime.
+        indexedAtOpen.set(totalIndexedCounter.get());
+        failedAtOpen.set(totalFailedCounter.get());
     }
 
     @Override
@@ -205,7 +245,7 @@ public class ElasticsearchRepoEventItemWriter implements ItemStreamWriter<Reinde
     @Override
     public void close() throws ItemStreamException
     {
-        LOGGER.info("Total number of indexed nodes (includes retried items) {} ", totalIndexedCounter.get());
-        LOGGER.info("Total number of failed nodes (includes retried items) {} ", totalFailedCounter.get());
+        LOGGER.info("Total number of indexed nodes (includes retried items) {} ", totalIndexedCounter.get() - indexedAtOpen.get());
+        LOGGER.info("Total number of failed nodes (includes retried items) {} ", totalFailedCounter.get() - failedAtOpen.get());
     }
 }

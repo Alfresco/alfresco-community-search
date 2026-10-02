@@ -27,13 +27,16 @@ package org.alfresco.elasticsearch.batchindexing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -43,13 +46,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import org.alfresco.database.connector.AlfrescoMetadataRepository;
+import org.alfresco.database.connector.NodeParams;
 import org.alfresco.elasticsearch.batchindexing.DlqReader.DlqEntry;
 import org.alfresco.elasticsearch.batchindexing.config.DlqRecoveryProperties;
 import org.alfresco.elasticsearch.batchindexing.listeners.DlqPageReadFailureListener;
 import org.alfresco.elasticsearch.batchindexing.model.DeadLetterDocument;
-import org.alfresco.elasticsearch.batchindexing.model.DeadLetterDocument.FailureStage;
-import org.alfresco.elasticsearch.batchindexing.readers.AlfrescoExplicitIdSetItemReader;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("DlqDrainService")
@@ -60,9 +61,6 @@ class DlqDrainServiceTest
 
     @Mock
     private DlqWriter dlqWriter;
-
-    @Mock
-    private AlfrescoMetadataRepository metadataRepository;
 
     private DlqRecoveryProperties properties;
     private DlqDrainService service;
@@ -190,49 +188,38 @@ class DlqDrainServiceTest
     }
 
     /**
-     * The drain reindexes failed nodes by id. If its own read fails, the failure has to be re-recorded, or cleanup will read "no new failure" as "recovered" and delete entries whose nodes were never reindexed.
+     * The drain reads its targets back in id-shaped pages. A page read failure has to leave a trace on every id in that page, or cleanup reads the untouched failureCount as "reindexed cleanly" and deletes entries for nodes that were never touched.
      */
     @Nested
-    @DisplayName("id-page read failure during the drain")
+    @DisplayName("id-shaped page read failure during the drain")
     class IdPageReadFailure
     {
-        private static final long POISON_ID = 384L;
-        private static final long OTHER_ID = 385L;
-
         @Test
-        @DisplayName("re-records every id in the failed page, so cleanup leaves the entries in place")
-        void failedPageKeepsItsEntries() throws Exception
+        @DisplayName("entries in the failed page survive cleanup; the rest are still cleared")
+        void keepsEntriesWhosePageReadFailed()
         {
-            seedScan(new DlqEntry("dlq-1", nodeLevel(POISON_ID, 1)),
-                    new DlqEntry("dlq-2", nodeLevel(OTHER_ID, 1)));
-            assertThat(service.getTargetDbIds()).containsExactlyInAnyOrder(POISON_ID, OTHER_ID);
+            seedScan(new DlqEntry("42", nodeLevel(42L, 1)),
+                    new DlqEntry("99", nodeLevel(99L, 1)),
+                    new DlqEntry("7", nodeLevel(7L, 1)));
 
-            // One malformed row fails the whole JDBC page.
-            RuntimeException pageFailure = new RuntimeException("bad row");
-            when(metadataRepository.getAlfrescoNodes(any())).thenThrow(pageFailure);
+            // Stands in for the real DLQ index: recordSkip bumps the stored count for "<dbId>".
+            Map<String, Integer> failureCounts = new HashMap<>(Map.of("42", 1, "99", 1, "7", 1));
+            doAnswer(invocation -> failureCounts.merge(
+                    String.valueOf((Long) invocation.getArgument(0)), 1, Integer::sum))
+                            .when(dlqWriter).recordSkip(any(), any(), any(), any(), any(Throwable.class));
+            when(dlqReader.readByIds(any())).thenAnswer(invocation -> failureCounts.entrySet().stream()
+                    .collect(Collectors.toMap(Map.Entry::getKey,
+                            e -> nodeLevel(Long.parseLong(e.getKey()), e.getValue()))));
 
-            AlfrescoExplicitIdSetItemReader reader = new AlfrescoExplicitIdSetItemReader(
-                    metadataRepository, service.getTargetDbIds(), new DlqPageReadFailureListener(dlqWriter));
-            reader.setPageSize(10);
+            new DlqPageReadFailureListener(dlqWriter).onPageReadFailure(
+                    "reindexDlqReader",
+                    NodeParams.searchByIds(Set.of(42L, 99L)),
+                    new RuntimeException("connection reset"));
 
-            assertThat(reader.read())
-                    .as("the reader swallows the failure and reports exhaustion, so neither node is reindexed")
-                    .isNull();
-
-            // recordSkip merges into the existing document and increments failureCount.
-            verify(dlqWriter).recordSkip(POISON_ID, null, null, FailureStage.READER, pageFailure);
-            verify(dlqWriter).recordSkip(OTHER_ID, null, null, FailureStage.READER, pageFailure);
-            verify(dlqWriter, never()).recordWindowFailure(anyLong(), anyLong(), any());
-
-            // Both counts went 1 -> 2, so neither reads as recovered.
-            when(dlqReader.readByIds(any())).thenReturn(Map.of(
-                    "dlq-1", nodeLevel(POISON_ID, 2),
-                    "dlq-2", nodeLevel(OTHER_ID, 2)));
-
-            assertThat(service.cleanup())
-                    .as("nothing is deleted — neither node was reindexed")
-                    .isZero();
-            verify(dlqWriter, never()).delete(any());
+            assertThat(service.cleanup()).isEqualTo(1);
+            verify(dlqWriter).delete("7");
+            verify(dlqWriter, never()).delete("42");
+            verify(dlqWriter, never()).delete("99");
         }
     }
 }

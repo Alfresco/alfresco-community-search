@@ -25,34 +25,14 @@
  */
 package org.alfresco.reindexing.writers;
 
-import static java.util.Optional.ofNullable;
-import static java.util.function.Predicate.not;
-import static java.util.stream.Collectors.toSet;
-
-import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.CATEGORY_ANCESTOR;
-import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.CM_CATEGORIES;
-import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.CM_CATEGORY_ROOT;
-import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.PARENT;
-import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.PATH;
-import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.PATH_INDEXING_LAST_UPDATE;
-import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.PRIMARY_HIERARCHY;
-import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.PRIMARY_PARENT;
 import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.REINDEXING_START_TIME;
-import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.STANDARD_ANCESTOR;
-import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.UNPREFIXED_PATH;
-import static org.alfresco.indexing.shared.utils.EventUtils.getEventTimestamp;
-import static org.alfresco.indexing.shared.utils.ResourceTools.categoriesForNode;
 
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,10 +42,6 @@ import org.springframework.batch.infrastructure.item.ItemStreamException;
 import org.springframework.batch.infrastructure.item.ItemStreamWriter;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import org.alfresco.database.connector.PrefixUriMapper;
-import org.alfresco.database.connector.model.ChildAssocMetaData;
-import org.alfresco.database.connector.model.Path;
-import org.alfresco.elasticsearch.shared.translator.AlfrescoQualifiedNameTranslator;
 import org.alfresco.indexing.shared.ElasticsearchProperties;
 import org.alfresco.indexing.shared.model.BulkItemFailure;
 import org.alfresco.indexing.shared.model.BulkRequestDto;
@@ -87,20 +63,28 @@ public class ElasticsearchPathWriter implements ItemStreamWriter<ReindexingEvent
     private static final Logger LOGGER = LoggerFactory.getLogger(ElasticsearchPathWriter.class);
     private static final long DEFAULT_REINDEXING_START_TIME = Long.MAX_VALUE;
 
-    private final ElasticsearchProperties elasticsearchProperties;
     private final ReindexingCoreProperties elasticsearchReindexProperties;
     private final ElasticSearchUpdateOperations elasticSearchUpdateOperations;
-    private final PrefixNamespaceConfig prefixNamespaceConfig;
-    /** Optional. Nullable in tests; wired in production via SharedBatchProcessingConfig. */
+    private final ReindexPathFieldsBuilder pathFieldsBuilder;
+    /** Optional. Nullable in tests; wired in production so unresolved namespaces are counted. */
     private final ReindexingMetrics reindexingMetrics;
-
     /** Optional. Nullable in tests; wired in production via SharedBatchProcessingConfig. */
     private final ChunkWriteMetricsAccumulator writeMetricsAccumulator;
     /** Optional. When null the writer only logs a WARN on per-item failure and moves on. */
     private final PathBulkItemFailureListener failureListener;
-    private Map<String, Long> counters;
 
-    private ExecutionContext executionContext;
+    private final AtomicLong totalIndexedCounter = new AtomicLong();
+    private final AtomicLong totalFailedCounter = new AtomicLong();
+    // Baseline snapshots taken in open() so close() can report only this step run's delta. We snapshot rather
+    // than reset the cumulative counters because in local partitioning a single writer instance is shared by
+    // several partition worker steps running concurrently; a destructive reset in one partition's open() would
+    // wipe another partition's in-flight counts. addAndGet on the cumulative counters stays atomic, so no count
+    // is ever lost; the close() delta is exact for single-step JVMs (standalone/manager/worker) and a safe
+    // aggregate under concurrent local partitions.
+    private final AtomicLong indexedAtOpen = new AtomicLong();
+    private final AtomicLong failedAtOpen = new AtomicLong();
+
+    private volatile ExecutionContext executionContext;
 
     // Autowired so Spring picks this ctor deterministically when the class is registered as a bean
     // directly (e.g. ElasticsearchPathWriterIT lists it in @SpringBootTest.classes). Production wiring
@@ -135,11 +119,10 @@ public class ElasticsearchPathWriter implements ItemStreamWriter<ReindexingEvent
             PathBulkItemFailureListener failureListener,
             ReindexingMetrics reindexingMetrics)
     {
-        this.reindexingMetrics = reindexingMetrics;
-        this.elasticsearchProperties = elasticsearchProperties;
         this.elasticsearchReindexProperties = elasticsearchReindexProperties;
-        this.prefixNamespaceConfig = prefixNamespaceConfig;
         this.elasticSearchUpdateOperations = elasticSearchUpdateOperations;
+        this.reindexingMetrics = reindexingMetrics;
+        this.pathFieldsBuilder = new ReindexPathFieldsBuilder(elasticsearchProperties, prefixNamespaceConfig, reindexingMetrics);
         this.writeMetricsAccumulator = writeMetricsAccumulator;
         this.failureListener = failureListener;
     }
@@ -148,8 +131,10 @@ public class ElasticsearchPathWriter implements ItemStreamWriter<ReindexingEvent
     public void write(Chunk<? extends ReindexingEvent> chunk) throws Exception
     {
         List<? extends ReindexingEvent> items = List.copyOf(chunk.getItems());
+        long reindexingStartTime = executionContext.getLong(REINDEXING_START_TIME, DEFAULT_REINDEXING_START_TIME);
+        List<NodeResourceDto> requestList = pathFieldsBuilder.buildRequestList(items, reindexingStartTime);
         BulkRequestDto result = elasticSearchUpdateOperations.updateElasticSearchWithBulkRequests(
-                buildRequestList(items),
+                requestList,
                 elasticsearchReindexProperties.getWriterRetryCount(),
                 elasticsearchReindexProperties.getWriterRetryDelay());
 
@@ -157,7 +142,8 @@ public class ElasticsearchPathWriter implements ItemStreamWriter<ReindexingEvent
         // needed a retry to land, failures count only items still missing from the index.
         long finalFailedCount = result.getFailuresCount();
         long indexedCount = result.getNumberOfActions() - finalFailedCount;
-        this.counters = Map.of("INDEX_COUNTER", indexedCount, "FAILED_COUNTER", finalFailedCount);
+        totalIndexedCounter.addAndGet(indexedCount);
+        totalFailedCounter.addAndGet(finalFailedCount);
 
         if (writeMetricsAccumulator != null)
         {
@@ -168,6 +154,19 @@ public class ElasticsearchPathWriter implements ItemStreamWriter<ReindexingEvent
         {
             LOGGER.warn("Path write: {} items failed in ES bulk request after internal retries. ", finalFailedCount);
             dispatchFailures(items, result.getFailures());
+            failIfUnhandled(finalFailedCount, "path");
+        }
+    }
+
+    /**
+     * Fail the chunk when per-item bulk failures remain and no dead-letter listener is configured, so the reindex ends FAILED rather than silently dropping the nodes. Gated by {@code alfresco.reindex.failOnTerminalWriteErrors}; a no-op when a listener is present or the flag is off.
+     */
+    private void failIfUnhandled(long failuresCount, String stage)
+    {
+        if (failuresCount > 0 && failureListener == null
+                && elasticsearchReindexProperties.isFailOnTerminalWriteErrors())
+        {
+            throw new TerminalWriteFailureException(stage, failuresCount);
         }
     }
 
@@ -212,7 +211,7 @@ public class ElasticsearchPathWriter implements ItemStreamWriter<ReindexingEvent
         }
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     private static String extractNodeRef(ReindexingEvent item)
     {
         RepoEvent<EventData<NodeResource>> repoEvent = item.getRepoEvent();
@@ -233,151 +232,14 @@ public class ElasticsearchPathWriter implements ItemStreamWriter<ReindexingEvent
         return item.getTime().toInstant().toEpochMilli();
     }
 
-    private List<NodeResourceDto> buildRequestList(List<? extends ReindexingEvent> items)
-    {
-        return items
-                .stream()
-                .filter(reindexingEvent -> reindexingEvent.getAllPaths() != null)
-                .map(this::createNodeResource)
-                .collect(Collectors.toList());
-    }
-
-    private NodeResourceDto createNodeResource(ReindexingEvent reindexingEvent)
-    {
-        NodeResource nodeResource = (NodeResource) reindexingEvent.getData().getResource();
-        Set<Path> paths = reindexingEvent.getAllPaths();
-
-        // Resolve categories once — shared by PARENT, STANDARD_ANCESTOR, and cm:categories.
-        // rawCategoryIds: cm:categories DB property (may include stale UUIDs of deleted categories).
-        // validCategories: rawCategoryIds ∩ category paths reaching CM_CATEGORY_ROOT (live only).
-        Set<String> rawCategoryIds = categoriesForNode(nodeResource);
-        Set<String> validCategories = resolveValidCategories(paths, rawCategoryIds);
-
-        Map<String, Object> fields = new HashMap<>();
-        fields.put(REINDEXING_START_TIME, executionContext.getLong(REINDEXING_START_TIME, DEFAULT_REINDEXING_START_TIME));
-        fields.put(PATH_INDEXING_LAST_UPDATE, getEventTimestamp(reindexingEvent));
-
-        addPathFields(fields, paths);
-        addParentAndAncestorFields(fields, paths, rawCategoryIds, validCategories);
-        addCategoryFields(fields, paths, validCategories);
-        addPrimaryHierarchy(buildPrimaryHierarchy(reindexingEvent), fields);
-
-        NodeResourceDto dto = new NodeResourceDto();
-        dto.setResourceId(nodeResource.getId());
-        dto.setIndexName(elasticsearchProperties.getIndexName());
-        dto.setFields(fields);
-        return dto;
-    }
-
-    private void addPathFields(Map<String, Object> fields, Set<Path> paths)
-    {
-        paths.forEach(this::reportUnmappedElements);
-        fields.put(PATH, paths.stream()
-                .map(path -> path.asString(prefixNamespaceConfig.prefixUriMapper()))
-                .collect(toSet()));
-        fields.put(UNPREFIXED_PATH, paths.stream()
-                .map(Path::asStringNoPrefix)
-                .collect(toSet()));
-    }
-
-    /**
-     * An element whose namespace has no mapping is written as a bare name, which is indistinguishable from an element that legitimately has no prefix. Only a missing mapping is reported; a mapping to the empty prefix is correct.
-     */
-    private void reportUnmappedElements(Path path)
-    {
-        PrefixUriMapper prefixUriMapper = prefixNamespaceConfig.prefixUriMapper();
-        path.getNodeMetadata().stream()
-                .filter(element -> prefixUriMapper.getUriMapping(element.getUri()) == null)
-                .forEach(element -> {
-                    LOGGER.warn("No prefix mapping for namespace {}; path element {} is indexed without its prefix",
-                            element.getUri(), element.getName());
-                    if (reindexingMetrics != null)
-                    {
-                        reindexingMetrics.reindexUnresolvedNamespace(element.getUri());
-                    }
-                });
-    }
-
-    private Set<String> resolveValidCategories(Set<Path> paths, Set<String> rawCategoryIds)
-    {
-        // Resolved category UUIDs: paths that actually reach CM_CATEGORY_ROOT.
-        // A deleted category has no parent associations left, so its path never reaches
-        // CM_CATEGORY_ROOT and is therefore excluded here.
-        Set<String> resolvedCategoryIds = paths.stream()
-                .filter(this::isCategoryPath)
-                .map(path -> path.getNodeMetadata().getLast().getParentUuid())
-                .filter(Objects::nonNull)
-                .collect(toSet());
-
-        // Valid categories = intersection of raw DB property and resolved paths.
-        // Intersection with rawCategoryIds prevents false positives for cm:category nodes
-        // whose own path passes through CM_CATEGORY_ROOT but carry no cm:categories property.
-        // Intersection with resolvedCategoryIds drops stale refs to deleted categories.
-        return rawCategoryIds.stream()
-                .filter(resolvedCategoryIds::contains)
-                .collect(toSet());
-    }
-
-    private void addParentAndAncestorFields(Map<String, Object> fields, Set<Path> paths,
-            Set<String> rawCategoryIds, Set<String> validCategories)
-    {
-        // PARENT: take last UUID from all paths, strip any raw category UUID (avoids stale partial paths from
-        // deleted/archived categories bleeding in as standard parents), then add back valid categories only.
-        Set<String> parents = Stream.concat(
-                paths.stream()
-                        .map(Path::getNodeMetadata)
-                        .filter(not(Collection::isEmpty))
-                        .map(nodeMetadata -> nodeMetadata.getLast().getParentUuid())
-                        .filter(uuid -> !rawCategoryIds.contains(uuid)),
-                validCategories.stream()).collect(toSet());
-        fields.put(PARENT, parents);
-
-        // STANDARD_ANCESTOR: exclude raw category UUIDs so that stale partial paths from deleted categories
-        // do not pollute the standard ancestor list.
-        Set<String> standardAncestors = paths.stream()
-                .filter(not(this::isCategoryPath))
-                .flatMap(this::extractAncestorsFromPath)
-                .filter(uuid -> !rawCategoryIds.contains(uuid))
-                .collect(toSet());
-        fields.put(STANDARD_ANCESTOR, standardAncestors);
-    }
-
-    private void addCategoryFields(Map<String, Object> fields, Set<Path> paths, Set<String> validCategories)
-    {
-        Set<String> categoryAncestors = paths.stream()
-                .filter(this::isCategoryPath)
-                .flatMap(this::extractAncestorsFromPath)
-                .collect(toSet());
-        fields.put(CATEGORY_ANCESTOR, categoryAncestors);
-        fields.put(AlfrescoQualifiedNameTranslator.encode(CM_CATEGORIES), validCategories);
-    }
-
-    private List<String> buildPrimaryHierarchy(ReindexingEvent reindexingEvent)
-    {
-        List<String> primaryHierarchy = reindexingEvent.getPrimaryPath()
-                .getNodeMetadata()
-                .stream()
-                .map(ChildAssocMetaData::getParentUuid)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-        Collections.reverse(primaryHierarchy);
-        return primaryHierarchy;
-    }
-
-    private boolean isCategoryPath(Path path)
-    {
-        return path.asString(prefixNamespaceConfig.prefixUriMapper()).contains(CM_CATEGORY_ROOT);
-    }
-
-    private Stream<String> extractAncestorsFromPath(Path path)
-    {
-        return path.getNodeMetadata().stream().map(ChildAssocMetaData::getParentUuid);
-    }
-
     @Override
     public void open(ExecutionContext executionContext) throws ItemStreamException
     {
         this.executionContext = executionContext;
+        // Snapshot the cumulative counters at the start of this run (non-destructive; see field comment) so the
+        // totals logged in close() cover only this run rather than the writer instance's whole lifetime.
+        indexedAtOpen.set(totalIndexedCounter.get());
+        failedAtOpen.set(totalFailedCounter.get());
     }
 
     @Override
@@ -389,29 +251,7 @@ public class ElasticsearchPathWriter implements ItemStreamWriter<ReindexingEvent
     @Override
     public void close() throws ItemStreamException
     {
-        if (counters != null)
-        {
-            LOGGER.info("Total number of updated nodes with Path (includes retried items) {} ", counters.getOrDefault("INDEX_COUNTER", 0L));
-            LOGGER.info("Total number of nodes with failed Path update (includes retried items) {} ", counters.getOrDefault("FAILED_COUNTER", 0L));
-            this.counters = null;
-        }
-    }
-
-    /**
-     * Add the primary hierarchy and primary parent to the list of fields.
-     *
-     * @param primaryHierarchy
-     *            The primary hierarchy (may be null or empty).
-     * @param fields
-     *            The fields to update.
-     */
-    private void addPrimaryHierarchy(List<String> primaryHierarchy, Map<String, Object> fields)
-    {
-        ofNullable(primaryHierarchy)
-                .filter(not(Collection::isEmpty))
-                .ifPresent(hierarchy -> {
-                    fields.put(PRIMARY_HIERARCHY, hierarchy);
-                    hierarchy.stream().findFirst().ifPresent(primaryParent -> fields.put(PRIMARY_PARENT, primaryParent));
-                });
+        LOGGER.info("Total number of updated nodes with Path (includes retried items) {} ", totalIndexedCounter.get() - indexedAtOpen.get());
+        LOGGER.info("Total number of nodes with failed Path update (includes retried items) {} ", totalFailedCounter.get() - failedAtOpen.get());
     }
 }

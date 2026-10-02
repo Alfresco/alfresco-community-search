@@ -27,7 +27,6 @@ package org.alfresco.reindexing.config.utils;
 
 import static org.mockito.Answers.RETURNS_SELF;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -38,6 +37,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.core.listener.SkipListener;
 import org.springframework.batch.core.step.builder.ChunkOrientedStepBuilder;
+import org.springframework.batch.core.step.skip.LimitCheckingItemSkipPolicy;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.backoff.ExponentialBackOff;
@@ -58,8 +58,7 @@ class StepConfigurerTest
         StepConfigurer.withRetryingAndMultithreadSettings(builder, STEP_NAME, props, backOff(), executor(), metrics());
 
         verify(builder).retry(Exception.class);
-        verify(builder, never()).skip(any(Class.class));
-        verify(builder, never()).skipLimit(anyLong());
+        verify(builder, never()).skipPolicy(any());
         verify(builder, never()).skipListener(any());
     }
 
@@ -73,8 +72,7 @@ class StepConfigurerTest
         StepConfigurer.withRetrySkipAndMultithreadSettings(builder, STEP_NAME, props, backOff(), executor(), metrics(), provider);
 
         verify(builder).retry(Exception.class);
-        verify(builder).skip(Exception.class);
-        verify(builder).skipLimit(100L);
+        verify(builder).skipPolicy(any(LimitCheckingItemSkipPolicy.class));
         verify(builder, never()).skipListener(any());
     }
 
@@ -102,8 +100,7 @@ class StepConfigurerTest
         StepConfigurer.withRetrySkipAndMultithreadSettings(builder, STEP_NAME, props, backOff(), executor(), metrics(), provider);
 
         verify(builder).retry(Exception.class);
-        verify(builder, never()).skip(any(Class.class));
-        verify(builder, never()).skipLimit(anyLong());
+        verify(builder, never()).skipPolicy(any());
         verify(builder, never()).skipListener(any());
     }
 
@@ -117,8 +114,7 @@ class StepConfigurerTest
         StepConfigurer.withRetrySkipAndMultithreadSettings(builder, STEP_NAME, props, backOff(), executor(), metrics(), provider);
 
         verify(builder, never()).retry(any(Class.class));
-        verify(builder).skip(Exception.class);
-        verify(builder).skipLimit(100L);
+        verify(builder).skipPolicy(any(LimitCheckingItemSkipPolicy.class));
     }
 
     private static ReindexingMetrics metrics()

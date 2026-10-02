@@ -29,6 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.job.parameters.RunIdIncrementer;
+import org.springframework.batch.core.listener.ItemWriteListener;
 import org.springframework.batch.core.listener.SkipListener;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.Step;
@@ -53,6 +54,7 @@ import org.alfresco.reindexing.listeners.JobExitStatusAggregatorListener;
 import org.alfresco.reindexing.listeners.JobLifecycleListener;
 import org.alfresco.reindexing.listeners.ReadCountingListener;
 import org.alfresco.reindexing.listeners.ReindexMetricsStepListener;
+import org.alfresco.reindexing.listeners.ReindexSummaryStepListener;
 import org.alfresco.reindexing.listeners.StepLifecycleListener;
 import org.alfresco.reindexing.listeners.WriteMetricsFlushListener;
 import org.alfresco.reindexing.model.ReindexingEvent;
@@ -102,22 +104,26 @@ public class ElasticsearchReindexByIdJobConfig extends ElasticsearchReindexValid
             ExponentialBackOff exponentialBackOff,
             StepLifecycleListener stepLifecycleListener,
             ReindexMetricsStepListener reindexMetricsStepListener,
+            ReindexSummaryStepListener reindexSummaryStepListener,
             ReadCountingListener readCountingListener,
             FilterCountingListener filterCountingListener,
             WriteMetricsFlushListener writeMetricsFlushListener,
             ReindexingMetrics reindexingMetrics,
-            ObjectProvider<SkipListener<?, ?>> skipListenerProvider)
+            ObjectProvider<SkipListener<?, ?>> skipListenerProvider,
+            ObjectProvider<ItemWriteListener<?>> writeListenerProvider)
     {
         String stepName = "reindexByIdsStep";
         var stepBuilder = new ChunkOrientedStepBuilder<AlfrescoNode, ReindexingEvent>(stepName, jobRepository, reindexingProperties.getBatchSize())
                 .listener(stepLifecycleListener)
                 .listener(reindexMetricsStepListener)
+                .listener(reindexSummaryStepListener)
                 .listener(readCountingListener)
                 .listener(filterCountingListener)
                 .listener(writeMetricsFlushListener)
                 .reader(reindexByIdItemReader)
                 .processor(processors)
                 .writer(writer);
+        StepConfigurer.attachWriteListeners(stepBuilder, stepName, writeListenerProvider);
         StepConfigurer.withRetrySkipAndMultithreadSettings(
                 stepBuilder,
                 stepName,

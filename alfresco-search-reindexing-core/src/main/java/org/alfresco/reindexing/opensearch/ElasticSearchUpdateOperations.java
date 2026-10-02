@@ -32,6 +32,7 @@ import java.util.Map;
 
 import org.alfresco.indexing.shared.model.BulkRequestDto;
 import org.alfresco.indexing.shared.model.NodeResourceDto;
+import org.alfresco.reindexing.model.ReindexingEvent;
 import org.alfresco.repo.event.v1.model.RepoEvent;
 
 public interface ElasticSearchUpdateOperations
@@ -51,4 +52,10 @@ public interface ElasticSearchUpdateOperations
      */
     BulkRequestDto getBulkRequest(List<RepoEvent> repoEvents, long reindexingStartTime, int retryCount, long retryDelay)
             throws IOException, InterruptedException;
+
+    /**
+     * Runs the merged metadata+path bulk (see {@code alfresco.reindex.writersMergedEnabled}). For each create/update event it emits a single scripted upsert carrying both the metadata and the path field sets, so the two dominant writes collapse into one ES round-trip and can never race into a {@code document_missing_exception} or version conflict. The content transform-status upsert is still emitted as its own operation, and delete events produce the usual soft-delete op. The same {@link org.alfresco.reindexing.opensearch.impl.BulkItemErrorClassifier} retry loop as the other bulks is applied. The returned DTO's {@code numberOfActions} counts source nodes (not raw bulk operations).
+     */
+    BulkRequestDto getMergedBulkRequest(List<ReindexingEvent> events, long reindexingStartTime, int retryCount,
+            long retryDelay) throws IOException, InterruptedException;
 }

@@ -75,4 +75,13 @@ public class AlfrescoExplicitIdSetItemReader extends AbstractAlfrescoNodeReader
     {
         return nextIndex < sortedIds.size();
     }
+
+    /**
+     * A failed or empty page must not end the reader: the ids after it have no other record of being missed, so cleanup would read their untouched failureCount as a clean reindex and delete them.
+     */
+    @Override
+    protected boolean pagesUntilCursorExhausted()
+    {
+        return true;
+    }
 }

@@ -58,6 +58,8 @@ public class DeadLetterDocument
         METADATA_WRITER,
         /** Emitted directly by {@code ElasticsearchPathWriter} after its internal retry loop; never fires through Spring Batch skip. Reserved for {@link org.alfresco.reindexing.writers.PathBulkItemFailureListener} bridges. */
         PATH_WRITER,
+        /** Emitted directly by {@code ElasticsearchMergedReindexWriter} after its internal retry loop when the merged metadata+path scripted-upsert bulk fails for an item; never fires through Spring Batch skip. Populated by the {@link org.alfresco.reindexing.writers.MergedBulkItemFailureListener} bridge. Kept distinct from {@code METADATA_WRITER}/{@code PATH_WRITER} because the merged writer folds both writes into a single bulk, so a failure cannot be attributed to metadata or path alone. */
+        MERGED_WRITER,
         /** Emitted directly by {@code ContentTransformDirectWriter} when the ACS transform endpoint returns a non-retryable error (e.g. 4xx). Never fires through Spring Batch skip; the writer swallows the failure by design and this stage is populated by the {@code ContentTransformFailureListener} bridge. */
         CONTENT_WRITER
     }

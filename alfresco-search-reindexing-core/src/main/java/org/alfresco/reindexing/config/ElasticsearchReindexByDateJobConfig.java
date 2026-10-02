@@ -34,7 +34,7 @@ import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.job.parameters.RunIdIncrementer;
-import org.springframework.batch.core.listener.ChunkListener;
+import org.springframework.batch.core.listener.ItemWriteListener;
 import org.springframework.batch.core.listener.SkipListener;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.Step;
@@ -60,6 +60,7 @@ import org.alfresco.reindexing.listeners.JobExitStatusAggregatorListener;
 import org.alfresco.reindexing.listeners.JobLifecycleListener;
 import org.alfresco.reindexing.listeners.ReadCountingListener;
 import org.alfresco.reindexing.listeners.ReindexMetricsStepListener;
+import org.alfresco.reindexing.listeners.ReindexSummaryStepListener;
 import org.alfresco.reindexing.listeners.StepLifecycleListener;
 import org.alfresco.reindexing.listeners.WriteMetricsFlushListener;
 import org.alfresco.reindexing.model.ReindexingEvent;
@@ -106,24 +107,26 @@ public class ElasticsearchReindexByDateJobConfig extends ElasticsearchReindexVal
             ExponentialBackOff exponentialBackOff,
             StepLifecycleListener stepLifecycleListener,
             ReindexMetricsStepListener reindexMetricsStepListener,
+            ReindexSummaryStepListener reindexSummaryStepListener,
             ReadCountingListener readCountingListener,
             FilterCountingListener filterCountingListener,
             WriteMetricsFlushListener writeMetricsFlushListener,
             ReindexingMetrics reindexingMetrics,
             ObjectProvider<SkipListener<?, ?>> skipListenerProvider,
-            ObjectProvider<ChunkListener<?, ?>> chunkListenerProvider)
+            ObjectProvider<ItemWriteListener<?>> writeListenerProvider)
     {
 
         var stepBuilder = new ChunkOrientedStepBuilder<AlfrescoNode, ReindexingEvent>(REINDEX_BY_DATE_STEP_NAME, jobRepository, reindexingProperties.getBatchSize())
                 .listener(stepLifecycleListener)
                 .listener(reindexMetricsStepListener)
+                .listener(reindexSummaryStepListener)
                 .listener(readCountingListener)
                 .listener(filterCountingListener)
                 .listener(writeMetricsFlushListener)
                 .reader(reindexByDateItemReader)
                 .processor(processors)
                 .writer(writer);
-        StepConfigurer.attachChunkListeners(stepBuilder, REINDEX_BY_DATE_STEP_NAME, chunkListenerProvider);
+        StepConfigurer.attachWriteListeners(stepBuilder, REINDEX_BY_DATE_STEP_NAME, writeListenerProvider);
         StepConfigurer.withRetrySkipAndMultithreadSettings(
                 stepBuilder,
                 REINDEX_BY_DATE_STEP_NAME,

@@ -62,6 +62,7 @@ import org.alfresco.reindexing.listeners.JobExitStatusAggregatorListener;
 import org.alfresco.reindexing.listeners.JobLifecycleListener;
 import org.alfresco.reindexing.listeners.ReadCountingListener;
 import org.alfresco.reindexing.listeners.ReindexMetricsStepListener;
+import org.alfresco.reindexing.listeners.ReindexSummaryStepListener;
 import org.alfresco.reindexing.listeners.StepLifecycleListener;
 import org.alfresco.reindexing.listeners.WriteMetricsFlushListener;
 import org.alfresco.reindexing.model.ReindexingEvent;
@@ -135,6 +136,7 @@ public class OneShotReindexDlqConfig
             ExponentialBackOff exponentialBackOff,
             StepLifecycleListener stepLifecycleListener,
             ReindexMetricsStepListener reindexMetricsStepListener,
+            ReindexSummaryStepListener reindexSummaryStepListener,
             ReadCountingListener readCountingListener,
             FilterCountingListener filterCountingListener,
             WriteMetricsFlushListener writeMetricsFlushListener,
@@ -145,6 +147,7 @@ public class OneShotReindexDlqConfig
         var stepBuilder = new ChunkOrientedStepBuilder<AlfrescoNode, ReindexingEvent>(stepName, jobRepository, reindexingProperties.getBatchSize())
                 .listener(stepLifecycleListener)
                 .listener(reindexMetricsStepListener)
+                .listener(reindexSummaryStepListener)
                 .listener(readCountingListener)
                 .listener(filterCountingListener)
                 .listener(writeMetricsFlushListener)

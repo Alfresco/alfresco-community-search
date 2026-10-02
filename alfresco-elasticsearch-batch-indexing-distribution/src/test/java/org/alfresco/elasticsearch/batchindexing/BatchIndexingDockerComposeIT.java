@@ -76,7 +76,7 @@ public class BatchIndexingDockerComposeIT
     private static final String INDEX_NAME = AlfrescoIndexHelper.INDEX_NAME;
     private static final String BATCH_INDEXING_SERVICE = "batch-indexing-1";
     private static final Path DUMP_SQL_PATH = Path.of(
-            "../alfresco-elasticsearch-batch-indexing/src/test/resources/docker/alfresco-dump.sql").toAbsolutePath().normalize();
+            "../alfresco-elasticsearch-reindexing/src/main/docker/alfresco-dump.sql").toAbsolutePath().normalize();
 
     private static ComposeContainer environment;
     private static RestClient httpClient;
@@ -93,7 +93,7 @@ public class BatchIndexingDockerComposeIT
 
         File composeFile = new File("src/test/resources/docker/batch-indexing-e2e-compose.yaml");
         assertThat(composeFile).exists();
-        assertThat(DUMP_SQL_PATH.toFile()).as("alfresco-dump.sql must exist in the batch-indexing module").exists();
+        assertThat(DUMP_SQL_PATH.toFile()).as("alfresco-dump.sql must exist in the reindexing module").exists();
 
         File postgresDriver = findPostgresDriver();
 

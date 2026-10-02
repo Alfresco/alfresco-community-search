@@ -26,6 +26,7 @@
 package org.alfresco.reindexing.writers;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -51,6 +52,7 @@ import org.springframework.batch.infrastructure.item.ExecutionContext;
 
 import org.alfresco.indexing.shared.model.BulkItemFailure;
 import org.alfresco.indexing.shared.model.BulkRequestDto;
+import org.alfresco.metrics.MetricsConstants;
 import org.alfresco.reindexing.config.ReindexingCoreProperties;
 import org.alfresco.reindexing.model.ReindexingEvent;
 import org.alfresco.reindexing.opensearch.ElasticSearchUpdateOperations;
@@ -144,15 +146,28 @@ class ElasticsearchRepoEventItemWriterFailureBridgeTest
     }
 
     @Test
-    void listenerAbsent_stillWritesAndLogs() throws Exception
+    void listenerAbsentAndFailOnTerminalDisabled_stillWritesAndLogs() throws Exception
     {
         stubBulkResponse(1, 1, List.of(new BulkItemFailure(NODE_REF_A, "x", "y")));
+        // Default (failOnTerminalWriteErrors=false): no listener, but the write path must complete cleanly.
         ElasticsearchRepoEventItemWriter writer = new ElasticsearchRepoEventItemWriter(operations, reindexProperties);
         writer.open(executionContext);
 
-        // No listener bean, but the write path must still complete cleanly.
         assertThatCode(() -> writer.write(Chunk.of(event(101L, NODE_REF_A, EVENT_TIME_A))))
                 .doesNotThrowAnyException();
+    }
+
+    @Test
+    void listenerAbsentAndFailOnTerminalEnabled_failsChunk() throws Exception
+    {
+        stubBulkResponse(1, 1, List.of(new BulkItemFailure(NODE_REF_A, "x", "y")));
+        reindexProperties.setFailOnTerminalWriteErrors(true);
+        ElasticsearchRepoEventItemWriter writer = new ElasticsearchRepoEventItemWriter(operations, reindexProperties);
+        writer.open(executionContext);
+
+        // No listener bean and fail-loud enabled: terminal failures must fail the chunk.
+        assertThatThrownBy(() -> writer.write(Chunk.of(event(101L, NODE_REF_A, EVENT_TIME_A))))
+                .isInstanceOf(TerminalWriteFailureException.class);
     }
 
     @Test
@@ -167,6 +182,25 @@ class ElasticsearchRepoEventItemWriterFailureBridgeTest
         assertThatCode(() -> writer.write(Chunk.of(event(101L, NODE_REF_A, EVENT_TIME_A))))
                 .doesNotThrowAnyException();
         verify(listener).onBulkItemFailure(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void recordsOneFailurePerNodeNotPerBulkOperation() throws Exception
+    {
+        // Two nodes, each emitting a metadata + content op. Node A fails both of its ops,
+        // node B succeeds — so the chunk is one failed node and one indexed node.
+        stubBulkResponse(4, 2, List.of(
+                new BulkItemFailure(NODE_REF_A, "mapper_parsing_exception", "bad type"),
+                new BulkItemFailure(NODE_REF_A, "version_conflict_engine_exception", "conflict")));
+        ChunkWriteMetricsAccumulator accumulator = mock(ChunkWriteMetricsAccumulator.class);
+        ElasticsearchRepoEventItemWriter writer = new ElasticsearchRepoEventItemWriter(operations, reindexProperties, accumulator, listener);
+        writer.open(executionContext);
+
+        writer.write(Chunk.of(
+                event(101L, NODE_REF_A, EVENT_TIME_A),
+                event(102L, NODE_REF_B, EVENT_TIME_B)));
+
+        verify(accumulator).recordCount(MetricsConstants.METADATA, 1L, 1L);
     }
 
     private void stubBulkResponse(int numberOfActions, long failuresCount, List<BulkItemFailure> failures) throws IOException, InterruptedException

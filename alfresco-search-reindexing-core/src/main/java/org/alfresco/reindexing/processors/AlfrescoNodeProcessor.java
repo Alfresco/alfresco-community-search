@@ -47,6 +47,8 @@ import org.alfresco.database.connector.model.QName;
 import org.alfresco.elasticsearch.shared.ElasticsearchConstants;
 import org.alfresco.metrics.ReindexingMetrics;
 import org.alfresco.reindexing.config.PrefixNamespaceConfig;
+import org.alfresco.reindexing.util.QNamePrefixResolver;
+import org.alfresco.reindexing.util.QNamePrefixResolver.PrefixedItem;
 
 /**
  * Base class including common operations on AlfrescoNode objects
@@ -56,9 +58,10 @@ public abstract class AlfrescoNodeProcessor
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AlfrescoNodeProcessor.class);
 
-    private final PrefixNamespaceConfig prefixNamespaceConfig;
-    /** Optional. Nullable in tests; wired in production via SharedBatchProcessingConfig. */
-    private final ReindexingMetrics reindexingMetrics;
+    /**
+     * Resolution, logging and the unresolved-namespace metric all live in the resolver, so every path that turns a {@link QName} into a field name reports the same way.
+     */
+    private final QNamePrefixResolver prefixResolver;
 
     public AlfrescoNodeProcessor(PrefixNamespaceConfig prefixNamespaceConfig)
     {
@@ -67,8 +70,12 @@ public abstract class AlfrescoNodeProcessor
 
     public AlfrescoNodeProcessor(PrefixNamespaceConfig prefixNamespaceConfig, ReindexingMetrics reindexingMetrics)
     {
-        this.prefixNamespaceConfig = prefixNamespaceConfig;
-        this.reindexingMetrics = reindexingMetrics;
+        this(new QNamePrefixResolver(prefixNamespaceConfig, reindexingMetrics));
+    }
+
+    public AlfrescoNodeProcessor(QNamePrefixResolver prefixResolver)
+    {
+        this.prefixResolver = prefixResolver;
     }
 
     protected Set<String> getAspects(AlfrescoNode node)
@@ -104,55 +111,22 @@ public abstract class AlfrescoNodeProcessor
 
     protected Optional<String> getPrefixedPropertyName(QName qname)
     {
-        return resolve(qname, PrefixedItem.PROPERTY);
+        return prefixResolver.prefixedName(qname, PrefixedItem.PROPERTY);
     }
 
     protected Optional<String> getPrefixedPropertyName(String uri, String localName)
     {
-        return resolve(uri, localName, PrefixedItem.PROPERTY);
+        return prefixResolver.prefixedName(uri, localName, PrefixedItem.PROPERTY);
     }
 
     protected Optional<String> getPrefixedAspectName(QName qname)
     {
-        return resolve(qname, PrefixedItem.ASPECT);
+        return prefixResolver.prefixedName(qname, PrefixedItem.ASPECT);
     }
 
     protected Optional<String> getPrefixedTypeName(QName qname)
     {
-        return resolve(qname, PrefixedItem.TYPE);
-    }
-
-    private Optional<String> resolve(QName qname, PrefixedItem item)
-    {
-        return ofNullable(qname).flatMap(qn -> resolve(qn.getUri(), qn.getLocalName(), item));
-    }
-
-    private Optional<String> resolve(String uri, String localName, PrefixedItem item)
-    {
-        String prefix = prefixNamespaceConfig.prefixUriMapper().getUriMapping(uri);
-        if (prefix == null)
-        {
-            LOGGER.warn("No prefix mapping for namespace {}; {} {} cannot be indexed",
-                    uri, item.label(), localName);
-            if (reindexingMetrics != null)
-            {
-                reindexingMetrics.reindexUnresolvedNamespace(uri);
-            }
-            return empty();
-        }
-
-        return Optional.of(prefix + ":" + localName);
-    }
-
-    /** Names the kind of thing being resolved so an unmapped namespace can be reported precisely. */
-    private enum PrefixedItem
-    {
-        PROPERTY, ASPECT, TYPE;
-
-        private String label()
-        {
-            return name().toLowerCase(Locale.ROOT);
-        }
+        return prefixResolver.prefixedName(qname, PrefixedItem.TYPE);
     }
 
     private Optional<Serializable> extractSerializableForBatch(AlfrescoNode alfrescoNode,

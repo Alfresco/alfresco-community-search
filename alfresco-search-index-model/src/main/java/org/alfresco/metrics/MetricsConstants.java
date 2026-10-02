@@ -44,6 +44,8 @@ public final class MetricsConstants
     public static final String METADATA = "metadata";
     public static final String CONTENT = "content";
     public static final String PATH = "path";
+    // Combined metadata+path write emitted as a single bulk (alfresco.reindex.writersMergedEnabled).
+    public static final String MERGED = "merged";
 
     public static final String MODULE_TAG = "module";
     public static final String OUTCOME_TAG = "outcome";

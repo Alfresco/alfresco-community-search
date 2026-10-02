@@ -173,13 +173,14 @@ class WatermarkBootstrapTest
         }
 
         @Test
-        @DisplayName("clamps the seeded cursor to a positive value when overlap exceeds the Alfresco max")
+        @DisplayName("clamps the seeded cursor to a positive sentinel when overlap exceeds the Alfresco max")
         void clampsSeedCursorWhenOverlapExceedsAlfrescoMax() throws Exception
         {
             properties.setAutoCreateStateIndex(true);
             properties.setBootstrapFromAlfrescoIndex(true);
             properties.setRequireAlfrescoIndex(false);
-            // 36500d with alfrescomax will make max - overlap negative.
+            // 36500d is what BootstrapFromAlfrescoIndexIT runs with, and it dwarfs any real
+            // epoch-ms timestamp, so max - overlap would be negative.
             properties.setOverlap(Duration.ofDays(36500));
 
             when(store.read()).thenReturn(Optional.empty());
@@ -189,7 +190,7 @@ class WatermarkBootstrapTest
 
             ArgumentCaptor<WatermarkDocument> captor = ArgumentCaptor.forClass(WatermarkDocument.class);
             verify(store).write(captor.capture());
-
+            // computeWindowStart reads a <=0 cursor as "no watermark" and falls back to now.
             assertThat(captor.getValue().getLastSuccessfulToTimeEpochMs())
                     .isEqualTo(WatermarkBootstrap.MIN_SEED_CURSOR_MS);
         }

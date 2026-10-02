@@ -25,15 +25,15 @@
  */
 package org.alfresco.elasticsearch.batchindexing.listeners;
 
-import org.springframework.batch.core.listener.ChunkListener;
-import org.springframework.batch.core.scope.context.ChunkContext;
+import org.springframework.batch.core.listener.ItemWriteListener;
+import org.springframework.batch.infrastructure.item.Chunk;
 
 import org.alfresco.elasticsearch.batchindexing.observability.ContinuousReindexingMonitor;
 
 /**
- * Ticks the {@link ContinuousReindexingMonitor} progress heartbeat after each committed chunk so the liveness probe can distinguish a slow-but-progressing cycle from a stuck one. Item types are erased because the heartbeat does not touch the item payload.
+ * Ticks the {@link ContinuousReindexingMonitor} progress heartbeat after each written chunk so the liveness probe can distinguish a slow-but-progressing cycle from a stuck one. Item types are erased because the heartbeat does not touch the item payload.
  */
-public class ProgressHeartbeatListener implements ChunkListener<Object, Object>
+public class ProgressHeartbeatListener implements ItemWriteListener<Object>
 {
     private final ContinuousReindexingMonitor monitor;
 
@@ -43,7 +43,7 @@ public class ProgressHeartbeatListener implements ChunkListener<Object, Object>
     }
 
     @Override
-    public void afterChunk(ChunkContext context)
+    public void afterWrite(Chunk<?> items)
     {
         monitor.recordActivity();
     }

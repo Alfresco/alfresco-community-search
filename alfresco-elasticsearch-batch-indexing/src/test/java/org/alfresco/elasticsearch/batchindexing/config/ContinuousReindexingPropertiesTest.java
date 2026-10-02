@@ -107,6 +107,26 @@ class ContinuousReindexingPropertiesTest
     }
 
     @Test
+    @DisplayName("negative unhealthyAfterConsecutiveFailures throws — it would disable the guard silently")
+    void negativeUnhealthyAfterConsecutiveFailuresThrows()
+    {
+        props.setUnhealthyAfterConsecutiveFailures(-1);
+
+        assertThatThrownBy(props::validate)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("unhealthyAfterConsecutiveFailures");
+    }
+
+    @Test
+    @DisplayName("unhealthyAfterConsecutiveFailures=0 is accepted — it disables the check deliberately")
+    void zeroUnhealthyAfterConsecutiveFailuresIsAccepted()
+    {
+        props.setUnhealthyAfterConsecutiveFailures(0);
+
+        assertThatCode(props::validate).doesNotThrowAnyException();
+    }
+
+    @Test
     @DisplayName("stuckThreshold equal to maxPollingInterval throws")
     void stuckThresholdEqualToMaxPollingThrows()
     {

@@ -25,18 +25,24 @@
  */
 package org.alfresco.reindexing.writers;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.alfresco.metrics.ReindexingMetrics;
 
 public class ChunkWriteMetricsAccumulator
 {
-    private final ThreadLocal<Map<String, Counts>> countBuffer = ThreadLocal.withInitial(HashMap::new);
+    private final ThreadLocal<Map<String, Counts>> countBuffer = ThreadLocal.withInitial(ConcurrentHashMap::new);
 
-    private final ThreadLocal<Map<String, Long>> durationBuffer = ThreadLocal.withInitial(HashMap::new);
+    private final ThreadLocal<Map<String, Long>> durationBuffer = ThreadLocal.withInitial(ConcurrentHashMap::new);
 
     private record Counts(long success, long failure)
+    {}
+
+    /**
+     * Snapshot of a chunk thread's buffers so worker threads (see {@link ConcurrentCompositeItemWriter}) can record into the SAME maps as the owning chunk thread. The buffers are {@link ConcurrentHashMap}s and each writer records under a distinct module key, so concurrent puts are safe and the {@code beforeWrite}/{@code afterWrite} flush on the chunk thread still sees everything.
+     */
+    public record Buffers(Map<String, Counts> counts, Map<String, Long> durations)
     {}
 
     public void recordCount(String module, long success, long failure)
@@ -49,13 +55,37 @@ public class ChunkWriteMetricsAccumulator
         durationBuffer.get().put(module, durationMs);
     }
 
+    /** Capture the current thread's buffers so they can be adopted by worker threads. */
+    public Buffers captureBuffers()
+    {
+        return new Buffers(countBuffer.get(), durationBuffer.get());
+    }
+
+    /** Run {@code task} on the current (worker) thread with the given buffers bound, then restore. */
+    public void runWithBuffers(Buffers buffers, Runnable task)
+    {
+        Map<String, Counts> previousCounts = countBuffer.get();
+        Map<String, Long> previousDurations = durationBuffer.get();
+        countBuffer.set(buffers.counts());
+        durationBuffer.set(buffers.durations());
+        try
+        {
+            task.run();
+        }
+        finally
+        {
+            countBuffer.set(previousCounts);
+            durationBuffer.set(previousDurations);
+        }
+    }
+
     public void reset()
     {
         countBuffer.get().clear();
         durationBuffer.get().clear();
     }
 
-    public void flush(ReindexingMetrics metrics)
+    public Map<String, Long> flush(ReindexingMetrics metrics)
     {
         Map<String, Counts> counts = countBuffer.get();
         counts.forEach((module, c) -> {
@@ -65,7 +95,9 @@ public class ChunkWriteMetricsAccumulator
         counts.clear();
 
         Map<String, Long> durations = durationBuffer.get();
+        Map<String, Long> published = Map.copyOf(durations);
         durations.forEach(metrics::recordChunkWriteDuration);
         durations.clear();
+        return published;
     }
 }

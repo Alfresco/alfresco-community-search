@@ -38,6 +38,8 @@ import org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
  * Terminal error types:
  * <ul>
  * <li>{@code mapper_parsing_exception} — value doesn't fit the mapped type.</li>
+ * <li>{@code document_parsing_exception} — ES 8.x parse failure for a field value that doesn't fit the mapped type (the modern equivalent of {@code mapper_parsing_exception}).</li>
+ * <li>{@code document_mapping_exception} — ES 8.x mapping failure raised while parsing a document.</li>
  * <li>{@code strict_dynamic_mapping_exception} — new field on a strict-mapping index.</li>
  * <li>{@code illegal_argument_exception} — script argument or query shape bug.</li>
  * </ul>
@@ -48,6 +50,8 @@ public final class BulkItemErrorClassifier
     /** Error type names that will never succeed on retry. Anything not in this set is retryable. */
     private static final Set<String> TERMINAL_TYPES = Set.of(
             "mapper_parsing_exception",
+            "document_parsing_exception",
+            "document_mapping_exception",
             "strict_dynamic_mapping_exception",
             "illegal_argument_exception");
 

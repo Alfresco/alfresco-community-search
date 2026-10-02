@@ -31,6 +31,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.infrastructure.item.Chunk;
@@ -39,6 +41,7 @@ import org.alfresco.metrics.MetricsConstants;
 import org.alfresco.metrics.ReindexingMetrics;
 import org.alfresco.reindexing.config.ReindexingCoreProperties;
 import org.alfresco.reindexing.writers.ChunkWriteMetricsAccumulator;
+import org.alfresco.reindexing.writers.WriterTimingSummary;
 import org.alfresco.repo.event.EventAttributes;
 
 class WriteMetricsFlushListenerTest
@@ -54,7 +57,7 @@ class WriteMetricsFlushListenerTest
         accumulator = mock(ChunkWriteMetricsAccumulator.class);
         metrics = mock(ReindexingMetrics.class);
         properties = mock(ReindexingCoreProperties.class);
-        listener = new WriteMetricsFlushListener(accumulator, metrics, properties);
+        listener = new WriteMetricsFlushListener(accumulator, metrics, properties, new WriterTimingSummary(false));
     }
 
     @Test
@@ -77,9 +80,7 @@ class WriteMetricsFlushListenerTest
     @Test
     void onWriteErrorWhenSomeModulesEnabledResetsAndChargesFailureToEnabledModulesOnly()
     {
-        when(properties.isMetadataIndexingEnabled()).thenReturn(true);
-        when(properties.isContentIndexingEnabled()).thenReturn(true);
-        when(properties.isPathIndexingEnabled()).thenReturn(false);
+        when(properties.getEnabledWriterKeys()).thenReturn(List.of(MetricsConstants.METADATA, MetricsConstants.CONTENT));
         Chunk<EventAttributes> chunk = chunkOfSize(3);
 
         listener.onWriteError(new RuntimeException("boom"), chunk);
@@ -91,11 +92,24 @@ class WriteMetricsFlushListenerTest
     }
 
     @Test
+    void onWriteErrorInMergedModeChargesMergedAndContentNotMetadataOrPath()
+    {
+        when(properties.getEnabledWriterKeys()).thenReturn(List.of(MetricsConstants.MERGED, MetricsConstants.CONTENT));
+        Chunk<EventAttributes> chunk = chunkOfSize(5);
+
+        listener.onWriteError(new RuntimeException("boom"), chunk);
+
+        verify(accumulator).reset();
+        verify(metrics).reindexWriteFailure(MetricsConstants.MERGED, 5L);
+        verify(metrics).reindexWriteFailure(MetricsConstants.CONTENT, 5L);
+        verify(metrics, never()).reindexWriteFailure(MetricsConstants.METADATA, 5L);
+        verify(metrics, never()).reindexWriteFailure(MetricsConstants.PATH, 5L);
+    }
+
+    @Test
     void onWriteErrorWhenAllModulesDisabledOnlyResetsAndRecordsNoFailures()
     {
-        when(properties.isMetadataIndexingEnabled()).thenReturn(false);
-        when(properties.isContentIndexingEnabled()).thenReturn(false);
-        when(properties.isPathIndexingEnabled()).thenReturn(false);
+        when(properties.getEnabledWriterKeys()).thenReturn(List.of());
 
         listener.onWriteError(new RuntimeException("boom"), chunkOfSize(4));
 

@@ -25,6 +25,8 @@
  */
 package org.alfresco.reindexing.retry;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 
 import lombok.experimental.UtilityClass;
@@ -56,19 +58,36 @@ public class RetryProxyFactory
 
     public static <T> T createRetryProxy(T delegate, Class<T> targetType, BackOff backOff, RetryListener retryListener)
     {
+        return createRetryProxy(delegate, targetType, backOff, retryListener, List.of());
+    }
+
+    /**
+     * Creates a retry proxy that does not retry the given exception types.
+     *
+     * @param excludes
+     *            exception types that must not be retried
+     */
+    public static <T> T createRetryProxy(T delegate, Class<T> targetType, BackOff backOff, RetryListener retryListener,
+            Collection<Class<? extends Throwable>> excludes)
+    {
         Objects.requireNonNull(delegate, "delegate must not be null to create retry proxy");
         Objects.requireNonNull(targetType, "targetType must not be null to create retry proxy");
         Objects.requireNonNull(backOff, "backOff must not be null to create retry proxy");
         Objects.requireNonNull(retryListener, "retryListener must not be null to create retry proxy");
+        Objects.requireNonNull(excludes, "excludes must not be null to create retry proxy");
 
         String targetName = targetType.getSimpleName();
 
         log.info("Wrapping {} with retry proxy and: {}", targetName, backOff);
 
-        RetryPolicy retryPolicy = RetryPolicy.builder()
+        RetryPolicy.Builder retryPolicyBuilder = RetryPolicy.builder()
                 .backOff(backOff)
-                .includes(Exception.class)
-                .build();
+                .includes(Exception.class);
+        if (!excludes.isEmpty())
+        {
+            retryPolicyBuilder.excludes(excludes);
+        }
+        RetryPolicy retryPolicy = retryPolicyBuilder.build();
 
         RetryTemplate retryTemplate = new RetryTemplate(retryPolicy);
         retryTemplate.setRetryListener(retryListener);

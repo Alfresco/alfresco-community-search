@@ -78,6 +78,11 @@ public class ContinuousReindexingProperties
      */
     private Duration stuckThreshold = Duration.ofMinutes(10);
 
+    /**
+     * Report DOWN once this many cycles have failed in a row. The idle-based check cannot see this: a failing cycle still ticks activity, and the retry backoff caps below {@code stuckThreshold}, so a pod that indexes nothing stays UP indefinitely. Zero disables the check.
+     */
+    private int unhealthyAfterConsecutiveFailures = 3;
+
     /** Whether the continuous reindexing service starts automatically with the Spring context. */
     private boolean autoStart = true;
 
@@ -110,6 +115,7 @@ public class ContinuousReindexingProperties
         validateWatermarkRetryMaxAttempts();
         validateWatermarkRetryDelay();
         validateStuckThreshold();
+        validateUnhealthyAfterConsecutiveFailures();
     }
 
     private void validateMaxWindow()
@@ -140,6 +146,17 @@ public class ContinuousReindexingProperties
         {
             throw new IllegalArgumentException(String.format(
                     "alfresco.reindex.continuous.maxGapAge must be >= 0 but was %s", maxGapAge));
+        }
+    }
+
+    private void validateUnhealthyAfterConsecutiveFailures()
+    {
+        if (unhealthyAfterConsecutiveFailures < 0)
+        {
+            throw new IllegalArgumentException(String.format(
+                    "alfresco.reindex.continuous.unhealthyAfterConsecutiveFailures must be >= 0 but was %d. "
+                            + "Use 0 to disable the check; a negative value would disable it silently.",
+                    unhealthyAfterConsecutiveFailures));
         }
     }
 

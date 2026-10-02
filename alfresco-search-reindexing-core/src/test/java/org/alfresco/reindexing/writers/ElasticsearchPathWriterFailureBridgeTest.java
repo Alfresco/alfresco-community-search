@@ -26,6 +26,7 @@
 package org.alfresco.reindexing.writers;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -40,6 +41,7 @@ import static org.mockito.Mockito.when;
 import java.io.IOException;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Set;
 
@@ -151,14 +153,27 @@ class ElasticsearchPathWriterFailureBridgeTest
     }
 
     @Test
-    void listenerAbsent_stillWritesAndLogs() throws Exception
+    void listenerAbsentAndFailOnTerminalDisabled_stillWritesAndLogs() throws Exception
     {
         stubBulkResponse(1, 1, List.of(new BulkItemFailure(NODE_REF_A, "x", "y")));
+        when(reindexProps.isFailOnTerminalWriteErrors()).thenReturn(false);
         ElasticsearchPathWriter writer = newWriterWith(null);
         writer.open(executionContext);
 
         assertThatCode(() -> writer.write(Chunk.of(event(101L, NODE_REF_A, EVENT_TIME_A))))
                 .doesNotThrowAnyException();
+    }
+
+    @Test
+    void listenerAbsentAndFailOnTerminalEnabled_failsChunk() throws Exception
+    {
+        stubBulkResponse(1, 1, List.of(new BulkItemFailure(NODE_REF_A, "x", "y")));
+        when(reindexProps.isFailOnTerminalWriteErrors()).thenReturn(true);
+        ElasticsearchPathWriter writer = newWriterWith(null);
+        writer.open(executionContext);
+
+        assertThatThrownBy(() -> writer.write(Chunk.of(event(101L, NODE_REF_A, EVENT_TIME_A))))
+                .isInstanceOf(TerminalWriteFailureException.class);
     }
 
     @Test
@@ -203,7 +218,7 @@ class ElasticsearchPathWriterFailureBridgeTest
         // Empty paths pass the buildRequestList filter (non-null) and produce empty field sets in
         // createNodeResource without triggering any category / ancestor logic.
         Path emptyPath = mock(Path.class);
-        when(emptyPath.getNodeMetadata()).thenReturn(new java.util.ArrayDeque<ChildAssocMetaData>());
+        when(emptyPath.getNodeMetadata()).thenReturn(new ArrayDeque<ChildAssocMetaData>());
         when(emptyPath.asString(any())).thenReturn("/");
         when(emptyPath.asStringNoPrefix()).thenReturn("/");
         return ReindexingEvent.builder()

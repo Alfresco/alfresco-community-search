@@ -47,6 +47,7 @@ import org.mockito.stubbing.Answer;
 import org.alfresco.database.connector.AlfrescoMetadataRepository;
 import org.alfresco.database.connector.NodeParams;
 import org.alfresco.database.connector.model.AlfrescoNode;
+import org.alfresco.reindexing.readers.PageReadFailureListener;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AlfrescoExplicitIdSetItemReader")
@@ -127,6 +128,124 @@ class AlfrescoExplicitIdSetItemReaderTest
         assertThatThrownBy(reader::read)
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("pageSize");
+    }
+
+    @Test
+    @DisplayName("a failed page is skipped, not treated as end of data — later pages are still read")
+    void failedPageDoesNotAbandonLaterPages() throws Exception
+    {
+        // Sorted ids 1..6 at pageSize 2 give pages [1,2] [3,4] [5,6]; the middle page fails.
+        when(metadataRepository.getAlfrescoNodes(any())).thenAnswer((Answer<List<AlfrescoNode>>) invocation -> {
+            NodeParams params = invocation.getArgument(0, NodeParams.class);
+            Set<Long> ids = params.getIds().orElseThrow();
+            if (ids.contains(3L))
+            {
+                throw new IllegalStateException("connection reset");
+            }
+            return ids.stream()
+                    .map(id -> {
+                        AlfrescoNode node = new AlfrescoNode();
+                        node.setId(id);
+                        return node;
+                    })
+                    .collect(Collectors.toUnmodifiableList());
+        });
+
+        List<Long> reportedToListener = new ArrayList<>();
+        PageReadFailureListener listener = (name, params, cause) -> reportedToListener.addAll(params.getIds().orElseThrow());
+
+        AlfrescoExplicitIdSetItemReader reader = new AlfrescoExplicitIdSetItemReader(
+                metadataRepository, Set.of(1L, 2L, 3L, 4L, 5L, 6L), listener);
+        reader.setPageSize(2);
+
+        // Set.copyOf randomises iteration order per JVM, so only the membership is stable.
+        assertThat(readFully(reader)).containsExactlyInAnyOrder(1L, 2L, 5L, 6L);
+        assertThat(reportedToListener).containsExactlyInAnyOrder(3L, 4L);
+    }
+
+    @Test
+    @DisplayName("an intermediate page whose ids were all deleted does not end the reader")
+    void intermediateEmptyPageDoesNotAbandonLaterPages() throws Exception
+    {
+        // Sorted ids 1..6 at pageSize 2 give pages [1,2] [3,4] [5,6]; 3 and 4 no longer
+        // exist, so the middle page is a successful read that returns nothing.
+        when(metadataRepository.getAlfrescoNodes(any())).thenAnswer((Answer<List<AlfrescoNode>>) invocation -> {
+            NodeParams params = invocation.getArgument(0, NodeParams.class);
+            return params.getIds().orElseThrow().stream()
+                    .filter(id -> id != 3L && id != 4L)
+                    .map(id -> {
+                        AlfrescoNode node = new AlfrescoNode();
+                        node.setId(id);
+                        return node;
+                    })
+                    .collect(Collectors.toUnmodifiableList());
+        });
+
+        AlfrescoExplicitIdSetItemReader reader = new AlfrescoExplicitIdSetItemReader(metadataRepository, Set.of(1L, 2L, 3L, 4L, 5L, 6L));
+        reader.setPageSize(2);
+
+        assertThat(readFully(reader)).containsExactlyInAnyOrder(1L, 2L, 5L, 6L);
+    }
+
+    @Test
+    @DisplayName("a page returning fewer nodes than requested does not end the reader")
+    void shortPageDoesNotAbandonLaterPages() throws Exception
+    {
+        // Sorted ids 1..6 at pageSize 2 give pages [1,2] [3,4] [5,6]. Only id 4 is gone, so the
+        // middle page comes back with one node instead of two.
+        mockRepositoryYieldingNodeForEveryRequestedIdExcept(4L);
+
+        AlfrescoExplicitIdSetItemReader reader = new AlfrescoExplicitIdSetItemReader(
+                metadataRepository, Set.of(1L, 2L, 3L, 4L, 5L, 6L));
+        reader.setPageSize(2);
+
+        // Set.copyOf randomises iteration order per JVM, so only the membership is stable.
+        assertThat(readFully(reader)).containsExactlyInAnyOrder(1L, 2L, 3L, 5L, 6L);
+    }
+
+    @Test
+    @DisplayName("several short and empty pages in a row still leave the reader at the last page")
+    void consecutiveIncompletePagesDoNotAbandonLaterPages() throws Exception
+    {
+        // Pages [1,2] [3,4] [5,6] [7,8]: the second is short, the third fully deleted.
+        mockRepositoryYieldingNodeForEveryRequestedIdExcept(4L, 5L, 6L);
+
+        AlfrescoExplicitIdSetItemReader reader = new AlfrescoExplicitIdSetItemReader(
+                metadataRepository, Set.of(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L));
+        reader.setPageSize(2);
+
+        assertThat(readFully(reader)).containsExactlyInAnyOrder(1L, 2L, 3L, 7L, 8L);
+    }
+
+    @Test
+    @DisplayName("a short final page ends the reader without an extra repository call")
+    void shortFinalPageEndsTheReader() throws Exception
+    {
+        // Pages [1,2] [3,4]; id 4 is gone, so the last page is short and nothing follows it.
+        mockRepositoryYieldingNodeForEveryRequestedIdExcept(4L);
+
+        AlfrescoExplicitIdSetItemReader reader = new AlfrescoExplicitIdSetItemReader(
+                metadataRepository, Set.of(1L, 2L, 3L, 4L));
+        reader.setPageSize(2);
+
+        assertThat(readFully(reader)).containsExactlyInAnyOrder(1L, 2L, 3L);
+        verify(metadataRepository, times(2)).getAlfrescoNodes(any());
+    }
+
+    private void mockRepositoryYieldingNodeForEveryRequestedIdExcept(Long... deletedIds)
+    {
+        Set<Long> deleted = Set.of(deletedIds);
+        when(metadataRepository.getAlfrescoNodes(any())).thenAnswer((Answer<List<AlfrescoNode>>) invocation -> {
+            NodeParams params = invocation.getArgument(0, NodeParams.class);
+            return params.getIds().orElseThrow().stream()
+                    .filter(id -> !deleted.contains(id))
+                    .map(id -> {
+                        AlfrescoNode node = new AlfrescoNode();
+                        node.setId(id);
+                        return node;
+                    })
+                    .collect(Collectors.toUnmodifiableList());
+        });
     }
 
     private List<Long> readFully(AlfrescoExplicitIdSetItemReader reader) throws Exception

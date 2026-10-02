@@ -39,7 +39,7 @@
         <!-- Versions carried over from alfresco-elasticsearch-connector so the first community
              build resolves the same dependency tree the connector build did. -->
         <acs.event.model.version>1.0.11</acs.event.model.version>
-        <alfresco.database.connector.version>1.8.0-A.3</alfresco.database.connector.version>
+        <alfresco.database.connector.version>1.8.0-A.5</alfresco.database.connector.version>
         <opensearch-java.version>3.9.0</opensearch-java.version>
         <opensearch-rest-client.version>3.8.0</opensearch-rest-client.version>
         <spring-retry.version>2.0.13</spring-retry.version>

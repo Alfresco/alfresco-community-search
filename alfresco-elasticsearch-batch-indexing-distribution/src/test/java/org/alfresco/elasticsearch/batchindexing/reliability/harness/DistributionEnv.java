@@ -40,7 +40,7 @@ import java.nio.file.Paths;
 public final class DistributionEnv
 {
     private static final Path ALFRESCO_DUMP_SQL_PATH = Path
-            .of("../alfresco-elasticsearch-reindexing/src/main/docker/alfresco-dump.sql")
+            .of("../alfresco-elasticsearch-batch-indexing/src/test/resources/docker/alfresco-dump.sql")
             .toAbsolutePath()
             .normalize();
 
@@ -77,7 +77,7 @@ public final class DistributionEnv
     public static Path alfrescoDumpSqlPath()
     {
         assertThat(ALFRESCO_DUMP_SQL_PATH.toFile())
-                .as("alfresco-dump.sql must exist in the reindexing module")
+                .as("alfresco-dump.sql must exist in the batch-indexing module")
                 .exists();
         return ALFRESCO_DUMP_SQL_PATH;
     }

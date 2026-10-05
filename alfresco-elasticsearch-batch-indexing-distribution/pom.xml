@@ -114,6 +114,36 @@
                     </execution>
                 </executions>
             </plugin>
+            <!-- The .env above is filtered from docker-compose-origin. A property that is not
+                 defined is left as a literal ${...}, which ships a broken image tag in the
+                 distribution zip and is not covered by any test. Fail the build instead. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>${maven-antrun-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>check-compose-env-fully-filtered</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <fail message="docker-compose/.env still contains an unresolved property - every tag must come from a dist.* property defined in the root pom">
+                                    <condition>
+                                        <resourcecount when="greater" count="0">
+                                            <fileset dir="${basedir}/src/main/resources/docker-compose" includes=".env">
+                                                <containsregexp expression="\$\{"/>
+                                            </fileset>
+                                        </resourcecount>
+                                    </condition>
+                                </fail>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>

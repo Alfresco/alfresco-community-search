@@ -51,6 +51,7 @@ import org.alfresco.indexing.shared.ElasticsearchProperties;
 import org.alfresco.indexing.shared.extractor.EncodedFields;
 import org.alfresco.indexing.shared.extractor.EncodedFieldsExtractor;
 import org.alfresco.reindexing.config.PrefixNamespaceConfig;
+import org.alfresco.reindexing.config.ReindexingCoreProperties;
 import org.alfresco.reindexing.model.ReindexingEvent;
 import org.alfresco.reindexing.opensearch.request.ReindexingRequestBuilder;
 import org.alfresco.repo.event.v1.model.NodeResource;
@@ -63,6 +64,8 @@ class ReindexingEventSerializationTest
     private ElasticsearchProperties elasticsearchProperties;
     @Mock
     private EncodedFieldsExtractor encodedFieldsExtractor;
+    @Mock
+    private ReindexingCoreProperties reindexingCoreProperties;
     private ReindexingRequestBuilder builder;
     private static final String ALFRESCO_INDEX_NAME = "alfresco";
     private static final int RETRY_COUNT = 5;
@@ -142,7 +145,7 @@ class ReindexingEventSerializationTest
                         "http://ns.adobe.com/xmp/1.0/", "xmp",
                         "http://ns.useplus.org/ldf/cengage/1.0/", "cengage"));
 
-        AlfrescoNodeToReindexingEventProcessor processor = new AlfrescoNodeToReindexingEventProcessor(prefixConfig);
+        AlfrescoNodeToReindexingEventProcessor processor = new AlfrescoNodeToReindexingEventProcessor(prefixConfig, reindexingCoreProperties.getNonReadPermissions());
 
         LOGGER.info("AlfrescoNode before processing: {}", node);
         ReindexingEvent event = processor.process(node);

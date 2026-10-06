@@ -28,6 +28,7 @@ package org.alfresco.reindexing.config;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -115,6 +116,9 @@ public class ReindexingCoreProperties
     private boolean metadataIndexingEnabled;
     private boolean contentIndexingEnabled;
     private boolean pathIndexingEnabled;
+
+    // Permissions that do not grant read access and should be considered non-read permissions.
+    private Set<String> nonReadPermissions = Set.of();
 
     /**
      * Resolves the effective writer strategy from the single {@code writerMode} selector, falling back to the legacy {@code writersMergedEnabled} / {@code writersConcurrentEnabled} booleans when {@code writerMode} is not set. Precedence is: explicit {@code writerMode} &gt; merged boolean &gt; concurrent boolean &gt; {@link WriterMode#SEQUENTIAL}. This is the single place that decides the default strategy, so flipping the shipped default (e.g. to {@link WriterMode#MERGED}) is a one-line change here.
@@ -231,6 +235,7 @@ public class ReindexingCoreProperties
                 ", skipLimit=" + skipLimit +
                 ", onUnresolvedNamespace=" + onUnresolvedNamespace +
                 ", pathCacheSize=" + pathCacheSize +
+                ", nonReadPermissions=" + nonReadPermissions +
                 '}';
     }
 

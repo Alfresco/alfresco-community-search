@@ -339,7 +339,7 @@ class UnresolvedNamespaceReportingTest
 
     private ReindexingEvent processReturning(AlfrescoNode node, UnresolvedNamespaceAction action)
     {
-        return new AlfrescoNodeToReindexingEventProcessor(prefixMap, metrics, listener, action).process(node);
+        return new AlfrescoNodeToReindexingEventProcessor(prefixMap, metrics, listener, action, Set.of()).process(node);
     }
 
     private AlfrescoNode nodeOfCustomType()

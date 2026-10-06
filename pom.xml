@@ -43,6 +43,7 @@
         <alfresco.database.connector.version>1.8.0-A.5</alfresco.database.connector.version>
         <opensearch-java.version>3.9.0</opensearch-java.version>
         <opensearch-rest-client.version>3.8.0</opensearch-rest-client.version>
+        <parsson.version>1.1.9</parsson.version>
         <spring-retry.version>2.0.13</spring-retry.version>
         <guava.version>33.4.8-jre</guava.version>
         <okhttp3.version>5.1.0</okhttp3.version>
@@ -180,6 +181,13 @@
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-compress</artifactId>
                 <version>${dependency.commons-compress.version}</version>
+            </dependency>
+            <!-- CVE-2026-9563. Arrives transitively from the OpenSearch client, which has no
+                 release on a fixed version yet, so pin it here. -->
+            <dependency>
+                <groupId>org.eclipse.parsson</groupId>
+                <artifactId>parsson</artifactId>
+                <version>${parsson.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.alfresco</groupId>

@@ -27,8 +27,8 @@ env:
   # Both variables are required to be set before the release process starts .
   # As the release is triggered by a commit message with "[release]" keyword on a release branch,
   # setting these variables to new values can be done in the same commit and will indicate the release and the dev versions in it.
-  DEVELOPMENT_VERSION: "5.9.0-A.13-SNAPSHOT" # The version that will be set in pom files after the release (next dev version)
-  RELEASE_VERSION: "5.9.0-A.12"
+  DEVELOPMENT_VERSION: "5.9.0-A.15-SNAPSHOT" # The version that will be set in pom files after the release (next dev version)
+  RELEASE_VERSION: "5.9.0-A.14"
 
 jobs:
   pre_commit:

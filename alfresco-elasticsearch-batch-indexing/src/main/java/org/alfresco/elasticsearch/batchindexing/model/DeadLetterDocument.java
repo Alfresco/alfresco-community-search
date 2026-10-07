@@ -35,7 +35,7 @@ import lombok.ToString;
 /**
  * One record per give-up event the indexer has surfaced for operator visibility.
  * <p>
- * Most records are keyed by {@code dbId} so repeated failures for the same node upsert into a single document and {@code failureCount} captures retry noise without exploding storage. Reader-side failures are keyed by the failed time window (id shape {@code window:<tsFrom>-<tsTo>}) and therefore carry a null {@code dbId}.
+ * Most records are keyed by {@code dbId} so repeated failures for the same node upsert into a single document and {@code failureCount} captures retry noise without exploding storage. A reader-side failure takes whichever shape its page had: a by-date page is keyed by the failed time window (id shape {@code window:<tsFrom>-<tsTo>}) with a null {@code dbId}, while an id-shaped page records one dbId-keyed document per id.
  */
 @Getter
 @Setter
@@ -50,7 +50,7 @@ public class DeadLetterDocument
     /** Stage of the pipeline that produced the skip event. */
     public enum FailureStage
     {
-        /** Reader-side failure. Item never materialised — the whole page failed before a row could be mapped. Produced by {@code DlqPageReadFailureListener}, wired from reindexing's {@code AbstractAlfrescoNodeReader} when a JDBC page throws (e.g. malformed row); the record is keyed by the failed time window (id shape {@code window:<tsFrom>-<tsTo>}) and carries a null {@code dbId}. Not produced through Spring Batch's {@code SkipListener#onSkipInRead}: the paging reader would re-read the same failed page indefinitely rather than advance. */
+        /** Reader-side failure. Item never materialised — the whole page failed before a row could be mapped. Produced by {@code DlqPageReadFailureListener}, wired from reindexing's {@code AbstractAlfrescoNodeReader} when a JDBC page throws (e.g. malformed row). A by-date page is recorded as one document keyed by the failed time window (id shape {@code window:<tsFrom>-<tsTo>}) with a null {@code dbId}; an id-shaped page, as used by the DLQ drain, is recorded as one document per id so the drain's cleanup sees each entry's failureCount rise. Not produced through Spring Batch's {@code SkipListener#onSkipInRead}: the paging reader would re-read the same failed page indefinitely rather than advance. */
         READER,
         /** {@link org.springframework.batch.core.listener.SkipListener#onSkipInProcess}. Item is the reader's output. */
         PROCESSOR,
@@ -67,7 +67,7 @@ public class DeadLetterDocument
     @JsonProperty("schemaVersion")
     private int schemaVersion = CURRENT_SCHEMA_VERSION;
 
-    /** Alfresco node database id. Matches {@code AlfrescoNode.getId()}. Populated for processor and writer skips; null for reader-side (page-level) skips. */
+    /** Alfresco node database id. Matches {@code AlfrescoNode.getId()}. Populated for processor and writer skips, and for a reader failure on an id-shaped page; null only for a window-keyed reader failure. */
     @JsonProperty("dbId")
     private Long dbId;
 

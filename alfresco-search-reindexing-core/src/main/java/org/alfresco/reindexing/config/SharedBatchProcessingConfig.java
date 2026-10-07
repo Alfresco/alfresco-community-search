@@ -238,7 +238,7 @@ public class SharedBatchProcessingConfig
         // ObjectProvider keeps the listener optional — the reindexing module ships without a bean,
         // batch-indexing registers one to feed its DLQ.
         return new AlfrescoNodeToReindexingEventProcessor(prefixNamespaceConfig, reindexingMetrics,
-                unresolvedNamespaceListener.getIfAvailable(), reindexingProperties.getOnUnresolvedNamespace());
+                unresolvedNamespaceListener.getIfAvailable(), reindexingProperties.getOnUnresolvedNamespace(), reindexingProperties.getNonReadPermissions());
     }
 
     @Bean

@@ -434,7 +434,7 @@ class UnresolvedNamespaceBehaviourTest
 
     private ReindexingEvent process(AlfrescoNode node)
     {
-        return new AlfrescoNodeToReindexingEventProcessor(prefixMap).process(node);
+        return new AlfrescoNodeToReindexingEventProcessor(prefixMap, Set.of()).process(node);
     }
 
     private static NodeResource resourceOf(ReindexingEvent event)

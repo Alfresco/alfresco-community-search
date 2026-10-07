@@ -75,19 +75,23 @@ public class AlfrescoNodeToReindexingEventProcessor extends AlfrescoNodeProcesso
     private final UnresolvedNamespaceListener unresolvedNamespaceListener;
     private final UnresolvedNamespaceAction onUnresolvedNamespace;
 
-    public AlfrescoNodeToReindexingEventProcessor(PrefixNamespaceConfig prefixNamespaceConfig)
+    private final Set<String> nonReadPermissions;
+
+    public AlfrescoNodeToReindexingEventProcessor(PrefixNamespaceConfig prefixNamespaceConfig, Set<String> nonReadPermissions)
     {
-        this(prefixNamespaceConfig, null, null, UnresolvedNamespaceAction.FILTER);
+        this(prefixNamespaceConfig, null, null, UnresolvedNamespaceAction.FILTER, nonReadPermissions);
     }
 
     public AlfrescoNodeToReindexingEventProcessor(PrefixNamespaceConfig prefixNamespaceConfig,
             ReindexingMetrics reindexingMetrics,
             UnresolvedNamespaceListener unresolvedNamespaceListener,
-            UnresolvedNamespaceAction onUnresolvedNamespace)
+            UnresolvedNamespaceAction onUnresolvedNamespace,
+            Set<String> nonReadPermissions)
     {
         super(prefixNamespaceConfig, reindexingMetrics);
         this.unresolvedNamespaceListener = unresolvedNamespaceListener;
         this.onUnresolvedNamespace = onUnresolvedNamespace;
+        this.nonReadPermissions = nonReadPermissions;
     }
 
     @Override
@@ -242,6 +246,7 @@ public class AlfrescoNodeToReindexingEventProcessor extends AlfrescoNodeProcesso
         return ofNullable(node.getAccessControlList())
                 .map(accessControlList -> accessControlList.stream()
                         .filter(AccessControlEntry::getAllowed)
+                        .filter(not(this::isNonReadPermission))
                         .map(AccessControlEntry::getAccessControlEntryKey)
                         .map(AccessControlEntryKey::getAuthority)
                         .collect(Collectors.toSet()))
@@ -253,15 +258,20 @@ public class AlfrescoNodeToReindexingEventProcessor extends AlfrescoNodeProcesso
         return ofNullable(node.getAccessControlList())
                 .map(accessControlList -> accessControlList.stream()
                         .filter(not(AccessControlEntry::getAllowed))
+                        .filter(not(this::isNonReadPermission))
                         .map(AccessControlEntry::getAccessControlEntryKey)
                         .map(AccessControlEntryKey::getAuthority)
                         .collect(Collectors.toSet()))
                 .orElse(Collections.emptySet());
     }
 
+    private boolean isNonReadPermission(AccessControlEntry ace)
+    {
+        return nonReadPermissions != null && nonReadPermissions.contains(ace.getPermission());
+    }
+
     private Boolean isNotIndexed(Map<String, Serializable> properties)
     {
         return !(Boolean) properties.getOrDefault("cm:isIndexed", Boolean.TRUE);
     }
-
 }

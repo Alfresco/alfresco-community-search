@@ -128,6 +128,8 @@ jobs:
             params: '"-Dit.groups=lifecycle"'
           - name: "Infra Recovery"
             params: '"-Dit.groups=infra-recovery"'
+          - name: "Poison"
+            params: '"-Dit.groups=poison"'
           - name: "Large Single Window"
             params: '"-Dit.test=LargeSingleWindowIT.java"'
     name: "Batch Indexing Reliability - ${{ matrix.tests.name }}"

@@ -127,7 +127,7 @@ class AlfrescoPagingItemReaderByTimestampIT
         AlfrescoNode node = reader.read();
         while (node != null)
         {
-            nodes.add(node);
+            allNodes.add(node);
             node = reader.read();
         }
 

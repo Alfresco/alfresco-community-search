@@ -220,7 +220,7 @@ class AlfrescoPagingItemReaderByTimestampTest
     }
 
     @Test
-    void shouldStopOnPageReadFailure() throws Exception
+    void shouldStopOnPageReadFailure()
     {
         // Create a mock that fails immediately
         AlfrescoMetadataRepository failingRepository = org.mockito.Mockito.mock(AlfrescoMetadataRepository.class);
@@ -232,7 +232,7 @@ class AlfrescoPagingItemReaderByTimestampTest
         reader.setPageSize(10);
 
         // Attempt to read should propagate the database failure (reader stops on failure)
-        assertThatThrownBy(() -> reader.read()).isInstanceOf(RuntimeException.class)
+        assertThatThrownBy(reader::read).isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("database connection failure");
     }
 

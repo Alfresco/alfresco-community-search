@@ -153,6 +153,10 @@ public class ReindexPathFieldsBuilder
 
     /**
      * An element whose namespace has no mapping is written as a bare name, which is indistinguishable from an element that legitimately has no prefix. Only a missing mapping is reported; a mapping to the empty prefix is correct.
+     * <p>
+     * Known false positive: the database stores the empty namespace as the literal {@code .empty}, and the prefix map is keyed on {@code ""}, so every node in the empty namespace warns here. The indexed path is unaffected, because a bare name is what an empty prefix produces anyway.
+     * <p>
+     * Mapping {@code .empty} before the lookup would silence it, but only for URIs. A localname of {@code .empty} is a real file name and must be left alone.
      */
     private void reportUnmappedElements(Path path)
     {

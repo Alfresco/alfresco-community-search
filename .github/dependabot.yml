@@ -1,0 +1,47 @@
+# see https://docs.github.com/en/github/administering-a-repository/configuration-options-for-dependency-updates
+version: 2
+updates:
+  - package-ecosystem: "maven"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "22:00"
+      timezone: "Europe/London"
+    open-pull-requests-limit: 99
+    allow:
+      - dependency-type: "direct"
+    ignore:
+      # Published by this repository; versions come from the reactor.
+      - dependency-name: "org.alfresco:alfresco-search-*"
+      - dependency-name: "org.alfresco:alfresco-elasticsearch-batch-indexing*"
+    groups:
+      spring:
+        patterns:
+          - "org.springframework*"
+      opensearch:
+        patterns:
+          - "org.opensearch*"
+      alfresco:
+        patterns:
+          - "org.alfresco*"
+      testcontainers:
+        patterns:
+          - "org.testcontainers*"
+      jackson:
+        patterns:
+          - "com.fasterxml.jackson*"
+          - "tools.jackson*"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+  - package-ecosystem: "docker"
+    directory: "alfresco-elasticsearch-batch-indexing-distribution/src/main/resources/"
+    schedule:
+      interval: "daily"
+      time: "22:00"
+      timezone: "Europe/London"

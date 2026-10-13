@@ -243,14 +243,22 @@ class AlfrescoPagingItemReaderByTimestampTest
                 .hasMessageContaining("database connection failure");
     }
 
-    private List<Long> readFully(ItemReader<AlfrescoNode> reader) throws Exception
+    List<Long> readFully(ItemReader<AlfrescoNode> reader)
     {
         List<Long> allIds = new ArrayList<>();
 
-        AlfrescoNode node;
-        while ((node = reader.read()) != null)
+        try
         {
-            allIds.add(node.getId());
+            AlfrescoNode node = reader.read();
+            while (node != null)
+            {
+                allIds.add(node.getId());
+                node = reader.read();
+            }
+        }
+        catch (Exception e)
+        {
+            throw new AssertionError("Failed to read all nodes", e);
         }
 
         return allIds;

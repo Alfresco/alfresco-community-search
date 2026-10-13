@@ -124,10 +124,11 @@ class AlfrescoPagingItemReaderByTimestampIT
 
         // Read all nodes
         List<AlfrescoNode> allNodes = new ArrayList<>();
-        AlfrescoNode node;
-        while ((node = reader.read()) != null)
+        AlfrescoNode node = reader.read();
+        while (node != null)
         {
-            allNodes.add(node);
+            nodes.add(node);
+            node = reader.read();
         }
 
         // Should have read nodes from the test data
@@ -165,10 +166,11 @@ class AlfrescoPagingItemReaderByTimestampIT
                 .build();
 
         List<AlfrescoNode> nodes = new ArrayList<>();
-        AlfrescoNode node;
-        while ((node = reader.read()) != null)
+        AlfrescoNode node = reader.read();
+        while (node != null)
         {
             nodes.add(node);
+            node = reader.read();
         }
 
         // Verify all results are within range

@@ -35,7 +35,7 @@
              are pinned here. Tomcat, Netty, snakeyaml and commons-lang3 are deliberately not
              pinned: Spring Boot 4.1.1 already manages the same or a newer version of each. -->
         <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
-        <maven-antrun-plugin.version>3.1.0</maven-antrun-plugin.version>
+        <maven-antrun-plugin.version>3.2.0</maven-antrun-plugin.version>
 
         <!-- Versions carried over from alfresco-elasticsearch-connector so the first community
              build resolves the same dependency tree the connector build did. -->

@@ -103,12 +103,12 @@ class AlfrescoPagingItemReaderByTimestampIT
     @Test
     void shouldReadAllNodesUsingTimestampRangeWithKeysetPagination() throws Exception
     {
-        // Use a date range that covers all test data (1010 to 2010)
-        LocalDateTime from = LocalDateTime.of(2000, 1, 1, 0, 0);
-        LocalDateTime to = LocalDateTime.of(2030, 1, 1, 0, 0);
+        // Use millisecond range that covers all test data (test data spans 1010 to 2010 ms)
+        long fromTs = 1010L;
+        long toTs = 2011L;
 
-        long fromTs = from.toInstant(ZoneOffset.UTC).toEpochMilli();
-        long toTs = to.toInstant(ZoneOffset.UTC).toEpochMilli();
+        LocalDateTime from = java.time.Instant.ofEpochMilli(fromTs).atZone(ZoneOffset.UTC).toLocalDateTime();
+        LocalDateTime to = java.time.Instant.ofEpochMilli(toTs).atZone(ZoneOffset.UTC).toLocalDateTime();
 
         // Use small page size to force multiple pages and verify pagination works
         ItemStreamReader<AlfrescoNode> reader = AlfrescoPagingItemReaderBuilder

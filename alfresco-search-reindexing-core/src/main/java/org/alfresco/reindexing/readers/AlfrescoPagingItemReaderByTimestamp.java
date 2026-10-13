@@ -34,12 +34,18 @@ import org.alfresco.database.connector.NodeParams;
  * Paging item reader that uses keyset pagination (cursor-based) for timestamp ranges. This implementation avoids the performance problems of offset-based pagination by using the last node ID as a cursor, ensuring OFFSET is always 0.
  *
  * Performance benefit depends on the database planner: optimal when an index walk on node ID is used, but may be O(window) if a timestamp index scan dominates. Always avoids the O(n) cost of offset-based pagination where n is the offset value.
- * 
+ *
+ * ## Fault Tolerance
+ *
+ * When a page-read fails (database error, network issue), this reader stops the scan and calls the pageReadFailureListener to record the failed timestamp window in the dead-letter queue. The next reindex cycle will retry the entire range. This behavior is consistent with other readers in the application (see {@link AlfrescoPagingItemReaderById}, {@link AlfrescoPagingItemReader}).
+ *
+ * Duplicate rows may be processed again on retry, but Elasticsearch writes are idempotent (overwrites are harmless).
+ *
  * ## Restart Behavior
- * 
- * On Spring Batch job restart (step execution resumed from checkpoint), this reader restarts from the beginning of the timestamp range, not from the last committed ID. This design choice is consistent with other readers in the reindexing application (see {@link AlfrescoPagingItemReaderById}, {@link AlfrescoPagingItemReader}).
- * 
- * Duplicate rows will be processed again on restart, but Elasticsearch writes are idempotent (overwrites are harmless). For long-running jobs requiring checkpoint resumption, we should have a clear strategy for product-wide restart support discussion.
+ *
+ * On Spring Batch job restart (step execution resumed from checkpoint), this reader restarts from the beginning of the timestamp range, not from the last committed ID. This design choice is consistent with other readers in the reindexing application. Duplicate rows will be processed again on restart, but writes are idempotent.
+ *
+ * For long-running jobs requiring checkpoint resumption, restart support should be addressed as a product-wide enhancement across all readers (see Jira discussion on restart infrastructure).
  */
 public class AlfrescoPagingItemReaderByTimestamp extends AbstractAlfrescoNodeReader
 {
@@ -86,12 +92,6 @@ public class AlfrescoPagingItemReaderByTimestamp extends AbstractAlfrescoNodeRea
 
         // Always use page=0, which means OFFSET=0 for optimal performance
         return params.withPaging(0, getPageSize());
-    }
-
-    @Override
-    protected boolean pagesUntilCursorExhausted()
-    {
-        return true;
     }
 
     @Override

@@ -26,6 +26,7 @@
 package org.alfresco.reindexing.readers;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 
 import java.util.ArrayList;
@@ -216,6 +217,23 @@ class AlfrescoPagingItemReaderByTimestampTest
 
         // Should return 8 nodes (30-37, timestamps 1000-1070)
         assertThat(ids).containsExactly(30L, 31L, 32L, 33L, 34L, 35L, 36L, 37L);
+    }
+
+    @Test
+    void shouldStopOnPageReadFailure() throws Exception
+    {
+        // Create a mock that fails immediately
+        AlfrescoMetadataRepository failingRepository = org.mockito.Mockito.mock(AlfrescoMetadataRepository.class);
+        org.mockito.Mockito.when(failingRepository.getAlfrescoNodes(any())).thenThrow(
+                new RuntimeException("Simulated database connection failure"));
+
+        AlfrescoPagingItemReaderByTimestamp reader = new AlfrescoPagingItemReaderByTimestamp(
+                failingRepository, 1000L, 1500L);
+        reader.setPageSize(10);
+
+        // Attempt to read should propagate the database failure (reader stops on failure)
+        assertThatThrownBy(() -> reader.read()).isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("database connection failure");
     }
 
     private List<Long> readFully(ItemReader<AlfrescoNode> reader) throws Exception

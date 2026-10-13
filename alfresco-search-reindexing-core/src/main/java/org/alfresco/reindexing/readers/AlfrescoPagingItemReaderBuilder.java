@@ -127,10 +127,14 @@ public class AlfrescoPagingItemReaderBuilder
             return new AlfrescoPagingItemReaderById(metadataRepository, byIdParams[0], byIdParams[1], pageReadFailureListener);
 
         // Use keyset pagination for timestamp ranges to avoid offset-based pagination performance issues
-        if (nodeParams != null && nodeParams.getTimestampRange().isPresent())
+        if (nodeParams != null)
         {
-            var range = nodeParams.getTimestampRange().get();
-            return new AlfrescoPagingItemReaderByTimestamp(metadataRepository, range.getBegin(), range.getEnd(), pageReadFailureListener);
+            var timestampRange = nodeParams.getTimestampRange();
+            if (timestampRange.isPresent())
+            {
+                var range = timestampRange.get();
+                return new AlfrescoPagingItemReaderByTimestamp(metadataRepository, range.getBegin(), range.getEnd(), pageReadFailureListener);
+            }
         }
 
         return new AlfrescoPagingItemReader(metadataRepository, nodeParams, pageReadFailureListener);

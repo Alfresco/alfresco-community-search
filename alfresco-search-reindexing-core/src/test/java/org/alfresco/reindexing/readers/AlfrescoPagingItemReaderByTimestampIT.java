@@ -29,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -107,8 +108,8 @@ class AlfrescoPagingItemReaderByTimestampIT
         long fromTs = 1010L;
         long toTs = 2011L;
 
-        LocalDateTime from = java.time.Instant.ofEpochMilli(fromTs).atZone(ZoneOffset.UTC).toLocalDateTime();
-        LocalDateTime to = java.time.Instant.ofEpochMilli(toTs).atZone(ZoneOffset.UTC).toLocalDateTime();
+        LocalDateTime from = Instant.ofEpochMilli(fromTs).atZone(ZoneOffset.UTC).toLocalDateTime();
+        LocalDateTime to = Instant.ofEpochMilli(toTs).atZone(ZoneOffset.UTC).toLocalDateTime();
 
         // Use small page size to force multiple pages and verify pagination works
         ItemStreamReader<AlfrescoNode> reader = AlfrescoPagingItemReaderBuilder
@@ -153,8 +154,8 @@ class AlfrescoPagingItemReaderByTimestampIT
         long fromTs = 1100L;
         long toTs = 1500L;
 
-        LocalDateTime from = java.time.Instant.ofEpochMilli(fromTs).atZone(ZoneOffset.UTC).toLocalDateTime();
-        LocalDateTime to = java.time.Instant.ofEpochMilli(toTs).atZone(ZoneOffset.UTC).toLocalDateTime();
+        LocalDateTime from = Instant.ofEpochMilli(fromTs).atZone(ZoneOffset.UTC).toLocalDateTime();
+        LocalDateTime to = Instant.ofEpochMilli(toTs).atZone(ZoneOffset.UTC).toLocalDateTime();
 
         ItemStreamReader<AlfrescoNode> reader = AlfrescoPagingItemReaderBuilder
                 .forTimestampRange(from, to)
@@ -186,8 +187,8 @@ class AlfrescoPagingItemReaderByTimestampIT
         long fromTs = 1050L; // Covers nodes 5-100
         long toTs = 2100L;
 
-        LocalDateTime from = java.time.Instant.ofEpochMilli(fromTs).atZone(ZoneOffset.UTC).toLocalDateTime();
-        LocalDateTime to = java.time.Instant.ofEpochMilli(toTs).atZone(ZoneOffset.UTC).toLocalDateTime();
+        LocalDateTime from = Instant.ofEpochMilli(fromTs).atZone(ZoneOffset.UTC).toLocalDateTime();
+        LocalDateTime to = Instant.ofEpochMilli(toTs).atZone(ZoneOffset.UTC).toLocalDateTime();
 
         // Small page size forces multiple pages
         ItemStreamReader<AlfrescoNode> reader = AlfrescoPagingItemReaderBuilder

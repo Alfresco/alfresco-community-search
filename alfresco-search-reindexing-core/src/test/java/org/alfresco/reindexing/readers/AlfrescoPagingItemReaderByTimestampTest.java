@@ -28,6 +28,9 @@ package org.alfresco.reindexing.readers;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -94,7 +97,7 @@ class AlfrescoPagingItemReaderByTimestampTest
     @BeforeEach
     void setUpMetadataRepositoryMock()
     {
-        org.mockito.Mockito.lenient().when(metadataRepository.getAlfrescoNodes(any())).thenAnswer((Answer<List<AlfrescoNode>>) invocationOnMock -> {
+        lenient().when(metadataRepository.getAlfrescoNodes(any())).thenAnswer((Answer<List<AlfrescoNode>>) invocationOnMock -> {
             final NodeParams params = invocationOnMock.getArgument(0, NodeParams.class);
             final Range timestamps = params.getTimestampRange().orElseThrow();
             final Paging paging = params.getPaging().orElseThrow();
@@ -223,8 +226,8 @@ class AlfrescoPagingItemReaderByTimestampTest
     void shouldStopOnPageReadFailure()
     {
         // Create a mock that fails immediately
-        AlfrescoMetadataRepository failingRepository = org.mockito.Mockito.mock(AlfrescoMetadataRepository.class);
-        org.mockito.Mockito.when(failingRepository.getAlfrescoNodes(any())).thenThrow(
+        AlfrescoMetadataRepository failingRepository = mock(AlfrescoMetadataRepository.class);
+        when(failingRepository.getAlfrescoNodes(any())).thenThrow(
                 new RuntimeException("Simulated database connection failure"));
 
         AlfrescoPagingItemReaderByTimestamp reader = new AlfrescoPagingItemReaderByTimestamp(

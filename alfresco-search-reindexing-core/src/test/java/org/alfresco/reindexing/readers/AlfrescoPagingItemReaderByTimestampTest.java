@@ -54,6 +54,9 @@ import org.alfresco.database.connector.model.AlfrescoNode;
 @ExtendWith(MockitoExtension.class)
 class AlfrescoPagingItemReaderByTimestampTest
 {
+    @Mock
+    private AlfrescoMetadataRepository metadataRepository;
+
     // Simulate nodes with timestamps and IDs
     // IDs: 30-49, 60-91 (gap from 50-59)
     // Timestamps vary to simulate realistic data
@@ -89,9 +92,6 @@ class AlfrescoPagingItemReaderByTimestampTest
         }
         return data;
     }
-
-    @Mock
-    private AlfrescoMetadataRepository metadataRepository;
 
     @SuppressWarnings("null")
     @BeforeEach
@@ -186,7 +186,9 @@ class AlfrescoPagingItemReaderByTimestampTest
         {
             AlfrescoNode node = r.read();
             if (node == null)
+            {
                 break;
+            }
             firstPage.add(node);
         }
 
@@ -200,7 +202,9 @@ class AlfrescoPagingItemReaderByTimestampTest
         {
             AlfrescoNode node = r.read();
             if (node == null)
+            {
                 break;
+            }
             secondPage.add(node);
         }
 

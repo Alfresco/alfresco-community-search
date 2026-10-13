@@ -37,6 +37,8 @@ import org.alfresco.reindexing.config.PrefixNamespaceConfig;
 
 /**
  * Turns a {@link QName} into its {@code prefix:localName} form, and is the single place that decides what happens when a namespace URI has no registered prefix.
+ * <p>
+ * The lookup uses the URI exactly as the database stores it. Alfresco stores the empty namespace as the literal {@code .empty}, which is not a key in the prefix map, so such a name resolves to empty here and the item is left out of the document. That is not the same as the harmless warning on path elements, where the indexed value comes out right either way.
  */
 public class QNamePrefixResolver
 {

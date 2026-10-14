@@ -46,6 +46,7 @@ import org.alfresco.repo.event.v1.model.NodeResource;
 import org.alfresco.repo.event.v1.model.RepoEvent;
 import org.alfresco.repo.event.v1.model.UserInfo;
 
+@SuppressWarnings({"PMD.TooManyMethods", "PMD.TooManyFields"})
 public class EventGenerator
 {
 
@@ -59,7 +60,6 @@ public class EventGenerator
     private NodeResource resourceBefore;
     private EventData<NodeResource> eventData;
     private ContentInfo contentInfo;
-    private Random random;
     private boolean hasData;
     private boolean isFolder;
     private Set<String> aspects;
@@ -78,13 +78,12 @@ public class EventGenerator
 
     public EventGenerator()
     {
-        this.random = new Random();
         this.modifiedAt = ZonedDateTime.of(LocalDate.of(2011, 3, 13), LocalTime.NOON, ZoneId.of("UTC+8"));
         this.createdAt = ZonedDateTime.of(LocalDate.of(2011, 3, 13), LocalTime.NOON, ZoneId.of("UTC+8"));
         this.modifierId = "modifier";
         this.contentInfo = new ContentInfo("application/pdf", 12l, "UTF-8");
         this.properties = new HashMap<>();
-        this.id = Integer.toString(random.nextInt());
+        this.id = Integer.toString(new Random().nextInt());
         this.properties.put("cm:description", "this is a description");
         this.hasData = true;
         this.isFolder = false;
@@ -276,15 +275,6 @@ public class EventGenerator
                 .build();
     }
 
-    private NodeResource generateNodeResource()
-    {
-        return of(NodeResource.builder())
-                .map(builder -> hasContent ? builder.setContent(getContentInfo()) : builder)
-                .map(builder -> hasMetadata ? generateProperties(builder) : builder)
-                .map(builder -> builder.setId(id))
-                .get()
-                .build();
-    }
 
     private void populateResource()
     {
@@ -364,10 +354,6 @@ public class EventGenerator
         return resourceBuilder;
     }
 
-    private Set<String> createAspects()
-    {
-        return Set.of("model1:aspect1", "model2:aspects");
-    }
 
     private UserInfo createUserInfo(String id)
     {

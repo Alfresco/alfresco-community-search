@@ -28,6 +28,7 @@ package org.alfresco.indexing.shared.transform;
 import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.CM_CONTENT_TR_STATUS;
 import static org.alfresco.indexing.shared.TransformStatus.NO_TRANSFORM;
 import static org.alfresco.indexing.shared.TransformStatus.TRANSFORM_OUTDATED;
+import static org.alfresco.indexing.shared.utils.DeletionTypeChecker.isArchiveDelete;
 
 import java.io.Serializable;
 import java.util.Map;
@@ -62,6 +63,9 @@ public class TransformStatusExtender
         {
         case NODE_CREATED -> RepoEventCloneUtils.withAdditionalProps(repoEvent, NO_TRANSFORM_ENTRY);
         case NODE_UPDATED -> RepoEventCloneUtils.withAdditionalProps(repoEvent, TRANSFORM_OUTDATED_ENTRY);
+        case NODE_DELETED -> isArchiveDelete(repoEvent)
+                ? RepoEventCloneUtils.withAdditionalProps(repoEvent, TRANSFORM_OUTDATED_ENTRY)
+                : repoEvent;
         default -> repoEvent;
         };
     }

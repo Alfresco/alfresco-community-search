@@ -126,6 +126,24 @@ public class EsScriptUtils
                 + "{ ctx._source = params.doc; }";
     }
 
+    /**
+     * Archive (trashcan) deletion script.
+     * <p>
+     * Shares the very same out-of-order guard as {@link #deleteDocumentScriptSource()}, but instead of replacing the whole {@code _source} with a minimal tombstone it <b>merges</b> the supplied fields into the existing document. This keeps every indexed metadata field (and any previously indexed content) searchable while {@code ALIVE} is flipped to {@code false}.
+     *
+     * @param encodedFieldNames
+     *            encoded names of the fields to assign from the script params
+     */
+    public static String archiveDocumentScriptSource(Set<String> encodedFieldNames)
+    {
+        return "if ((ctx._source." + METADATA_INDEXING_LAST_UPDATE + " != null && ctx._source." + METADATA_INDEXING_LAST_UPDATE + " > params.eventTimestamp) "
+                + "|| (ctx._source." + PATH_INDEXING_LAST_UPDATE + " != null && ctx._source." + PATH_INDEXING_LAST_UPDATE + " > params.eventTimestamp) "
+                + "|| (ctx._source." + CONTENT_INDEXING_LAST_UPDATE + " != null && ctx._source." + CONTENT_INDEXING_LAST_UPDATE + " > params.eventTimestamp)) "
+                + "{ ctx.op = 'noop'; } "
+                + "else "
+                + "{ " + assignValuesFor(encodedFieldNames) + "}";
+    }
+
     public static String removeFieldScriptSource(String encodedFieldName)
     {
         return "ctx._source.remove('" + encodedFieldName + "'); ";

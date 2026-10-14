@@ -11,7 +11,7 @@
 
     <groupId>org.alfresco</groupId>
     <artifactId>alfresco-search-community-parent</artifactId>
-    <version>5.9.0-A.17-SNAPSHOT</version>
+    <version>5.10.0-A.1-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>Alfresco Community Search :: Parent</name>
@@ -37,10 +37,17 @@
         <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
         <maven-antrun-plugin.version>3.1.0</maven-antrun-plugin.version>
 
-        <!-- Versions carried over from alfresco-elasticsearch-connector so the first community
-             build resolves the same dependency tree the connector build did. -->
+        <!-- Alfresco dependencies -->
         <acs.event.model.version>1.0.11</acs.event.model.version>
-        <alfresco.database.connector.version>1.8.0-A.5</alfresco.database.connector.version>
+        <alfresco.database.connector.version>1.8.0</alfresco.database.connector.version>
+        <dist.share.version>26.3.0-A.11</dist.share.version>
+        <dist.postgres.version>16.6</dist.postgres.version>
+        <dist.transform.router.version>4.4.5</dist.transform.router.version>
+        <dist.transform.core.version>5.4.5</dist.transform.core.version>
+        <dist.transform.sfs.version>4.4.5</dist.transform.sfs.version>
+
+        <dist.activemq.docker.tag>6.2-jre17-rockylinux8</dist.activemq.docker.tag>
+        <dist.elasticsearch.version>8.17.0</dist.elasticsearch.version>
         <opensearch-java.version>3.9.0</opensearch-java.version>
         <opensearch-rest-client.version>3.8.0</opensearch-rest-client.version>
         <parsson.version>1.1.9</parsson.version>
@@ -59,17 +66,6 @@
         <!-- Temporary override above the Spring Boot-managed Tomcat version.
         Intended to be removed once Spring Boot manages a safe Tomcat release. -->
         <dependency.tomcat.version>11.0.26</dependency.tomcat.version>
-
-        <!-- Image tags for the docker-compose stack shipped in the distribution zip. The
-             assembly filters these into docker-compose/.env; an undefined one ships a
-             literal ${...} as the image tag and the stack will not start. -->
-        <dist.share.version>26.3.0-A.11</dist.share.version>
-        <dist.postgres.version>16.6</dist.postgres.version>
-        <dist.transform.router.version>4.4.5-A.6</dist.transform.router.version>
-        <dist.transform.core.version>5.4.5-A.6</dist.transform.core.version>
-        <dist.transform.sfs.version>4.4.5-A.6</dist.transform.sfs.version>
-        <dist.activemq.docker.tag>6.2-jre17-rockylinux8</dist.activemq.docker.tag>
-        <dist.elasticsearch.version>8.17.0</dist.elasticsearch.version>
     </properties>
 
     <modules>

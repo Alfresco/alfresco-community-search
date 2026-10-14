@@ -275,7 +275,6 @@ public class EventGenerator
                 .build();
     }
 
-
     private void populateResource()
     {
         resource = of(NodeResource.builder())
@@ -353,7 +352,6 @@ public class EventGenerator
 
         return resourceBuilder;
     }
-
 
     private UserInfo createUserInfo(String id)
     {

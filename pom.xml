@@ -65,7 +65,7 @@
         <jackson-bom.version>3.2.3</jackson-bom.version>
         <!-- Temporary override above the Spring Boot-managed Tomcat version.
         Intended to be removed once Spring Boot manages a safe Tomcat release. -->
-        <dependency.tomcat.version>11.0.26</dependency.tomcat.version>
+        <dependency.tomcat.version>11.0.27</dependency.tomcat.version>
     </properties>
 
     <modules>

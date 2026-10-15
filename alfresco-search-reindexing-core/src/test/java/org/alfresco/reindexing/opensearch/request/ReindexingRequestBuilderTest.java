@@ -29,8 +29,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 
+import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.CM_CONTENT_TR_STATUS;
+
+import java.io.Serializable;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,6 +44,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.client.opensearch.core.BulkRequest;
 
 import org.alfresco.indexing.shared.ElasticsearchProperties;
+import org.alfresco.indexing.shared.TransformStatus;
 import org.alfresco.indexing.shared.extractor.EncodedFields;
 import org.alfresco.indexing.shared.extractor.EncodedFieldsExtractor;
 import org.alfresco.repo.event.v1.model.ContentInfo;
@@ -84,6 +89,53 @@ class ReindexingRequestBuilderTest
         // then
         // one operation per event as content upserts skipped because mock has no content status
         assertThat(bulkRequest.operations()).hasSize(4);
+    }
+
+    @Test
+    void shouldUpsertMetadataAndContentForArchiveDelete()
+    {
+        // given an archive (trashcan) delete: NODE_DELETED carrying metadata + content, isPermanentlyDeleted=false
+        RepoEvent<EventData<NodeResource>> archiveDelete = deleteEvent(false);
+
+        // when
+        BulkRequest bulkRequest = builder.buildBulkRequest(List.of(archiveDelete), 1000L);
+
+        // then metadata upsert (ALIVE=false) + content upsert
+        assertThat(bulkRequest.operations()).hasSize(2);
+    }
+
+    @Test
+    void shouldWipeDocumentForPurgeDelete()
+    {
+        // given a purge delete: NODE_DELETED, isPermanentlyDeleted=true
+        RepoEvent<EventData<NodeResource>> purgeDelete = deleteEvent(true);
+
+        // when
+        BulkRequest bulkRequest = builder.buildBulkRequest(List.of(purgeDelete), 1000L);
+
+        // then single wipe operation, content upsert not applicable
+        assertThat(bulkRequest.operations()).hasSize(1);
+    }
+
+    /**
+     * Builds a {@code NODE_DELETED} event carrying content and a transform status, flagged as archive ({@code permanentlyDeleted=false}) or purge ({@code permanentlyDeleted=true}).
+     */
+    private static RepoEvent<EventData<NodeResource>> deleteEvent(boolean permanentlyDeleted)
+    {
+        Map<String, Serializable> properties = new java.util.HashMap<>();
+        properties.put(CM_CONTENT_TR_STATUS, TransformStatus.NO_TRANSFORM.name());
+        NodeResource resource = NodeResource.builder()
+                .setId("node")
+                .setContent(new ContentInfo("application/pdf", 12L, "UTF-8"))
+                .setProperties(properties)
+                .setIsPermanentlyDeleted(permanentlyDeleted)
+                .build();
+        return RepoEvent.<EventData<NodeResource>> builder()
+                .setType(EventType.NODE_DELETED.getType())
+                .setData(EventData.<NodeResource> builder().setResource(resource).build())
+                .setId("event")
+                .setTime(ZonedDateTime.parse("2026-01-01T00:00:00Z"))
+                .build();
     }
 
     private static RepoEvent<EventData<NodeResource>> event(EventType type, boolean hasContent, boolean hasMetadata)

@@ -151,10 +151,12 @@ public abstract class BatchIndexingAbstractIT extends ElasticsearchTestTemplate
         }
 
         List<AlfrescoNode> allNodes = metadataRepository.getAlfrescoNodes(
-                NodeParams.searchByIdRange(0, Long.MAX_VALUE));
+                NodeParams.searchByIdRange(0, Long.MAX_VALUE).withArchive(true));
 
-        // Reindex emits soft-deletes (ALIVE=false) for trashed nodes and nodes flagged cm:isIndexed=false.
+        // Reindex emits soft-deletes (ALIVE=false) for trashed nodes and nodes flagged cm:isIndexed=false,
+        // and for archived nodes which are kept searchable in the archive store with ALIVE=false.
         Predicate<AlfrescoNode> isMarkedForDelete = n -> "deleted".equals(n.getType().getLocalName())
+                || "archive".equals(n.getProtocol())
                 || n.getNodeProperties().stream()
                         .anyMatch(p -> "isIndexed".equals(p.getPropertyKey().getLocalName())
                                 && !p.getPropertyValue().getBooleanValue());

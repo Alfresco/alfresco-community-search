@@ -28,7 +28,9 @@ package org.alfresco.reindexing.opensearch.impl;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -93,7 +95,7 @@ class ElasticSearchUpdateOperationsMergedTest
     {
         ReindexingEvent event = createEventWithPaths(EventType.NODE_CREATED);
 
-        when(requestBuilder.buildMetadataFields(any(), anyLong()))
+        when(requestBuilder.buildMetadataFields(any(), anyLong(), anyBoolean()))
                 .thenReturn(Map.of("meta", "m", "shared", "fromMetadata"));
         when(pathFieldsBuilder.buildFields(any(), anyLong()))
                 .thenReturn(Map.of("path", "p", "shared", "fromPath"));
@@ -131,9 +133,35 @@ class ElasticSearchUpdateOperationsMergedTest
 
         assertThat(dto.getNumberOfActions()).isEqualTo(1);
         verify(requestBuilder).buildDeleteOperation(any());
-        verify(requestBuilder, never()).buildMetadataFields(any(), anyLong());
+        verify(requestBuilder, never()).buildMetadataFields(any(), anyLong(), anyBoolean());
         verify(pathFieldsBuilder, never()).buildFields(any(), anyLong());
         verify(openSearchClient, times(1)).bulk(any(BulkRequest.class));
+    }
+
+    @Test
+    @DisplayName("archive delete folds metadata (ALIVE=false) + path into one upsert; no hard delete")
+    void archiveDeleteFoldsMetadataAndPathIntoUpsert() throws Exception
+    {
+        ReindexingEvent event = createArchiveDeleteEvent();
+
+        when(requestBuilder.buildMetadataFields(any(), anyLong(), eq(false)))
+                .thenReturn(Map.of("meta", "m"));
+        when(pathFieldsBuilder.buildFields(any(), anyLong()))
+                .thenReturn(Map.of("path", "p"));
+        when(requestBuilder.buildReindexUpsertOperation(any(), any())).thenReturn(dummyOp("n1"));
+        when(requestBuilder.buildContentUpsertOperation(any())).thenReturn(Optional.of(dummyOp("n1-content")));
+        when(openSearchClient.bulk(any(BulkRequest.class)))
+                .thenReturn(bulkResponse(successItem("n1"), successItem("n1-content")));
+
+        var dto = operations.getMergedBulkRequest(List.of(event), START_TIME, 0, 1L);
+
+        // archive delete is a soft-delete upsert (ALIVE=false), never a hard delete
+        verify(requestBuilder).buildMetadataFields(any(), anyLong(), eq(false));
+        verify(requestBuilder).buildReindexUpsertOperation(any(), any());
+        verify(requestBuilder).buildContentUpsertOperation(any());
+        verify(requestBuilder, never()).buildDeleteOperation(any());
+        assertThat(dto.getNumberOfActions()).isEqualTo(1);
+        assertThat(dto.getFailures()).isEmpty();
     }
 
     @Test
@@ -165,6 +193,23 @@ class ElasticSearchUpdateOperationsMergedTest
         EventData<NodeResource> data = EventData.<NodeResource> builder().setResource(resource).build();
         RepoEvent<EventData<NodeResource>> repoEvent = RepoEvent.<EventData<NodeResource>> builder()
                 .setType(type.getType())
+                .setData(data)
+                .build();
+        return ReindexingEvent.builder()
+                .withRepoEvent(repoEvent)
+                .withAllPaths(Set.<Path> of())
+                .build();
+    }
+
+    private static ReindexingEvent createArchiveDeleteEvent()
+    {
+        NodeResource resource = NodeResource.builder()
+                .setId("workspace://SpacesStore/node")
+                .setIsPermanentlyDeleted(false)
+                .build();
+        EventData<NodeResource> data = EventData.<NodeResource> builder().setResource(resource).build();
+        RepoEvent<EventData<NodeResource>> repoEvent = RepoEvent.<EventData<NodeResource>> builder()
+                .setType(EventType.NODE_DELETED.getType())
                 .setData(data)
                 .build();
         return ReindexingEvent.builder()

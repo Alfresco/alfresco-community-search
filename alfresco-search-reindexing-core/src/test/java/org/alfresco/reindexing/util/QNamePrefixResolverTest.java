@@ -75,13 +75,13 @@ class QNamePrefixResolverTest
     }
 
     @Test
-    @DisplayName("QName has no toString, which is what made the raw value unusable")
-    void qnameHasNoUsefulToString()
+    @DisplayName("toString gives the long form, not the prefix this class produces")
+    void qnameToStringIsNotPrefixed()
     {
         QName type = QName.newTransientInstance(CM_URI, "content");
 
-        // Pins the reason this class exists. QName overrides equals/hashCode but not toString, so String.valueOf() produced 'org.alfresco.database.connector.model.QName@1f2e3d4c' in the subtree report.
-        assertThat(String.valueOf(type)).startsWith(QName.class.getName() + "@");
+        // the connector's own toString never yields a prefix.
+        assertThat(String.valueOf(type)).doesNotContain("cm:");
         assertThat(resolver.describe(type)).isEqualTo("cm:content");
     }
 

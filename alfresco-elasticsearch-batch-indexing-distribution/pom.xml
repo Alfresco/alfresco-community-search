@@ -3,7 +3,7 @@
     <parent>
         <artifactId>alfresco-search-community-parent</artifactId>
         <groupId>org.alfresco</groupId>
-        <version>5.10.0-A.1-SNAPSHOT</version>
+        <version>5.9.0-trashcan.5</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <name>Alfresco Community Search :: Batch Indexing Distribution</name>

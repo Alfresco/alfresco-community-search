@@ -11,6 +11,7 @@ on:
     branches:
       - master
       - release/**
+      - feature/ACS-12672-release-trashcan.4
   schedule:
     - cron: "0 12 * * 3"
   workflow_call:
@@ -28,7 +29,7 @@ env:
   # As the release is triggered by a commit message with "[release]" keyword on a release branch,
   # setting these variables to new values can be done in the same commit and will indicate the release and the dev versions in it.
   DEVELOPMENT_VERSION: "5.10.0-A.1-SNAPSHOT" # The version that will be set in pom files after the release (next dev version)
-  RELEASE_VERSION: "5.9.0"
+  RELEASE_VERSION: "5.9.0-trashcan.4"
 
 jobs:
   pre_commit:
@@ -182,7 +183,7 @@ jobs:
     if: >
       !(failure() || cancelled()) &&
       github.event_name != 'pull_request' &&
-      (github.ref_name == 'master' || startsWith(github.ref_name, 'release/')) &&
+      (github.ref_name == 'feature/ACS-12672-release-trashcan.4') &&
       contains(github.event.head_commit.message, '[release]')
     env:
       MAVEN_USERNAME: ${{ secrets.NEXUS_USERNAME }}

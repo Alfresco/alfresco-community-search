@@ -1,0 +1,151 @@
+Alfresco Community Search
+Third-Party Software Attribution Notice (NOTICE)
+
+Copyright 2026 Hyland (https://hyland.com/) and others.
+
+Alfresco Community Search is free software: you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public License as
+published by the Free Software Foundation, either version 3 of the License,
+or (at your option) any later version. See LICENSE.txt for the full license
+text.
+
+--------------------------------------------------------------------------------
+About this file
+--------------------------------------------------------------------------------
+
+This NOTICE file lists the third-party software components that are compiled
+into the Alfresco Community Search distribution package, together with their
+licenses and, where available, copyright notices.
+
+=== Apache 2.0 License ====
+Apache Commons Codec https://commons.apache.org/proper/commons-codec/
+Apache Commons Logging https://commons.apache.org/proper/commons-logging/
+Apache HttpClient https://hc.apache.org/httpcomponents-client-5.6.x/5.6.4/httpclient5/
+Apache HttpComponents Core HTTP/1.1 https://hc.apache.org/httpcomponents-core-5.4.x/5.4.3/httpcore5/
+Apache HttpComponents Core HTTP/2 https://hc.apache.org/httpcomponents-core-5.4.x/5.4.3/httpcore5-h2/
+Apache HttpComponents Core Reactive Extensions https://hc.apache.org/httpcomponents-core-5.4.x/5.4.3/httpcore5-reactive/
+Apache Log4j API https://logging.apache.org/log4j/2.x/
+Core :: ALPN :: Client https://jetty.org/jetty-core/jetty-alpn/jetty-alpn-client
+Core :: Compression :: Common https://jetty.org/jetty-core/jetty-compression/jetty-compression-common
+Core :: Compression :: Gzip Support https://jetty.org/jetty-core/jetty-compression/jetty-compression-gzip
+Core :: HTTP https://jetty.org/jetty-core/jetty-http
+Core :: HTTP Client https://jetty.org/jetty-core/jetty-client
+Core :: IO https://jetty.org/jetty-core/jetty-io
+Core :: Utilities https://jetty.org/jetty-core/jetty-util
+error-prone annotations https://errorprone.info/error_prone_annotations
+FindBugs-jsr305 http://findbugs.sourceforge.net/
+Guava InternalFutureFailureAccess and InternalFutures https://github.com/google/guava/failureaccess
+Guava ListenableFuture only https://github.com/google/guava/listenablefuture
+Guava: Google Core Libraries for Java https://github.com/google/guava
+HikariCP https://github.com/brettwooldridge/HikariCP
+J2ObjC Annotations https://github.com/google/j2objc/
+Jackson datatype: JSR310 https://github.com/FasterXML/jackson-modules-java8/jackson-datatype-jsr310
+Jackson-annotations https://github.com/FasterXML/jackson
+Jackson-core (com.fasterxml.jackson.core) https://github.com/FasterXML/jackson-core
+Jackson-core (tools.jackson.core) https://github.com/FasterXML/jackson-core
+jackson-databind (com.fasterxml.jackson.core) https://github.com/FasterXML/jackson
+jackson-databind (tools.jackson.core) https://github.com/FasterXML/jackson
+Jetty ReactiveStreams HttpClient https://github.com/jetty-project/jetty-reactive-httpclient
+JSpecify annotations https://jspecify.dev/
+Log4j API to SLF4J Adapter https://logging.apache.org/log4j/2.x/
+micrometer-commons https://github.com/micrometer-metrics/micrometer-commercial
+micrometer-core https://github.com/micrometer-metrics/micrometer-commercial
+micrometer-jakarta9 https://github.com/micrometer-metrics/micrometer-commercial
+micrometer-observation https://github.com/micrometer-metrics/micrometer-commercial
+micrometer-registry-prometheus https://github.com/micrometer-metrics/micrometer-commercial
+Non-Blocking Reactive Foundation for the JVM https://github.com/reactor/reactor-core
+OpenSearch Java Client https://github.com/opensearch-project/opensearch-java/
+Prometheus Metrics Config http://github.com/prometheus/client_java/client_java/prometheus-metrics-config
+Prometheus Metrics Core http://github.com/prometheus/client_java/client_java/prometheus-metrics-core
+Prometheus Metrics Exposition Formats http://github.com/prometheus/client_java/client_java/prometheus-metrics-exposition-formats
+Prometheus Metrics Exposition Text Formats http://github.com/prometheus/client_java/client_java/prometheus-metrics-exposition-textformats
+Prometheus Metrics Model http://github.com/prometheus/client_java/client_java/prometheus-metrics-model
+Prometheus Metrics Tracer Common http://github.com/prometheus/client_java/client_java/prometheus-metrics-tracer/prometheus-metrics-tracer-common
+rest https://github.com/opensearch-project/OpenSearch.git
+SnakeYAML https://bitbucket.org/snakeyaml/snakeyaml
+sniffer https://github.com/opensearch-project/OpenSearch.git
+Spring AOP https://github.com/spring-projects/spring-framework
+Spring Aspects https://github.com/spring-projects/spring-framework
+Spring Batch Core https://projects.spring.io/spring-batch
+Spring Batch Infrastructure https://projects.spring.io/spring-batch
+Spring Beans https://github.com/spring-projects/spring-framework
+Spring Context https://github.com/spring-projects/spring-framework
+Spring Core https://github.com/spring-projects/spring-framework
+Spring Expression Language (SpEL) https://github.com/spring-projects/spring-framework
+Spring JDBC https://github.com/spring-projects/spring-framework
+Spring Retry https://github.com/spring-projects/spring-retry
+Spring Transaction https://github.com/spring-projects/spring-framework
+Spring Web https://github.com/spring-projects/spring-framework
+Spring Web MVC https://github.com/spring-projects/spring-framework
+Spring WebFlux https://github.com/spring-projects/spring-framework
+spring-boot https://spring.io/projects/spring-boot
+spring-boot-actuator https://spring.io/projects/spring-boot
+spring-boot-actuator-autoconfigure https://spring.io/projects/spring-boot
+spring-boot-autoconfigure https://spring.io/projects/spring-boot
+spring-boot-batch https://spring.io/projects/spring-boot
+spring-boot-health https://spring.io/projects/spring-boot
+spring-boot-http-codec https://spring.io/projects/spring-boot
+spring-boot-http-converter https://spring.io/projects/spring-boot
+spring-boot-jackson https://spring.io/projects/spring-boot
+spring-boot-jdbc https://spring.io/projects/spring-boot
+spring-boot-micrometer-metrics https://spring.io/projects/spring-boot
+spring-boot-micrometer-observation https://spring.io/projects/spring-boot
+spring-boot-persistence https://spring.io/projects/spring-boot
+spring-boot-reactor https://spring.io/projects/spring-boot
+spring-boot-servlet https://spring.io/projects/spring-boot
+spring-boot-sql https://spring.io/projects/spring-boot
+spring-boot-starter https://spring.io/projects/spring-boot
+spring-boot-starter-actuator https://spring.io/projects/spring-boot
+spring-boot-starter-batch https://spring.io/projects/spring-boot
+spring-boot-starter-jackson https://spring.io/projects/spring-boot
+spring-boot-starter-jdbc https://spring.io/projects/spring-boot
+spring-boot-starter-logging https://spring.io/projects/spring-boot
+spring-boot-starter-micrometer-metrics https://spring.io/projects/spring-boot
+spring-boot-starter-tomcat https://spring.io/projects/spring-boot
+spring-boot-starter-tomcat-runtime https://spring.io/projects/spring-boot
+spring-boot-starter-web https://spring.io/projects/spring-boot
+spring-boot-starter-webflux https://spring.io/projects/spring-boot
+spring-boot-tomcat https://spring.io/projects/spring-boot
+spring-boot-transaction https://spring.io/projects/spring-boot
+spring-boot-web-server https://spring.io/projects/spring-boot
+spring-boot-webflux https://spring.io/projects/spring-boot
+spring-boot-webmvc https://spring.io/projects/spring-boot
+tomcat-embed-core https://tomcat.apache.org/
+tomcat-embed-el https://tomcat.apache.org/
+tomcat-embed-websocket https://tomcat.apache.org/
+
+=== BSD 2-Clause License ====
+HdrHistogram http://hdrhistogram.github.io/HdrHistogram/
+PostgreSQL JDBC Driver https://jdbc.postgresql.org
+
+=== BSD 3-Clause License ====
+HyperSQL Database http://hsqldb.org
+
+=== Eclipse Distribution License 1.0 ====
+Yasson https://projects.eclipse.org/projects/ee4j.yasson
+
+=== Eclipse Public License 2.0 ====
+AspectJ Weaver https://www.eclipse.org/aspectj/
+Eclipse Parsson https://github.com/eclipse-ee4j/parsson/parsson
+Jakarta Annotations API https://projects.eclipse.org/projects/ee4j.ca
+Jakarta JSON Binding API https://projects.eclipse.org/projects/ee4j.jsonb/jakarta.json.bind-api
+Jakarta JSON Processing API https://github.com/eclipse-ee4j/jsonp
+Logback Classic Module http://logback.qos.ch/logback-classic
+Logback Core Module http://logback.qos.ch/logback-core
+
+=== MIT License ====
+Checker Qual https://checkerframework.org/
+JUL to SLF4J bridge http://www.slf4j.org
+Project Lombok https://projectlombok.org
+SLF4J API Module http://www.slf4j.org
+
+=== MIT No Attribution License ====
+reactive-streams http://www.reactive-streams.org/
+
+--------------------------------------------------------------------------------
+Notes
+--------------------------------------------------------------------------------
+
+For questions about this notice, or to request a copy of the source code for
+any component where required by its license, please contact Hyland Software,
+Inc. or visit https://github.com/Alfresco/alfresco-community-search

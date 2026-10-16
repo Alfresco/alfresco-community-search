@@ -36,7 +36,7 @@ import org.alfresco.repo.event.v1.model.NodeResource;
 import org.alfresco.repo.event.v1.model.RepoEvent;
 
 /**
- * Distinguishes the two types of {@code org.alfresco.event.node.Deleted} events introduced for the trashcan feature (ACS-12674).
+ * Distinguishes the two types of {@code org.alfresco.event.node.Deleted} events introduced for the trashcan feature.
  *
  * <table>
  * <caption>Interpretation of {@code NodeResource.isPermanentlyDeleted}</caption>

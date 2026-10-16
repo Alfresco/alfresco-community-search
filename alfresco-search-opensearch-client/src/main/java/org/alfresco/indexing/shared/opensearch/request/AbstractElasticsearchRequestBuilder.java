@@ -113,7 +113,6 @@ public abstract class AbstractElasticsearchRequestBuilder
         var encodedFields = encodedFieldsExtractor.extract(event);
         encodedFields.put(METADATA_INDEXING_LAST_UPDATE, eventTimestamp);
         encodedFields.put(ALIVE, false);
-        extractTransformStatus(event).ifPresent(status -> encodedFields.put(CM_CONTENT_TR_STATUS, status));
 
         var fieldsMapping = encodedFields.getEncodedMapping();
         Map<String, Object> params = new HashMap<>(fieldsMapping);

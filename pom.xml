@@ -38,7 +38,7 @@
         <maven-antrun-plugin.version>3.1.0</maven-antrun-plugin.version>
 
         <!-- Alfresco dependencies -->
-        <acs.event.model.version>1.0.11</acs.event.model.version>
+        <acs.event.model.version>1.2.0-A.1</acs.event.model.version>
         <alfresco.database.connector.version>1.8.0</alfresco.database.connector.version>
         <dist.share.version>26.3.0-A.11</dist.share.version>
         <dist.postgres.version>16.6</dist.postgres.version>

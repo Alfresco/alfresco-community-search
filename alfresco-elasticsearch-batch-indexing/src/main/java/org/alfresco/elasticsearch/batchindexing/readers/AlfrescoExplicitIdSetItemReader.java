@@ -72,7 +72,7 @@ public class AlfrescoExplicitIdSetItemReader extends AbstractAlfrescoNodeReader
         int end = Math.min(nextIndex + pageSize, sortedIds.size());
         Set<Long> page = Set.copyOf(sortedIds.subList(nextIndex, end));
         nextIndex = end;
-        return NodeParams.searchByIds(page);
+        return NodeParams.searchByIds(page).withArchive(true);
     }
 
     @Override

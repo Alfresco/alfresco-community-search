@@ -38,5 +38,6 @@ public class IndexingConstants
     public static final String EXTRACTED_TEXT_NOT_FOUND_ATTRIBUTE_NAME = "extractedTextNotFound";
     public static final String EXTRACTED_TEXT_ERR_DETAILS_ATTRIBUTE_NAME = "extractedTextErrDetails";
     public static final String STORE_REF_WORKSPACE_SPACESSTORE = "workspace://SpacesStore/";
+    public static final String STORE_REF_ARCHIVE_SPACESSTORE = "archive://SpacesStore/";
     public static final String TARGET_MEDIA_TYPE = "text/plain";
 }

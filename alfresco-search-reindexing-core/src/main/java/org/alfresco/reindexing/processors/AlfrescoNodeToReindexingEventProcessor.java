@@ -71,6 +71,8 @@ public class AlfrescoNodeToReindexingEventProcessor extends AlfrescoNodeProcesso
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AlfrescoNodeToReindexingEventProcessor.class);
 
+    private static final String ARCHIVE_STORE_PROTOCOL = "archive";
+
     /** Optional. Nullable in tests; wired in production via SharedBatchProcessingConfig. */
     private final UnresolvedNamespaceListener unresolvedNamespaceListener;
     private final UnresolvedNamespaceAction onUnresolvedNamespace;
@@ -192,6 +194,11 @@ public class AlfrescoNodeToReindexingEventProcessor extends AlfrescoNodeProcesso
                 .setCreatedAt(node.getCreatedAt())
                 .setCreatedByUser(userInfo(node.getCreator()));
 
+        if (isArchived(node))
+        {
+            nodeResourceBuilder.setIsPermanentlyDeleted(false);
+        }
+
         var eventData = EventData.<NodeResource> builder()
                 .setResource(nodeResourceBuilder.build())
                 .setResourceReaderAuthorities(getResourceReaderAuthorities(node))
@@ -204,7 +211,7 @@ public class AlfrescoNodeToReindexingEventProcessor extends AlfrescoNodeProcesso
                 .setData(eventData)
                 .setTime(eventTimestamp)
                 .setId("reindex")
-                .setType(EventType.NODE_CREATED.getType())
+                .setType((isArchived(node) ? EventType.NODE_DELETED : EventType.NODE_CREATED).getType())
                 .build();
 
         ChildAssocMetaData primaryParent = ofNullable(node.getPrimaryParentAssociation())
@@ -222,11 +229,20 @@ public class AlfrescoNodeToReindexingEventProcessor extends AlfrescoNodeProcesso
         return userId == null || userId.isBlank() ? null : new UserInfo(userId, null, null);
     }
 
+    /**
+     * A node is archived (moved to the trashcan) when it lives in the archive store, as reported by its store protocol.
+     */
+    private boolean isArchived(AlfrescoNode node)
+    {
+        return ARCHIVE_STORE_PROTOCOL.equals(node.getProtocol());
+    }
+
     private ReindexingEvent buildDeleteEvent(AlfrescoNode node)
     {
         NodeResource.Builder nodeResourceBuilder = NodeResource.builder()
                 .setId(node.getNodeRef())
-                .setNodeType(TYPE_DELETED);
+                .setNodeType(TYPE_DELETED)
+                .setIsPermanentlyDeleted(true);
         var repoEvent = RepoEvent.<EventData<NodeResource>> builder()
                 .setData(EventData.<NodeResource> builder()
                         .setResource(nodeResourceBuilder.build())

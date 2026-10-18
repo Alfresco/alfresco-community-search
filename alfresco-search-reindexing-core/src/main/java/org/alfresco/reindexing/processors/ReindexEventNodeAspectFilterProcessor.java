@@ -34,6 +34,7 @@ import java.util.stream.Stream;
 import org.springframework.batch.infrastructure.item.ItemProcessor;
 
 import org.alfresco.indexing.shared.config.FilteringConfig;
+import org.alfresco.indexing.shared.utils.RepoEventCloneUtils;
 import org.alfresco.reindexing.model.ReindexingEvent;
 import org.alfresco.repo.event.v1.model.DataAttributes;
 import org.alfresco.repo.event.v1.model.NodeResource;
@@ -57,7 +58,14 @@ public class ReindexEventNodeAspectFilterProcessor implements ItemProcessor<Rein
     {
         return of(repoEvent)
                 .filter(this::hasAllowedAspects)
+                .map(this::stripAspects)
                 .orElse(null);
+    }
+
+    private ReindexingEvent stripAspects(ReindexingEvent event)
+    {
+        var strippedEvent = RepoEventCloneUtils.withFilteredAspects(event.getRepoEvent(), filteringConfig.getStrippedAspects());
+        return event.withRepoEvent(strippedEvent);
     }
 
     private boolean hasAllowedAspects(ReindexingEvent repoEvent)

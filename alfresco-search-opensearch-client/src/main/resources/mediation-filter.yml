@@ -1,8 +1,14 @@
 mediation:
   nodeTypes:
+    - cm:thumbnail
+    - cm:failedThumbnail
+    - cm:rating
+    - usr:user
   contentNodeTypes:
   nodeAspects:
     - sys:hidden
+  strippedAspects:
+    - sys:*
   fields:
     - cmis:changeToken
     - alfcmis:nodeRef

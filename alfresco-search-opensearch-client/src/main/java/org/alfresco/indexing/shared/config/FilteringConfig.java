@@ -25,6 +25,7 @@
  */
 package org.alfresco.indexing.shared.config;
 
+import java.util.Collection;
 import java.util.List;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -54,11 +55,16 @@ public class FilteringConfig
      */
     private List<String> nodeAspects;
 
+    /**
+     * Aspects that are stripped from the node (the aspect is removed, but the node itself is still indexed). This mirrors the repository's event2 aspect filter and keeps live-indexing and re-indexing aligned.
+     */
+    private List<String> strippedAspects;
+
     private List<String> fields;
 
     public boolean containsNodeType(String nodeType)
     {
-        return nodeTypes.contains(nodeType);
+        return matchesAny(nodeTypes, nodeType);
     }
 
     public boolean doesntContainNodeType(String nodeType)
@@ -68,7 +74,7 @@ public class FilteringConfig
 
     public boolean containsContentNodeType(String nodeType)
     {
-        return contentNodeTypes.contains(nodeType);
+        return matchesAny(contentNodeTypes, nodeType);
     }
 
     public boolean doesntContainContentNodeType(String nodeType)
@@ -78,7 +84,49 @@ public class FilteringConfig
 
     public boolean containsNodeAspect(String nodeAspect)
     {
-        return nodeAspects.contains(nodeAspect);
+        return matchesAny(nodeAspects, nodeAspect);
+    }
+
+    public boolean containsStrippedAspect(String nodeAspect)
+    {
+        return matchesAny(strippedAspects, nodeAspect);
+    }
+
+    /**
+     * Matches a QName {@code value} against a list of configured {@code patterns}. A pattern is either an exact QName (e.g. {@code cm:thumbnail}) or a namespace wildcard ending in {@code :*} (e.g. {@code sys:*}) that matches any QName in that namespace.
+     */
+    public static boolean matchesAny(Collection<String> patterns, String value)
+    {
+        if (patterns == null || value == null)
+        {
+            return false;
+        }
+        return patterns.stream().anyMatch(pattern -> matches(pattern, value));
+    }
+
+    private static boolean matches(String pattern, String value)
+    {
+        if (pattern == null)
+        {
+            return false;
+        }
+        String trimmed = pattern.trim();
+        if (trimmed.isEmpty())
+        {
+            return false;
+        }
+
+        String token = trimmed.split("\\s+")[0];
+        if (token.endsWith(":*"))
+        {
+            return value.startsWith(token.substring(0, token.length() - 1));
+        }
+        return token.equals(value);
+    }
+
+    public List<String> getNodeTypes()
+    {
+        return nodeTypes;
     }
 
     public void setNodeTypes(List<String> nodeTypes)
@@ -109,5 +157,15 @@ public class FilteringConfig
     public void setNodeAspects(List<String> nodeAspects)
     {
         this.nodeAspects = nodeAspects;
+    }
+
+    public List<String> getStrippedAspects()
+    {
+        return strippedAspects;
+    }
+
+    public void setStrippedAspects(List<String> strippedAspects)
+    {
+        this.strippedAspects = strippedAspects;
     }
 }

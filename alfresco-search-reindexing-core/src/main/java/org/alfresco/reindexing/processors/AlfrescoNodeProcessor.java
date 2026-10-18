@@ -41,6 +41,7 @@ import org.springframework.util.StringUtils;
 import org.alfresco.database.connector.model.AlfrescoNode;
 import org.alfresco.database.connector.model.ContentMetadata;
 import org.alfresco.database.connector.model.NodeProperty;
+import org.alfresco.database.connector.model.PropertyKey;
 import org.alfresco.database.connector.model.PropertyValue;
 import org.alfresco.database.connector.model.PropertyValueType;
 import org.alfresco.database.connector.model.QName;
@@ -139,11 +140,16 @@ public abstract class AlfrescoNodeProcessor
                 .flatMap(Optional::stream)
                 .collect(Collectors.toList());
 
+        boolean multiValued = alfrescoNodeProperties.stream()
+                .map(NodeProperty::getPropertyKey)
+                .map(PropertyKey::getListIndex)
+                .anyMatch(listIndex -> listIndex != null && listIndex >= 0);
+
         if (propertyValues.isEmpty())
         {
             return empty();
         }
-        else if (propertyValues.size() == 1)
+        else if (propertyValues.size() == 1 && !multiValued)
         {
             return of(propertyValues.get(0));
         }

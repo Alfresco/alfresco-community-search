@@ -33,6 +33,7 @@ import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -169,11 +170,13 @@ public abstract class BatchIndexingAbstractIT extends ElasticsearchTestTemplate
                 .count());
         assertThat(nodesWithContentCount).isPositive();
 
-        // Soft-delete events carry no aspects, so they bypass the aspect filter.
+        // Soft-delete events carry no type or aspects, so they bypass the type/aspect filters.
         Set<String> blacklistedAspects = getBlacklistedAspects();
+        Set<String> blacklistedNodeTypes = getBlacklistedNodeTypes();
         expectedNodeCount = allNodes.stream()
                 .filter(n -> isMarkedForDelete.test(n)
-                        || n.getAspects().stream().map(QName::getLocalName).noneMatch(blacklistedAspects::contains))
+                        || (!blacklistedNodeTypes.contains(n.getType().getLocalName())
+                                && n.getAspects().stream().map(QName::getLocalName).noneMatch(blacklistedAspects::contains)))
                 .count();
         // sys:descriptor node is also indexed
         expectedNodeCount++;
@@ -184,6 +187,15 @@ public abstract class BatchIndexingAbstractIT extends ElasticsearchTestTemplate
     {
         return filteringConfig.getNodeAspects().stream()
                 .map(aspect -> aspect.substring(aspect.indexOf(':') + 1))
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
+    private Set<String> getBlacklistedNodeTypes()
+    {
+        return Optional.ofNullable(filteringConfig.getNodeTypes())
+                .orElseGet(List::of)
+                .stream()
+                .map(type -> type.substring(type.indexOf(':') + 1))
                 .collect(Collectors.toUnmodifiableSet());
     }
 }

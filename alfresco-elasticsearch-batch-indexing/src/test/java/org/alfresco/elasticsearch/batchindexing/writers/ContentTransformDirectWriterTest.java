@@ -293,8 +293,8 @@ class ContentTransformDirectWriterTest
     class UuidExtraction
     {
         @Test
-        @DisplayName("UUID is extracted as the substring after the last slash in storeRef + resourceId")
-        void extractsUuidAfterLastSlash() throws Exception
+        @DisplayName("UUID is extracted by stripping the storeRef prefix from resourceId")
+        void extractsUuidByStrippingStorePrefix() throws Exception
         {
             String uuid = "abc-123-def-456";
             ReindexingEvent event = buildEvent(uuid, NODE_DB_ID, MIME_TYPE);
@@ -309,8 +309,8 @@ class ContentTransformDirectWriterTest
         }
 
         @Test
-        @DisplayName("Resource ID with nested slashes still extracts only the trailing segment")
-        void nestedSlashesExtractLastSegment() throws Exception
+        @DisplayName("Only the store prefix is stripped, so a resource ID containing slashes is kept intact")
+        void onlyStorePrefixIsStripped() throws Exception
         {
             String resourceId = "extra/nested/path/final-uuid";
             ReindexingEvent event = buildEvent(resourceId, NODE_DB_ID, MIME_TYPE);
@@ -321,7 +321,7 @@ class ContentTransformDirectWriterTest
             writer.write(Chunk.of(event));
 
             verify(contentModifyPort).upsertContent(contentIndexCmdCaptor.capture());
-            assertThat(contentIndexCmdCaptor.getValue().id()).isEqualTo("final-uuid");
+            assertThat(contentIndexCmdCaptor.getValue().id()).isEqualTo(resourceId);
         }
 
         @Test

@@ -26,6 +26,7 @@
 package org.alfresco.elasticsearch.batchindexing.writers;
 
 import static org.alfresco.indexing.shared.utils.EventUtils.getEventTimestamp;
+import static org.alfresco.indexing.shared.utils.NodeRefUtils.extractUuid;
 
 import java.util.List;
 import java.util.Optional;
@@ -279,16 +280,6 @@ public class ContentTransformDirectWriter implements ItemWriter<ReindexingEvent>
                 .map(DataAttributes::getResource)
                 .map(NodeResource::getContent)
                 .map(ContentInfo::getMimeType);
-    }
-
-    private String extractUuid(String nodeRef)
-    {
-        int lastSlash = nodeRef.lastIndexOf('/');
-        if (lastSlash == -1)
-        {
-            return nodeRef;
-        }
-        return nodeRef.substring(lastSlash + 1);
     }
 
     private static Long extractCommitTimeMs(ReindexingEvent event)

@@ -26,6 +26,7 @@
 
 package org.alfresco.reindexing.opensearch.impl;
 
+import static org.alfresco.indexing.shared.utils.DeletionTypeChecker.isArchiveDelete;
 import static org.alfresco.indexing.shared.utils.EsScriptUtils.reindexingUpdateScriptSource;
 import static org.alfresco.repo.event.v1.model.EventType.NODE_CREATED;
 import static org.alfresco.repo.event.v1.model.EventType.NODE_DELETED;
@@ -225,19 +226,25 @@ public class ElasticSearchUpdateOperationsImpl implements ElasticSearchUpdateOpe
                 // targeted the same document id under the same (metadata-timestamp) guard, so folding
                 // the field sets is behaviour-preserving; putting the path fields last mirrors the
                 // sequential order (path writer ran after metadata) for any overlapping keys.
-                Map<String, Object> combinedFields = new HashMap<>(
-                        reindexingRequestBuilder.buildMetadataFields(repoEvent, reindexingStartTime));
-                if (event.getAllPaths() != null)
-                {
-                    combinedFields.putAll(reindexPathFieldsBuilder.buildFields(event, reindexingStartTime));
-                }
-                ops.add(reindexingRequestBuilder.buildReindexUpsertOperation(repoEvent, combinedFields));
+                ops.add(reindexingRequestBuilder.buildReindexUpsertOperation(repoEvent,
+                        buildCombinedFields(event, reindexingStartTime, true)));
                 reindexingRequestBuilder.buildContentUpsertOperation(repoEvent).ifPresent(ops::add);
                 nodeCount++;
             }
             else if (NODE_DELETED.getType().equals(eventType))
             {
-                ops.add(reindexingRequestBuilder.buildDeleteOperation(repoEvent));
+                if (isArchiveDelete(repoEvent))
+                {
+                    // Archive (trashcan) delete: keep the document with its metadata + content but
+                    // mark it soft-deleted (ALIVE=false), mirroring the non-merged writer path.
+                    ops.add(reindexingRequestBuilder.buildReindexUpsertOperation(repoEvent,
+                            buildCombinedFields(event, reindexingStartTime, false)));
+                    reindexingRequestBuilder.buildContentUpsertOperation(repoEvent).ifPresent(ops::add);
+                }
+                else
+                {
+                    ops.add(reindexingRequestBuilder.buildDeleteOperation(repoEvent));
+                }
                 nodeCount++;
             }
             else
@@ -263,6 +270,22 @@ public class ElasticSearchUpdateOperationsImpl implements ElasticSearchUpdateOpe
         return NODE_CREATED.getType().equals(eventType)
                 || NODE_UPDATED.getType().equals(eventType)
                 || PERMISSION_UPDATED.getType().equals(eventType);
+    }
+
+    /**
+     * Fold a node's metadata fields (live or soft-deleted, per {@code alive}) and, when available, its path fields into a single field set for a combined scripted upsert.
+     */
+    @SuppressWarnings("rawtypes")
+    private Map<String, Object> buildCombinedFields(ReindexingEvent event, long reindexingStartTime, boolean alive)
+    {
+        RepoEvent repoEvent = event.getRepoEvent();
+        Map<String, Object> combinedFields = new HashMap<>(
+                reindexingRequestBuilder.buildMetadataFields(repoEvent, reindexingStartTime, alive));
+        if (event.getAllPaths() != null)
+        {
+            combinedFields.putAll(reindexPathFieldsBuilder.buildFields(event, reindexingStartTime));
+        }
+        return combinedFields;
     }
 
     private Map<String, UpdateRequest> buildRequestMap(List<NodeResourceDto> items)

@@ -50,7 +50,7 @@ public class AlfrescoPagingItemReaderBuilder
     public static AlfrescoPagingItemReaderBuilder forIdRange(long from, long to)
     {
         final AlfrescoPagingItemReaderBuilder builder = new AlfrescoPagingItemReaderBuilder();
-        builder.nodeParams = NodeParams.searchByIdRange(from, to);
+        builder.nodeParams = NodeParams.searchByIdRange(from, to).withArchive(true);
         return builder;
     }
 
@@ -67,7 +67,7 @@ public class AlfrescoPagingItemReaderBuilder
 
         final long fromTs = from.toInstant(ZoneOffset.UTC).toEpochMilli();
         final long toTs = to.toInstant(ZoneOffset.UTC).toEpochMilli();
-        builder.nodeParams = NodeParams.searchByTimestampRange(fromTs, toTs);
+        builder.nodeParams = NodeParams.searchByTimestampRange(fromTs, toTs).withArchive(true);
 
         return builder;
     }

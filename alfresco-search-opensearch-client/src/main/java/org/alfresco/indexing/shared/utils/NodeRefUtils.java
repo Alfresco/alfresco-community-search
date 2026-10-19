@@ -33,7 +33,7 @@ import lombok.experimental.UtilityClass;
  * Helpers for dealing with Alfresco node references.
  *
  * <p>
- * Since the trashcan feature (ACS-12674) a node reference can be qualified with more than one store: content of an archived node is read from {@code archive://SpacesStore/} while live content is read from {@code workspace://SpacesStore/}. Anything that needs the bare node id has to cope with both.
+ * Since the trashcan feature a node reference can be qualified with more than one store: content of an archived node is read from {@code archive://SpacesStore/} while live content is read from {@code workspace://SpacesStore/}. Anything that needs the bare node id has to cope with both.
  * </p>
  */
 @UtilityClass

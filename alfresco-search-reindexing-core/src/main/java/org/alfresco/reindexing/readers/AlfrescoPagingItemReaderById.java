@@ -65,7 +65,7 @@ public class AlfrescoPagingItemReaderById extends AbstractAlfrescoNodeReader
             params = NodeParams.searchByIdRange(fromIdInclusive, toIdExclusive);
         }
 
-        return params.withPaging(0, getPageSize());
+        return params.withPaging(0, getPageSize()).withArchive(true);
     }
 
     @Override

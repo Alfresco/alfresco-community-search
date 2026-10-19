@@ -30,6 +30,7 @@ import static java.util.Arrays.asList;
 import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.ALIVE;
 import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.METADATA_INDEXING_LAST_UPDATE;
 import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.REINDEXING_START_TIME;
+import static org.alfresco.indexing.shared.utils.DeletionTypeChecker.isArchiveDelete;
 import static org.alfresco.indexing.shared.utils.EsScriptUtils.reindexingUpdateScriptSource;
 import static org.alfresco.indexing.shared.utils.EventUtils.getEventTimestamp;
 import static org.alfresco.repo.event.v1.model.EventType.NODE_CREATED;
@@ -56,7 +57,7 @@ import org.alfresco.indexing.shared.utils.EsScriptUtils;
 import org.alfresco.repo.event.v1.model.RepoEvent;
 
 /**
- * Builds Elasticsearch bulk requests for the reindexing flow. It handles restoring documents marked as deleted (ALIVE=false) in Elasticsearch.
+ * Builds Elasticsearch bulk requests for the reindexing flow: upserts live and restored documents (ALIVE=true), soft-deletes archived documents while keeping their metadata and content (ALIVE=false), and strips purged or permanently deleted documents to a minimal tombstone.
  */
 public class ReindexingRequestBuilder extends AbstractElasticsearchRequestBuilder
 {
@@ -81,13 +82,17 @@ public class ReindexingRequestBuilder extends AbstractElasticsearchRequestBuilde
         String eventType = event.getType();
         if (NODE_CREATED.getType().equals(eventType) || NODE_UPDATED.getType().equals(eventType) || PERMISSION_UPDATED.getType().equals(eventType))
         {
-            List<BulkOperation> result = new ArrayList<>();
-            result.add(createReindexingMetadataUpsertRequest(event, reindexingStartTime));
-            createContentUpsertRequest(event).ifPresent(result::add);
-            return result;
+            return createReindexingUpsertRequests(event, reindexingStartTime, true);
         }
         else if (NODE_DELETED.getType().equals(eventType))
         {
+            // Archive (trashcan) deletes are backfilled with their full metadata + content but marked
+            // ALIVE=false, so the node stays searchable through the deleted-nodes scope. Purge and legacy
+            // deletes are reduced to a minimal tombstone with their properties stripped.
+            if (isArchiveDelete(event))
+            {
+                return createReindexingUpsertRequests(event, reindexingStartTime, false);
+            }
             return asList(createDeleteRequest(event));
         }
         else
@@ -97,9 +102,17 @@ public class ReindexingRequestBuilder extends AbstractElasticsearchRequestBuilde
         }
     }
 
-    private BulkOperation createReindexingMetadataUpsertRequest(RepoEvent event, long reindexingStartTime)
+    private List<BulkOperation> createReindexingUpsertRequests(RepoEvent event, long reindexingStartTime, boolean alive)
     {
-        var fieldsMapping = buildMetadataFields(event, reindexingStartTime);
+        List<BulkOperation> result = new ArrayList<>();
+        result.add(createReindexingMetadataUpsertRequest(event, reindexingStartTime, alive));
+        createContentUpsertRequest(event).ifPresent(result::add);
+        return result;
+    }
+
+    private BulkOperation createReindexingMetadataUpsertRequest(RepoEvent event, long reindexingStartTime, boolean alive)
+    {
+        var fieldsMapping = buildMetadataFields(event, reindexingStartTime, alive);
         return buildReindexUpsertOperation(event, fieldsMapping);
     }
 
@@ -108,8 +121,16 @@ public class ReindexingRequestBuilder extends AbstractElasticsearchRequestBuilde
      */
     public Map<String, Object> buildMetadataFields(RepoEvent event, long reindexingStartTime)
     {
+        return buildMetadataFields(event, reindexingStartTime, true);
+    }
+
+    /**
+     * Build the metadata field set for a node, flagging the document as live ({@code alive=true}) or soft-deleted ({@code alive=false}). Archived (trashcan) nodes are backfilled as soft-deleted so they remain searchable through the deleted-nodes scope.
+     */
+    public Map<String, Object> buildMetadataFields(RepoEvent event, long reindexingStartTime, boolean alive)
+    {
         var encodedFields = encodedFieldsExtractor.extract(event);
-        encodedFields.put(ALIVE, true);
+        encodedFields.put(ALIVE, alive);
         encodedFields.put(METADATA_INDEXING_LAST_UPDATE, getEventTimestamp(event));
         encodedFields.put(REINDEXING_START_TIME, reindexingStartTime);
         return encodedFields.getEncodedMapping();

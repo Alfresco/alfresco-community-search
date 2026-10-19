@@ -32,12 +32,14 @@ import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.CM_CONTEN
 import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.CONTENT_INDEXING_LAST_UPDATE;
 import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.METADATA_INDEXING_LAST_UPDATE;
 import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.PATH_INDEXING_LAST_UPDATE;
+import static org.alfresco.indexing.shared.utils.EsScriptUtils.archiveDocumentScriptSource;
 import static org.alfresco.indexing.shared.utils.EsScriptUtils.contentInProgressScriptSource;
 import static org.alfresco.indexing.shared.utils.EsScriptUtils.deleteDocumentScriptSource;
 import static org.alfresco.indexing.shared.utils.EsScriptUtils.removeFieldScriptSource;
 import static org.alfresco.indexing.shared.utils.EventUtils.getEventTimestamp;
 import static org.alfresco.indexing.shared.utils.ResourceTools.extractTransformStatus;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -84,6 +86,9 @@ public abstract class AbstractElasticsearchRequestBuilder
         return Optional.of(createUpsertOperation(getIdFromEvent(event), fieldsMapping, script));
     }
 
+    /**
+     * Builds the permanent (purge) deletion operation: the whole {@code _source} is replaced with a minimal tombstone holding only {@code ALIVE=false} and the indexing timestamps.
+     */
     protected BulkOperation createDeleteRequest(RepoEvent event)
     {
         var eventTimestamp = getEventTimestamp(event);
@@ -96,6 +101,23 @@ public abstract class AbstractElasticsearchRequestBuilder
         var fieldsMapping = encodedFields.getEncodedMapping();
         Map<String, Object> params = Map.of("doc", fieldsMapping, "eventTimestamp", eventTimestamp);
         var script = EsScriptUtils.buildInlineScript(params, deleteDocumentScriptSource());
+        return createUpsertOperation(getIdFromEvent(event), fieldsMapping, script);
+    }
+
+    /**
+     * Builds the archive (trashcan) deletion operation: the full metadata carried by the event is merged into the existing document and only {@code ALIVE} is flipped to {@code false}, so the node stays searchable through the {@code deleted-nodes} scope.
+     */
+    protected BulkOperation createArchiveRequest(RepoEvent event)
+    {
+        var eventTimestamp = getEventTimestamp(event);
+        var encodedFields = encodedFieldsExtractor.extract(event);
+        encodedFields.put(METADATA_INDEXING_LAST_UPDATE, eventTimestamp);
+        encodedFields.put(ALIVE, false);
+
+        var fieldsMapping = encodedFields.getEncodedMapping();
+        Map<String, Object> params = new HashMap<>(fieldsMapping);
+        params.put("eventTimestamp", eventTimestamp);
+        var script = EsScriptUtils.buildInlineScript(params, archiveDocumentScriptSource(fieldsMapping.keySet()));
         return createUpsertOperation(getIdFromEvent(event), fieldsMapping, script);
     }
 

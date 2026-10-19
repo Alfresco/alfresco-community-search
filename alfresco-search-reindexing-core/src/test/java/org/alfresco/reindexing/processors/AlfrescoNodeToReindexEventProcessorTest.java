@@ -114,6 +114,35 @@ public class AlfrescoNodeToReindexEventProcessorTest
     }
 
     @Test
+    public void shouldEmitArchiveDeleteEventForArchivedNode()
+    {
+        PrefixUriMapper prefixUriMapper = (a) -> Map.of("http://www.alfresco.org/model/content/1.0", "cm").get(a);
+        when(prefixNamespaceConfig.prefixUriMapper()).thenReturn(prefixUriMapper);
+        when(alfrescoNode.getNodeProperties()).thenReturn(Set.of(buildIsIndexedNodeProperties(true)));
+        when(alfrescoNode.getProtocol()).thenReturn("archive");
+
+        AlfrescoNodeToReindexingEventProcessor eventProcessor = new AlfrescoNodeToReindexingEventProcessor(prefixNamespaceConfig, reindexingCoreProperties.getNonReadPermissions());
+        ReindexingEvent processResult = eventProcessor.process(alfrescoNode);
+
+        assertThat(processResult.getType()).isEqualTo(EventType.NODE_DELETED.getType());
+        assertThat(((NodeResource) processResult.getData().getResource()).isPermanentlyDeleted()).isFalse();
+    }
+
+    @Test
+    public void shouldMarkPurgeDeleteAsPermanentlyDeleted()
+    {
+        PrefixUriMapper prefixUriMapper = (a) -> Map.of("http://www.alfresco.org/model/content/1.0", "cm").get(a);
+        when(prefixNamespaceConfig.prefixUriMapper()).thenReturn(prefixUriMapper);
+        when(alfrescoNode.getNodeProperties()).thenReturn(Set.of(buildIsIndexedNodeProperties(false)));
+
+        AlfrescoNodeToReindexingEventProcessor eventProcessor = new AlfrescoNodeToReindexingEventProcessor(prefixNamespaceConfig, reindexingCoreProperties.getNonReadPermissions());
+        ReindexingEvent processResult = eventProcessor.process(alfrescoNode);
+
+        assertThat(processResult.getType()).isEqualTo(EventType.NODE_DELETED.getType());
+        assertThat(((NodeResource) processResult.getData().getResource()).isPermanentlyDeleted()).isTrue();
+    }
+
+    @Test
     public void shouldExcludeAuthoritiesWithOnlyNonReadPermissionsFromReaders()
     {
         AlfrescoNodeToReindexingEventProcessor eventProcessor = new AlfrescoNodeToReindexingEventProcessor(prefixNamespaceConfig, reindexingCoreProperties.getNonReadPermissions());

@@ -33,6 +33,7 @@ import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.CONTENT_I
 import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.METADATA_INDEXING_LAST_UPDATE;
 import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.PATH_INDEXING_LAST_UPDATE;
 import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.REINDEXING_START_TIME;
+import static org.alfresco.indexing.shared.utils.ArchiveFieldsScriptUtils.removeArchiveFieldsWhenAlive;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -97,7 +98,7 @@ public class EsScriptUtils
         return "if (ctx._source." + METADATA_INDEXING_LAST_UPDATE + " != null && ctx._source." + METADATA_INDEXING_LAST_UPDATE + " > params." + METADATA_INDEXING_LAST_UPDATE + ") "
                 + "{ ctx.op = 'noop'; } "
                 + "else "
-                + "{ " + assignValuesFor(encodedFieldNames) + "}";
+                + "{ " + assignValuesFor(encodedFieldNames) + removeArchiveFieldsWhenAlive(encodedFieldNames) + "}";
     }
 
     /**
@@ -113,7 +114,7 @@ public class EsScriptUtils
                 "ctx._source." + METADATA_INDEXING_LAST_UPDATE + " > params." + REINDEXING_START_TIME + ") "
                 + "{ ctx.op = 'noop'; } "
                 + "else "
-                + "{ " + assignValuesFor(encodedFieldNames) + "}";
+                + "{ " + assignValuesFor(encodedFieldNames) + removeArchiveFieldsWhenAlive(encodedFieldNames) + "}";
     }
 
     public static String deleteDocumentScriptSource()

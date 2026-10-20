@@ -38,6 +38,9 @@ import org.junit.jupiter.api.Test;
 
 class EsScriptUtilsTest
 {
+    private static final String SYS_ARCHIVED_BY = "sys%3AarchivedBy";
+    private static final String SYS_ARCHIVED_DATE = "sys%3AarchivedDate";
+
     private static final String TIMESTAMP_GUARD = "if ((ctx._source." + METADATA_INDEXING_LAST_UPDATE + " != null && ctx._source." + METADATA_INDEXING_LAST_UPDATE + " > params.eventTimestamp) "
             + "|| (ctx._source." + PATH_INDEXING_LAST_UPDATE + " != null && ctx._source." + PATH_INDEXING_LAST_UPDATE + " > params.eventTimestamp) "
             + "|| (ctx._source." + CONTENT_INDEXING_LAST_UPDATE + " != null && ctx._source." + CONTENT_INDEXING_LAST_UPDATE + " > params.eventTimestamp)) "
@@ -64,6 +67,48 @@ class EsScriptUtilsTest
                 .contains("ctx._source['" + ALIVE + "'] = params['" + ALIVE + "']; ")
                 .contains("ctx._source['" + METADATA_INDEXING_LAST_UPDATE + "'] = params['" + METADATA_INDEXING_LAST_UPDATE + "']; ")
                 .contains("ctx._source['cm%3Atitle'] = params['cm%3Atitle']; ");
+    }
+
+    @Test
+    void metadataUpsertScriptShouldDropArchiveFieldsWhenNodeIsAlive()
+    {
+        var script = EsScriptUtils.metadataUpsertScriptSource(Set.of(ALIVE, METADATA_INDEXING_LAST_UPDATE, "cm%3Atitle"));
+
+        assertThat(script)
+                .contains("if (params['" + ALIVE + "'] == true) { ")
+                .contains("ctx._source.remove('" + SYS_ARCHIVED_BY + "');")
+                .contains("ctx._source.remove('" + SYS_ARCHIVED_DATE + "');");
+    }
+
+    @Test
+    void reindexingUpdateScriptShouldDropArchiveOnlyFieldsWhenNodeIsAlive()
+    {
+        var script = EsScriptUtils.reindexingUpdateScriptSource(Set.of(ALIVE, METADATA_INDEXING_LAST_UPDATE, "cm%3Atitle"));
+
+        assertThat(script)
+                .contains("if (params['" + ALIVE + "'] == true) { ")
+                .contains("ctx._source.remove('" + SYS_ARCHIVED_BY + "');")
+                .contains("ctx._source.remove('" + SYS_ARCHIVED_DATE + "');");
+    }
+
+    @Test
+    void reindexingPathOnlyUpdateScriptShouldNotTouchArchiveOnlyFields()
+    {
+        var script = EsScriptUtils.reindexingUpdateScriptSource(Set.of(PATH_INDEXING_LAST_UPDATE, "PATH"));
+
+        assertThat(script)
+                .doesNotContain("ctx._source.remove('" + SYS_ARCHIVED_BY + "');")
+                .doesNotContain("ctx._source.remove('" + SYS_ARCHIVED_DATE + "');");
+    }
+
+    @Test
+    void archiveScriptShouldKeepArchiveOnlyFields()
+    {
+        var script = EsScriptUtils.archiveDocumentScriptSource(Set.of(ALIVE, SYS_ARCHIVED_BY, SYS_ARCHIVED_DATE));
+
+        assertThat(script)
+                .doesNotContain("ctx._source.remove('" + SYS_ARCHIVED_BY + "');")
+                .doesNotContain("ctx._source.remove('" + SYS_ARCHIVED_DATE + "');");
     }
 
     @Test

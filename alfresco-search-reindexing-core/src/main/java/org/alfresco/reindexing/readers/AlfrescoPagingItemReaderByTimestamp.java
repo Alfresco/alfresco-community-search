@@ -91,7 +91,7 @@ public class AlfrescoPagingItemReaderByTimestamp extends AbstractAlfrescoNodeRea
         }
 
         // Always use page=0, which means OFFSET=0 for optimal performance
-        return params.withPaging(0, getPageSize());
+        return params.withPaging(0, getPageSize()).withArchive(true);
     }
 
     @Override

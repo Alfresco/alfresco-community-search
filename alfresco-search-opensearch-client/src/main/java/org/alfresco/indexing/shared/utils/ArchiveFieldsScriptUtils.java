@@ -63,6 +63,7 @@ class ArchiveFieldsScriptUtils
         }
         String removals = ARCHIVE_FIELDS.stream()
                 .filter(not(encodedFieldNames::contains))
+                .sorted()
                 .map(EsScriptUtils::removeFieldScriptSource)
                 .collect(joining());
         if (removals.isEmpty())

@@ -76,8 +76,8 @@ class EsScriptUtilsTest
 
         assertThat(script)
                 .contains("if (params['" + ALIVE + "'] == true) { ")
-                .contains("ctx._source.remove('" + SYS_ARCHIVED_BY + "'); ")
-                .contains("ctx._source.remove('" + SYS_ARCHIVED_DATE + "'); } ");
+                .contains("ctx._source.remove('" + SYS_ARCHIVED_BY + "');")
+                .contains("ctx._source.remove('" + SYS_ARCHIVED_DATE + "');");
     }
 
     @Test
@@ -87,8 +87,8 @@ class EsScriptUtilsTest
 
         assertThat(script)
                 .contains("if (params['" + ALIVE + "'] == true) { ")
-                .contains("ctx._source.remove('" + SYS_ARCHIVED_BY + "'); ")
-                .contains("ctx._source.remove('" + SYS_ARCHIVED_DATE + "'); } ");
+                .contains("ctx._source.remove('" + SYS_ARCHIVED_BY + "');")
+                .contains("ctx._source.remove('" + SYS_ARCHIVED_DATE + "');");
     }
 
     @Test
@@ -97,8 +97,8 @@ class EsScriptUtilsTest
         var script = EsScriptUtils.reindexingUpdateScriptSource(Set.of(PATH_INDEXING_LAST_UPDATE, "PATH"));
 
         assertThat(script)
-                .doesNotContain("ctx._source.remove('" + SYS_ARCHIVED_BY + "'); ")
-                .doesNotContain("ctx._source.remove('" + SYS_ARCHIVED_DATE + "'); ");
+                .doesNotContain("ctx._source.remove('" + SYS_ARCHIVED_BY + "');")
+                .doesNotContain("ctx._source.remove('" + SYS_ARCHIVED_DATE + "');");
     }
 
     @Test
@@ -107,8 +107,8 @@ class EsScriptUtilsTest
         var script = EsScriptUtils.archiveDocumentScriptSource(Set.of(ALIVE, SYS_ARCHIVED_BY, SYS_ARCHIVED_DATE));
 
         assertThat(script)
-                .doesNotContain("ctx._source.remove('" + SYS_ARCHIVED_BY + "'); ")
-                .doesNotContain("ctx._source.remove('" + SYS_ARCHIVED_DATE + "'); ");
+                .doesNotContain("ctx._source.remove('" + SYS_ARCHIVED_BY + "');")
+                .doesNotContain("ctx._source.remove('" + SYS_ARCHIVED_DATE + "');");
     }
 
     @Test

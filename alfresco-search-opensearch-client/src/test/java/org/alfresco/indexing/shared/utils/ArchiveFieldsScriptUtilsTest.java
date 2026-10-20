@@ -55,8 +55,8 @@ class ArchiveFieldsScriptUtilsTest
 
         assertThat(fragment)
                 .contains("if (params['" + ALIVE + "'] == true) { ")
-                .contains("ctx._source.remove('" + SYS_ARCHIVED_BY + "'); ")
-                .contains("ctx._source.remove('" + SYS_ARCHIVED_DATE + "'); } ");
+                .contains("ctx._source.remove('" + SYS_ARCHIVED_BY + "');")
+                .contains("ctx._source.remove('" + SYS_ARCHIVED_DATE + "');");
     }
 
     @Test
@@ -73,8 +73,8 @@ class ArchiveFieldsScriptUtilsTest
         var fragment = removeArchiveFieldsWhenAlive(Set.of(ALIVE, SYS_ARCHIVED_BY));
 
         assertThat(fragment)
-                .doesNotContain("ctx._source.remove('" + SYS_ARCHIVED_BY + "')")
-                .contains("ctx._source.remove('" + SYS_ARCHIVED_DATE + "')");
+                .doesNotContain("ctx._source.remove('" + SYS_ARCHIVED_BY + "');")
+                .contains("ctx._source.remove('" + SYS_ARCHIVED_DATE + "');");
     }
 
     @Test

@@ -59,7 +59,7 @@ class AlfrescoPagingItemReaderReadFailureTest
     private PageReadFailureListener listener;
 
     @Test
-    void pageFailurePropagatesWhenNoListener() throws Exception
+    void pageFailurePropagatesWhenNoListener()
     {
         DataAccessResourceFailureException boom = new DataAccessResourceFailureException("bad row");
         when(metadataRepository.getAlfrescoNodes(any())).thenThrow(boom);
@@ -112,7 +112,7 @@ class AlfrescoPagingItemReaderReadFailureTest
     }
 
     @Test
-    void listenerFailureShouldNotMaskOriginalPageFailure() throws Exception
+    void listenerFailureShouldNotMaskOriginalPageFailure()
     {
         DataAccessResourceFailureException boom = new DataAccessResourceFailureException("bad row");
         when(metadataRepository.getAlfrescoNodes(any())).thenThrow(boom);

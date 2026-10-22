@@ -25,6 +25,7 @@
  */
 package org.alfresco.indexing.shared.tag;
 
+import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.ASPECT;
 import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.CM_TAGGABLE;
 import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.TAG;
 
@@ -38,13 +39,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.alfresco.indexing.shared.ElasticsearchFieldsPostProcessor;
-import org.alfresco.indexing.shared.exception.ElasticsearchUnexpectedException;
+import org.alfresco.indexing.shared.exception.MissingTagException;
 import org.alfresco.indexing.shared.extractor.EncodedFields;
 
 public class AddTagsPostProcessor implements ElasticsearchFieldsPostProcessor
 {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AddTagsPostProcessor.class);
+
+    private static final String SYS_ARCHIVED = "sys:archived";
 
     private final TagRepository tagRepository;
 
@@ -68,8 +71,9 @@ public class AddTagsPostProcessor implements ElasticsearchFieldsPostProcessor
     @Override
     public void postProcessFields(EncodedFields fields)
     {
+        boolean archived = isArchived(fields);
         var cmTaggable = removeTaggableAttribute ? fields.remove(CM_TAGGABLE) : fields.get(CM_TAGGABLE);
-        var tagNames = cmTaggable.map(this::getTagNames).orElse(List.of());
+        var tagNames = cmTaggable.map(taggable -> getTagNames(taggable, archived)).orElse(List.of());
 
         if (addEmptyTagAttribute || !tagNames.isEmpty())
         {
@@ -77,10 +81,10 @@ public class AddTagsPostProcessor implements ElasticsearchFieldsPostProcessor
         }
     }
 
-    private List<String> getTagNames(Object cmTaggable)
+    private List<String> getTagNames(Object cmTaggable, boolean archived)
     {
         return tagIds(cmTaggable)
-                .map(this::getTagName)
+                .map(tagId -> getTagName(tagId, archived))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .toList();
@@ -110,14 +114,18 @@ public class AddTagsPostProcessor implements ElasticsearchFieldsPostProcessor
         throw new UnsupportedOperationException("Unexpected `" + CM_TAGGABLE + "` type `" + cmTaggable.getClass() + "`");
     }
 
-    private Optional<String> getTagName(String tagId)
+    private Optional<String> getTagName(String tagId, boolean archived)
     {
         Optional<String> tagName = tagRepository.getTagName(tagId);
         if (tagName.isEmpty())
         {
-            if (failOnMissingTag)
+            if (archived)
             {
-                throw new ElasticsearchUnexpectedException("Failed to find tag name for id: %s".formatted(tagId));
+                LOGGER.debug("Tag `{}` no longer exists; omitting it from an archived node.", tagId);
+            }
+            else if (failOnMissingTag)
+            {
+                throw new MissingTagException(tagId);
             }
             else
             {
@@ -125,5 +133,14 @@ public class AddTagsPostProcessor implements ElasticsearchFieldsPostProcessor
             }
         }
         return tagName;
+    }
+
+    private static boolean isArchived(EncodedFields fields)
+    {
+        return fields.get(ASPECT)
+                .filter(Collection.class::isInstance)
+                .map(Collection.class::cast)
+                .map(aspects -> aspects.contains(SYS_ARCHIVED))
+                .orElse(false);
     }
 }

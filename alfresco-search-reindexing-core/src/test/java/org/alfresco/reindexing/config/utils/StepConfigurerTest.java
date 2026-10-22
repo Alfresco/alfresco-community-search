@@ -46,6 +46,7 @@ import org.springframework.core.retry.RetryPolicy;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.backoff.ExponentialBackOff;
 
+import org.alfresco.indexing.shared.exception.MissingTagException;
 import org.alfresco.metrics.ReindexingMetrics;
 import org.alfresco.reindexing.config.ReindexingCoreProperties;
 import org.alfresco.reindexing.processors.UnresolvedNamespaceException;
@@ -136,8 +137,9 @@ class StepConfigurerTest
 
         // A transient fault is worth another chunk attempt.
         assertThat(policy.getValue().shouldRetry(new RuntimeException("connection reset"))).isTrue();
-        // These two are deterministic: retrying only repeats the writes that already succeeded.
+        // These are deterministic: retrying only repeats the writes that already succeeded.
         assertThat(policy.getValue().shouldRetry(new UnresolvedNamespaceException(1L, "http://acme", "foo", true))).isFalse();
+        assertThat(policy.getValue().shouldRetry(new MissingTagException("deadc0de-c0de-c0de-c0de-c0dec0dec0de"))).isFalse();
         assertThat(policy.getValue().shouldRetry(new TerminalWriteFailureException("metadata", 3))).isFalse();
     }
 

@@ -51,7 +51,7 @@ import org.alfresco.elasticsearch.batchindexing.reliability.harness.WatermarkPro
 /**
  * Missing-tag poison → DLQ visibility.
  * <p>
- * Mirrors a customer scenario where ACS Share allowed {@code cm:categories} to be attached as {@code cm:taggable} values. The reindexer's tag resolver never finds those UUIDs under {@code tag:tag-root}, so {@code AddTagsPostProcessor} throws {@code ElasticsearchUnexpectedException} when {@code alfresco.reindex.failOnMissingTag=true} (the shipping default).
+ * Mirrors a customer scenario where ACS Share allowed {@code cm:categories} to be attached as {@code cm:taggable} values. The reindexer's tag resolver never finds those UUIDs under {@code tag:tag-root}, so {@code AddTagsPostProcessor} throws {@code MissingTagException} when {@code alfresco.reindex.failOnMissingTag=true} (the shipping default).
  * <p>
  * The stack is the standard reliability lifecycle stack plus one extra postgres init script that adds one hostile {@code cm:taggable} value on node 384 (uuid {@code d1ddf3fc-...}). That's the entire poison shape — a single row.
  * <p>
@@ -59,7 +59,7 @@ import org.alfresco.elasticsearch.batchindexing.reliability.harness.WatermarkPro
  * <p>
  * Assertions:
  * <ol>
- * <li>DLQ contains a record for node 384 with {@code failureStage=METADATA_WRITER}, {@code failureType=ElasticsearchUnexpectedException}, {@code failureReason} mentioning the missing tag UUID, and a non-null {@code dbId} / {@code nodeRef}.</li>
+ * <li>DLQ contains a record for node 384 with {@code failureStage=METADATA_WRITER}, {@code failureType=MissingTagException}, {@code failureReason} mentioning the missing tag UUID, and a non-null {@code dbId} / {@code nodeRef}.</li>
  * <li>Watermark reports {@code lastRunStatus=COMPLETED} and {@code lastSuccessfulToTimeEpochMs} advanced past the seed value.</li>
  * <li>Other nodes in the same chunk survive the skip and end up in the {@code alfresco} index — this is the {@code MixedBatchOneBadIT} row-7 shape absorbed into this test. Spring Batch splits the failing chunk into per-item writes; only the poison node is skipped, everything else commits.</li>
  * </ol>
@@ -80,7 +80,7 @@ public class MissingTagPoisonIT extends BaseReliabilityIT
     /** Bogus tag UUID — must match {@code zz-missing-tag-poison.sql}. */
     static final String POISON_TAG_UUID = "deadc0de-c0de-c0de-c0de-c0dec0dec0de";
     /** Thrown by {@link org.alfresco.indexing.shared.tag.AddTagsPostProcessor} when a tag id can't be resolved. */
-    static final String EXPECTED_FAILURE_TYPE = "ElasticsearchUnexpectedException";
+    static final String EXPECTED_FAILURE_TYPE = "MissingTagException";
 
     /** JVM warm-up + one poison cycle + retry backoff — 3 minutes is comfortable. */
     private static final Duration DLQ_AVAILABILITY_TIMEOUT = Duration.ofMinutes(3);

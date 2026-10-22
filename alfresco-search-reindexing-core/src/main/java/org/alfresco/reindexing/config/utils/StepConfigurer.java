@@ -39,6 +39,7 @@ import org.springframework.core.retry.RetryPolicy;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.backoff.BackOff;
 
+import org.alfresco.indexing.shared.exception.MissingTagException;
 import org.alfresco.metrics.ReindexingMetrics;
 import org.alfresco.reindexing.config.ReindexingCoreProperties;
 import org.alfresco.reindexing.config.UnresolvedNamespaceAction;
@@ -87,10 +88,11 @@ public class StepConfigurer
                     .retryListener(new LoggingRetryListener(stepName, reindexingMetrics))
                     .retryPolicy(RetryPolicy.builder()
                             .backOff(backOff)
-                            // Deterministic failures. The prefix map will not change mid-cycle, and a
-                            // terminal write failure is raised only after the writer exhausted its own
-                            // retries, so a chunk retry just repeats the writes that already succeeded.
-                            .excludes(UnresolvedNamespaceException.class, TerminalWriteFailureException.class)
+                            // Deterministic failures. The prefix map will not change mid-cycle, a tag that
+                            // cannot be resolved stays unresolved, and a terminal write failure is raised only
+                            // after the writer exhausted its own retries, so a chunk retry just repeats the
+                            // writes that already succeeded.
+                            .excludes(UnresolvedNamespaceException.class, TerminalWriteFailureException.class, MissingTagException.class)
                             .build())
                     .retry(Exception.class);
         }

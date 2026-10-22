@@ -7,10 +7,6 @@ Search indexing for [Alfresco Content Services](https://github.com/Alfresco/alfr
 Community Edition, built on Elasticsearch. It replaces Alfresco Search Services, which was built on
 [Apache Solr](https://solr.apache.org/).
 
-> **Note**
-> This repository is being assembled. Some modules are present as build definitions while their
-> sources are migrated. Sections marked _Coming soon_ below are not yet available.
-
 ## Table of Contents
 
 1. [Overview](#overview)
@@ -79,8 +75,8 @@ there. The two share only the repository database (read-only here) and the index
 
 **Relationship to Search Enterprise.** Alfresco Search Enterprise builds on the libraries published
 from this repository rather than forking them. The `alfresco-search-opensearch-client` module is
-the shared foundation: enterprise adds live indexing over ActiveMQ/Camel, AWS IAM authentication,
-and path indexing on top of it. Fixes to the shared client benefit both editions.
+the shared foundation: enterprise adds event-driven live indexing over ActiveMQ/Camel and AWS IAM
+authentication on top of it. Fixes to the shared client benefit both editions.
 
 ## Modules
 
@@ -91,7 +87,7 @@ and path indexing on top of it. Fixes to the shared client benefit both editions
 | `alfresco-search-opensearch-client-test` | Test fixtures for the client: Testcontainers initializers for Elasticsearch and Transform Core, index bootstrap helpers, a query DSL model, and an event generator. Test scope only. |
 | `alfresco-search-reindexing-core` | Reusable Spring Batch building blocks — readers, processors, writers, and retry configuration — shared by the indexing jobs. |
 | `alfresco-elasticsearch-batch-indexing` | The runnable Spring Boot application. Scheduling, job wiring, content transform, and watermark state. |
-| `alfresco-elasticsearch-batch-indexing-distribution` | Packages the application as a Docker image. |
+| `alfresco-elasticsearch-batch-indexing-distribution` | Packages the application as a Docker image and as a distribution zip with the jar, licences, and a Docker Compose example. |
 
 ### Why the layering exists
 
@@ -209,22 +205,16 @@ what is specific to working on the source.
 
 Repository-specific documentation:
 
-- **Design and architecture document** — the internals behind the product docs: scheduling model,
-  processing pipeline, state storage, and failure handling. Useful if you are changing this code
-  rather than operating it. _Coming soon._
-
-<!-- TODO(placeholder): link to docs/batch-indexing/consolidated-design-document.md once ported. -->
-
 - [Contributing guide](CONTRIBUTING.md)
 
-[docs-intro]: https://docs.hyland.com/r/Alfresco/Alfresco-Search-Community/5.7/Alfresco-Search-Community/Introduction
-[docs-install]: https://docs.hyland.com/r/Alfresco/Alfresco-Search-Community/5.7/Alfresco-Search-Community/Install
-[docs-upgrade]: https://docs.hyland.com/r/Alfresco/Alfresco-Search-Community/5.7/Alfresco-Search-Community/Upgrade
-[docs-config]: https://docs.hyland.com/r/Alfresco/Alfresco-Search-Community/5.7/Alfresco-Search-Community/Configure
-[docs-config-batch]: https://docs.hyland.com/r/Alfresco/Alfresco-Search-Community/5.7/Alfresco-Search-Community/Configure/Configuring-Batch-Indexing-Application
-[docs-admin]: https://docs.hyland.com/r/Alfresco/Alfresco-Search-Community/5.7/Alfresco-Search-Community/Administer
-[docs-using]: https://docs.hyland.com/r/Alfresco/Alfresco-Search-Community/5.7/Alfresco-Search-Community/Using
-[docs-platforms]: https://docs.hyland.com/r/Alfresco/Alfresco-Search-Community/5.7/Alfresco-Search-Community/Supported-Platforms
+[docs-intro]: https://docs.hyland.com/r/Alfresco/Alfresco-Search-Community/5.9/Alfresco-Search-Community/Introduction
+[docs-install]: https://docs.hyland.com/r/Alfresco/Alfresco-Search-Community/5.9/Alfresco-Search-Community/Install
+[docs-upgrade]: https://docs.hyland.com/r/Alfresco/Alfresco-Search-Community/5.9/Alfresco-Search-Community/Upgrade
+[docs-config]: https://docs.hyland.com/r/Alfresco/Alfresco-Search-Community/5.9/Alfresco-Search-Community/Configure
+[docs-config-batch]: https://docs.hyland.com/r/Alfresco/Alfresco-Search-Community/5.9/Alfresco-Search-Community/Configure/Configuring-Batch-Indexing-Application
+[docs-admin]: https://docs.hyland.com/r/Alfresco/Alfresco-Search-Community/5.9/Alfresco-Search-Community/Administer
+[docs-using]: https://docs.hyland.com/r/Alfresco/Alfresco-Search-Community/5.9/Alfresco-Search-Community/Using
+[docs-platforms]: https://docs.hyland.com/r/Alfresco/Alfresco-Search-Community/5.9/Alfresco-Search-Community/Supported-Platforms
 
 ## Branches
 

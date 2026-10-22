@@ -28,7 +28,7 @@ package org.alfresco.reindexing.processors;
 /**
  * Hook invoked when a node's own type is in a namespace with no prefix mapping, so the node cannot be indexed at all (ACS-12851).
  * <p>
- * Absent by default â€” with no listener bean registered the processor only reports the loss. Consumers (batch-indexing's DLQ) register a bean of this type so the node can be recovered once the mapping is fixed.
+ * Absent by default — with no listener bean registered the processor only reports the loss. Consumers (batch-indexing's DLQ) register a bean of this type so the node can be recovered once the mapping is fixed.
  * <p>
  * Fires without failing the item, so it is independent of Spring Batch's skip machinery: a node lost this way is recorded even though the step completes.
  */

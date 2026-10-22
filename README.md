@@ -145,6 +145,20 @@ To build without running tests:
 mvn clean install -DskipTests
 ```
 
+### Building the Docker image locally
+
+Build with the `docker-image` profile, which stages the Dockerfile, then run the local build
+script:
+
+```bash
+mvn clean install -DskipTests -P docker-image
+scripts/buildDockerImagesLocal.sh        # alfresco/alfresco-elasticsearch-batch-indexing:local
+scripts/buildDockerImagesLocal.sh -p     # tagged with the project version, as the *DockerComposeIT tests expect
+scripts/buildDockerImagesLocal.sh -t foo # any other tag
+```
+
+The `local` tag is also what the ACS Community Packaging TAS tests fall back to when no `-Dindeximage` is given.
+
 See [CONTRIBUTING.md](CONTRIBUTING.md) for code formatting, commit hooks, and how to submit a pull
 request.
 

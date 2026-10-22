@@ -359,6 +359,13 @@
                                             </includes>
                                         </resource>
                                         <resource>
+                                            <directory>${project.basedir}/..</directory>
+                                            <includes>
+                                                <include>LICENSE.txt</include>
+                                                <include>LICENSE-GPL-3.0.txt</include>
+                                            </includes>
+                                        </resource>
+                                        <resource>
                                             <directory>${project.basedir}</directory>
                                             <includes>
                                                 <include>README.md</include>

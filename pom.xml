@@ -44,9 +44,7 @@
         <alfresco.database.connector.version>1.8.0</alfresco.database.connector.version>
         <dist.share.version>26.3.0-A.11</dist.share.version>
         <dist.postgres.version>16.6</dist.postgres.version>
-        <dist.transform.router.version>4.4.5</dist.transform.router.version>
         <dist.transform.core.version>5.4.5</dist.transform.core.version>
-        <dist.transform.sfs.version>4.4.5</dist.transform.sfs.version>
 
         <dist.activemq.docker.tag>6.2-jre17-rockylinux8</dist.activemq.docker.tag>
         <dist.elasticsearch.version>8.17.0</dist.elasticsearch.version>

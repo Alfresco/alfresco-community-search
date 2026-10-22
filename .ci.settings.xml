@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!--
-  Credentials for publishing. The shared libraries go to the internal repositories and
-  the batch-indexing modules to the public ones, so both sets of server ids are needed.
+  Credentials for publishing to the public repositories.
   Installed by the setup-java-build action; used only by the release job.
   The build job overrides it with .github/empty-settings.xml so that the
   ordinary build is proven to need no credentials.
@@ -10,16 +9,6 @@
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
           xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
   <servers>
-    <server>
-      <id>alfresco-internal</id>
-      <username>${env.MAVEN_USERNAME}</username>
-      <password>${env.MAVEN_PASSWORD}</password>
-    </server>
-    <server>
-      <id>alfresco-internal-snapshots</id>
-      <username>${env.MAVEN_USERNAME}</username>
-      <password>${env.MAVEN_PASSWORD}</password>
-    </server>
     <server>
       <id>alfresco-public-releases</id>
       <username>${env.MAVEN_USERNAME}</username>

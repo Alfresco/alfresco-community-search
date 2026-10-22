@@ -439,18 +439,16 @@
         <tag>HEAD</tag>
     </scm>
 
-    <!-- Default target is internal. Only the batch-indexing modules override this to publish
-         publicly; the shared libraries stay private until their public API has been reviewed. -->
     <distributionManagement>
         <repository>
-            <id>alfresco-internal</id>
-            <name>Alfresco Internal Repository</name>
-            <url>https://artifacts.alfresco.com/nexus/content/repositories/enterprise-releases/</url>
+            <id>alfresco-public-releases</id>
+            <name>Alfresco Releases Repository</name>
+            <url>https://artifacts.alfresco.com/nexus/content/repositories/releases</url>
         </repository>
         <snapshotRepository>
-            <id>alfresco-internal-snapshots</id>
-            <name>Alfresco Internal Snapshot Repository</name>
-            <url>https://artifacts.alfresco.com/nexus/content/repositories/enterprise-snapshots/</url>
+            <id>alfresco-public-snapshots</id>
+            <name>Alfresco Snapshots Repository</name>
+            <url>https://artifacts.alfresco.com/nexus/content/repositories/snapshots</url>
         </snapshotRepository>
     </distributionManagement>
 </project>

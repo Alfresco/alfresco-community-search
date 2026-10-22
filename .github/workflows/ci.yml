@@ -64,7 +64,7 @@ jobs:
       - uses: Alfresco/alfresco-build-tools/.github/actions/setup-java-build@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
         with:
           java-version: ${{ env.JAVA_VERSION }}
-      - uses: Alfresco/ya-pmd-scan@v4.4.1
+      - uses: Alfresco/ya-pmd-scan@1f36f8e45695ce60362010345a99a0c8f7310264 # v4.4.1
         with:
           create-github-annotations: "false"
 

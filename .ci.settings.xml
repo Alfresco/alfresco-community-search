@@ -1,34 +1,17 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!--
-  CI Maven settings. Every dependency and plugin is pulled through the Cloudsmith mirror;
-  the credentials for it are exported by the cloudsmith-auth action.
-  Publishing still goes to Nexus: the shared libraries go to the internal repositories and
+  Credentials for publishing. The shared libraries go to the internal repositories and
   the batch-indexing modules to the public ones, so both sets of server ids are needed.
-  Installed by the setup-java-build action, and passed explicitly with -s by the jobs that
-  do not use it.
+  Installed by the setup-java-build action; used only by the release job.
+  The build job overrides it with .github/empty-settings.xml so that the
+  ordinary build is proven to need no credentials.
 -->
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
           xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
-  <mirrors>
-    <mirror>
-      <id>alfresco-internal</id>
-      <name>Alfresco Cloudsmith Internal</name>
-      <url>https://artifacts.hyland.dev/basic/alfresco-internal/maven/</url>
-      <mirrorOf>*</mirrorOf>
-    </mirror>
-  </mirrors>
-
   <servers>
-    <!-- Cloudsmith credentials, exported by the cloudsmith-auth action -->
     <server>
       <id>alfresco-internal</id>
-      <username>${env.CLOUDSMITH_USERNAME}</username>
-      <password>${env.CLOUDSMITH_API_KEY}</password>
-    </server>
-    <!-- Nexus credentials, still used to deploy the artifacts -->
-    <server>
-      <id>alfresco-internal-releases</id>
       <username>${env.MAVEN_USERNAME}</username>
       <password>${env.MAVEN_PASSWORD}</password>
     </server>

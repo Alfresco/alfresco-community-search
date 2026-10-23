@@ -11,7 +11,6 @@ on:
   workflow_dispatch:
 
 permissions:
-  id-token: write
   contents: write
 
 jobs:
@@ -20,13 +19,11 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      # Dependencies are pulled through the Cloudsmith mirror configured in .ci.settings.xml.
-      - uses: Alfresco/alfresco-build-tools/.github/actions/cloudsmith-auth@5d33aec6cf9ffd70982c404ebf5ebadedd7405d9 # v19.5.0
-        with:
-          oidc-namespace: ${{ vars.CLOUDSMITH_NAMESPACE }}
+      # No maven credentials: every dependency of the community modules resolves from Maven Central
+      # or the public Alfresco Cloudsmith repository. The empty settings file keeps that honest.
       - uses: Alfresco/alfresco-build-tools/.github/actions/maven-dependency-scan@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
         with:
           java-version: '17'
           maven-version: '3.9.9'
           maven-args: -Dscopes=compile,runtime
-          maven-settings-path: ".ci.settings.xml"
+          maven-settings-path: ".github/empty-settings.xml"

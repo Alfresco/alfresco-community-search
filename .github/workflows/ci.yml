@@ -21,10 +21,7 @@ permissions:
 
 env:
   MAVEN_CLI_OPTS: "-B -e -fae -V -DinstallAtEnd=true -Dspring.main.banner-mode=off -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
-  # Pulls everything through the Cloudsmith mirror; the credentials come from the cloudsmith-auth action.
-  MAVEN_SETTINGS_OPTS: "-s .ci.settings.xml"
-  # No mirror and no credentials: only the repositories declared in the poms, as a community member would build.
-  COMMUNITY_MAVEN_SETTINGS_OPTS: "-s .github/empty-settings.xml -gs .github/empty-settings.xml"
+  MAVEN_SETTINGS_OPTS: "-s .github/empty-settings.xml -gs .github/empty-settings.xml"
   JAVA_VERSION: "17"
   GITHUB_ACTIONS_DEPLOY_TIMEOUT: 60
   # Both variables are required to be set before the release process starts .
@@ -61,18 +58,12 @@ jobs:
     runs-on: ubuntu-latest
     needs: [ test_run_check ]
     if: needs.test_run_check.outputs.tests == 'true' && github.event_name == 'pull_request'
-    permissions:
-      id-token: write
-      contents: read
     steps:
       - uses: Alfresco/alfresco-build-tools/.github/actions/get-build-info@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
       - uses: Alfresco/alfresco-build-tools/.github/actions/free-hosted-runner-disk-space@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
       - uses: Alfresco/alfresco-build-tools/.github/actions/setup-java-build@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
         with:
           java-version: ${{ env.JAVA_VERSION }}
-      - uses: Alfresco/alfresco-build-tools/.github/actions/cloudsmith-auth@5d33aec6cf9ffd70982c404ebf5ebadedd7405d9 # v19.5.0
-        with:
-          oidc-namespace: ${{ vars.CLOUDSMITH_NAMESPACE }}
       - uses: Alfresco/ya-pmd-scan@v4.4.1
         with:
           create-github-annotations: "false"
@@ -82,56 +73,29 @@ jobs:
     runs-on: ubuntu-latest
     needs: [ pre_commit, test_run_check ]
     if: needs.test_run_check.outputs.tests == 'true'
-    permissions:
-      id-token: write
-      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
-      - uses: Alfresco/alfresco-build-tools/.github/actions/cloudsmith-auth@5d33aec6cf9ffd70982c404ebf5ebadedd7405d9 # v19.5.0
-        with:
-          oidc-namespace: ${{ vars.CLOUDSMITH_NAMESPACE }}
       - name: "Build and test"
         run: mvn ${{ env.MAVEN_CLI_OPTS }} ${{ env.MAVEN_SETTINGS_OPTS }} clean verify
-
-  community_build:
-    name: "Community build (no credentials)"
-    runs-on: ubuntu-latest
-    needs: [ pre_commit, test_run_check ]
-    if: needs.test_run_check.outputs.tests == 'true'
-    steps:
-      # Proves the project still builds for anyone, with no Cloudsmith or Nexus credentials.
-      # No Maven cache on purpose: a cached artifact would hide one that needs a login.
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
-        with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: temurin
-      - name: "Build without credentials"
-        run: mvn ${{ env.MAVEN_CLI_OPTS }} ${{ env.COMMUNITY_MAVEN_SETTINGS_OPTS }} clean verify -DskipTests
 
   batch_indexing_e2e:
     name: "Batch Indexing E2E"
     runs-on: ubuntu-latest
     needs: [ pre_commit, test_run_check ]
     if: needs.test_run_check.outputs.tests == 'true'
-    permissions:
-      id-token: write
-      contents: read
     steps:
-      # No registry login: every image this stack pulls is public.
+      # No registry login: every image this stack pulls is public, which is what lets a
+      # fork pull request run the whole suite with no secrets.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: Alfresco/alfresco-build-tools/.github/actions/get-build-info@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
       - uses: Alfresco/alfresco-build-tools/.github/actions/free-hosted-runner-disk-space@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
       - uses: Alfresco/alfresco-build-tools/.github/actions/setup-java-build@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
         with:
           java-version: ${{ env.JAVA_VERSION }}
-      - uses: Alfresco/alfresco-build-tools/.github/actions/cloudsmith-auth@5d33aec6cf9ffd70982c404ebf5ebadedd7405d9 # v19.5.0
-        with:
-          oidc-namespace: ${{ vars.CLOUDSMITH_NAMESPACE }}
       - name: "Build application"
         run: mvn ${{ env.MAVEN_CLI_OPTS }} ${{ env.MAVEN_SETTINGS_OPTS }} clean install -DskipTests -P docker-image
       - name: "Build docker images"
@@ -172,9 +136,6 @@ jobs:
     runs-on: ubuntu-latest-8-cores
     needs: [ pre_commit, test_run_check ]
     if: needs.test_run_check.outputs.tests == 'true'
-    permissions:
-      id-token: write
-      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: Alfresco/alfresco-build-tools/.github/actions/get-build-info@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
@@ -182,9 +143,6 @@ jobs:
       - uses: Alfresco/alfresco-build-tools/.github/actions/setup-java-build@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
         with:
           java-version: ${{ env.JAVA_VERSION }}
-      - uses: Alfresco/alfresco-build-tools/.github/actions/cloudsmith-auth@5d33aec6cf9ffd70982c404ebf5ebadedd7405d9 # v19.5.0
-        with:
-          oidc-namespace: ${{ vars.CLOUDSMITH_NAMESPACE }}
       - name: "Build application"
         run: mvn ${{ env.MAVEN_CLI_OPTS }} ${{ env.MAVEN_SETTINGS_OPTS }} clean install -DskipTests -P docker-image
       - name: "Build docker images"
@@ -217,7 +175,7 @@ jobs:
   release:
     name: "Release and deploy to Nexus and S3 Staging Bucket"
     runs-on: ubuntu-latest
-    needs: [ pre_commit, build, community_build, batch_indexing_e2e, batch_indexing_reliability_tests ]
+    needs: [ pre_commit, build, batch_indexing_e2e, batch_indexing_reliability_tests ]
     permissions:
       id-token: write
       contents: read
@@ -255,14 +213,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           token: ${{ steps.app-token.outputs.token }}
-      # Installs .ci.settings.xml, which pulls through the Cloudsmith mirror and maps the
-      # Nexus alfresco-internal-* / alfresco-public-* server ids onto MAVEN_USERNAME / MAVEN_PASSWORD.
+      # Installs .ci.settings.xml, which maps the alfresco-public-* server ids
+      # onto MAVEN_USERNAME / MAVEN_PASSWORD.
       - uses: Alfresco/alfresco-build-tools/.github/actions/setup-java-build@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
         with:
           java-version: ${{ env.JAVA_VERSION }}
-      - uses: Alfresco/alfresco-build-tools/.github/actions/cloudsmith-auth@5d33aec6cf9ffd70982c404ebf5ebadedd7405d9 # v19.5.0
-        with:
-          oidc-namespace: ${{ vars.CLOUDSMITH_NAMESPACE }}
       - uses: Alfresco/alfresco-build-tools/.github/actions/configure-git-author@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
         with:
           username: ${{ secrets.BOT_GITHUB_USERNAME }}
@@ -303,10 +258,7 @@ jobs:
   deploy_release_docker_image:
     name: "Deploy release image to Docker Hub"
     runs-on: ubuntu-latest
-    needs: [ pre_commit, build, community_build, batch_indexing_e2e, batch_indexing_reliability_tests ]
-    permissions:
-      id-token: write
-      contents: read
+    needs: [ pre_commit, build, batch_indexing_e2e, batch_indexing_reliability_tests ]
     if: >
       !(failure() || cancelled()) &&
       github.event_name != 'pull_request' &&
@@ -326,9 +278,6 @@ jobs:
       - uses: Alfresco/alfresco-build-tools/.github/actions/setup-java-build@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
         with:
           java-version: ${{ env.JAVA_VERSION }}
-      - uses: Alfresco/alfresco-build-tools/.github/actions/cloudsmith-auth@5d33aec6cf9ffd70982c404ebf5ebadedd7405d9 # v19.5.0
-        with:
-          oidc-namespace: ${{ vars.CLOUDSMITH_NAMESPACE }}
       - name: "Set release version"
         run: mvn versions:set -DnewVersion=${{ env.RELEASE_VERSION }}
       # The docker-image profile stages the Dockerfile under target/classes, which is

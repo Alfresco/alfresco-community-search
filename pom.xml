@@ -442,7 +442,7 @@
          publicly; the shared libraries stay private until their public API has been reviewed. -->
     <distributionManagement>
         <repository>
-            <id>alfresco-internal</id>
+            <id>alfresco-internal-releases</id>
             <name>Alfresco Internal Repository</name>
             <url>https://artifacts.alfresco.com/nexus/content/repositories/enterprise-releases/</url>
         </repository>

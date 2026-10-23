@@ -363,6 +363,7 @@
                                             <includes>
                                                 <include>LICENSE.txt</include>
                                                 <include>LICENSE-GPL-3.0.txt</include>
+                                                <include>ATTRIBUTION-NOTICE.MD</include>
                                             </includes>
                                         </resource>
                                         <resource>

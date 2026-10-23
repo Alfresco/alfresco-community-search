@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 """
-Regenerates the library listing in NOTICE.txt from the project's own
-authoritative third-party dependency report.
+Checks ATTRIBUTION-NOTICE.MD against the project's own authoritative
+third-party dependency report, and optionally updates it.
 
 Usage (after adding/removing/upgrading a dependency):
     mvn generate-resources -pl alfresco-elasticsearch-batch-indexing -am
-    python3 scripts/generate-notice.py
+    python3 scripts/generate-notice.py           # report differences, exit 1 if any
+    python3 scripts/generate-notice.py --write   # also rewrite the bullet lists
 
-This rewrites only the block between the
-'### BEGIN AUTO-GENERATED LIBRARY LIST ###' / '### END AUTO-GENERATED LIBRARY LIST ###' 
-markers in NOTICE.txt; the header, the "About this file" text, and the "Notes" footer are left untouched.
+Each component is expected under the '### <license>' section of its first
+listed license. Sections that are plain '- <name> <url>' bullet lists (e.g.
+Apache 2.0) are rewritten by --write. Sections where each component carries its
+own copyright text (e.g. MIT, BSD) are only reported, as that text has to be
+added by hand. Lines without a URL (such as shaded libraries) are left alone.
 """
 import argparse
 import re
@@ -26,10 +29,7 @@ DEFAULT_THIRD_PARTY = (
     / "license"
     / "THIRD-PARTY.txt"
 )
-DEFAULT_NOTICE = REPO_ROOT / "NOTICE.txt"
-
-BEGIN_MARKER = "### BEGIN AUTO-GENERATED LIBRARY LIST ###"
-END_MARKER = "### END AUTO-GENERATED LIBRARY LIST ###"
+DEFAULT_NOTICE = REPO_ROOT / "ATTRIBUTION-NOTICE.MD"
 
 FRIENDLY_TITLES = {
     "Apache-2.0": "Apache 2.0 License",
@@ -47,6 +47,7 @@ FRIENDLY_TITLES = {
 LINE_PATTERN = re.compile(
     r"^\s*((?:\([^)]+\)\s*)+)(.+?)\s*\(([\w.\-]+:[\w.\-]+):([^\s:)]+)\s*-\s*(\S+)\)\s*$"
 )
+COMPONENT_PATTERN = re.compile(r"^(- )?(.+?) (https?://\S+)$")
 
 
 def primary_license(licenses):
@@ -82,42 +83,46 @@ def disambiguate_titles(entries):
     return entries
 
 
-def render_sections(entries):
-    by_primary = defaultdict(list)
+def expected_by_section(entries):
+    sections = defaultdict(set)
     for e in entries:
-        by_primary[e["primary"]].append(e)
-
-    lines = [BEGIN_MARKER, ""]
-    for primary in sorted(by_primary):
-        title = FRIENDLY_TITLES.get(primary, primary)
-        group = sorted(by_primary[primary], key=lambda x: x["title"].lower())
-        lines.append(f"=== {title} ====")
-        for e in group:
-            lines.append(f"{e['title']}\t{e['url']}")
-        lines.append("")
-    lines.append(END_MARKER)
-    return "\n".join(lines).rstrip("\n") + "\n"
+        heading = FRIENDLY_TITLES.get(e["primary"], e["primary"])
+        sections[heading].add(f"{e['title']} {e['url']}")
+    return sections
 
 
-def splice_into_notice(notice_path: Path, new_section: str):
-    content = notice_path.read_text()
-    if BEGIN_MARKER not in content or END_MARKER not in content:
-        print(
-            f"error: {notice_path} is missing the "
-            f"'{BEGIN_MARKER}' / '{END_MARKER}' markers.\n"
-            "Add them once around the existing library list, then re-run this script.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-    before = content[: content.index(BEGIN_MARKER)]
-    after = content[content.index(END_MARKER) + len(END_MARKER) :].lstrip("\n")
-    notice_path.write_text(before + new_section.rstrip("\n") + "\n\n" + after)
+def parse_notice(lines):
+    """Maps each '### ' heading to its component lines, as (index, is_bullet, 'name url')."""
+    sections = {}
+    current = None
+    for i, line in enumerate(lines):
+        if line.startswith("### "):
+            current = line[4:].strip()
+            sections[current] = []
+        elif line.startswith("#") or line.startswith("***"):
+            current = None
+        elif current and not line.startswith(">"):
+            m = COMPONENT_PATTERN.match(line)
+            if m:
+                sections[current].append((i, bool(m.group(1)), f"{m.group(2)} {m.group(3)}"))
+    return sections
+
+
+def is_bullet_list(components):
+    """True when the section's components are one contiguous '- ' list."""
+    if not components or not all(bullet for _, bullet, _ in components):
+        return False
+    indexes = [i for i, _, _ in components]
+    return indexes == list(range(indexes[0], indexes[0] + len(indexes)))
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--third-party", type=Path, default=DEFAULT_THIRD_PARTY)
     parser.add_argument("--notice", type=Path, default=DEFAULT_NOTICE)
+    parser.add_argument("--write", action="store_true", help="rewrite the bullet-list sections")
     args = parser.parse_args()
 
     if not args.third_party.exists():
@@ -134,10 +139,48 @@ def main():
         print(f"error: parsed zero entries from {args.third_party}", file=sys.stderr)
         sys.exit(1)
 
-    entries = disambiguate_titles(entries)
-    section = render_sections(entries)
-    splice_into_notice(args.notice, section)
-    print(f"Updated {args.notice} with {len(entries)} third-party components.")
+    expected = expected_by_section(disambiguate_titles(entries))
+    lines = args.notice.read_text().split("\n")
+    actual = parse_notice(lines)
+
+    manual = []
+    rewrites = {}
+    for heading in sorted(set(expected) | set(actual)):
+        want = expected.get(heading, set())
+        components = actual.get(heading)
+        if components is None:
+            manual.append(f"missing section '### {heading}' with license text for: {sorted(want)}")
+            continue
+        have = {c for _, _, c in components}
+        if want == have:
+            continue
+        if is_bullet_list(components) and want:
+            rewrites[heading] = (components, sorted(want, key=lambda c: c.rsplit(" ", 1)[0].lower()))
+            for c in sorted(want - have):
+                print(f"[{heading}] add: {c}")
+            for c in sorted(have - want):
+                print(f"[{heading}] remove: {c}")
+        else:
+            for c in sorted(want - have):
+                manual.append(f"[{heading}] add, with its copyright text: {c}")
+            for c in sorted(have - want):
+                manual.append(f"[{heading}] remove, with its copyright text: {c}")
+
+    for message in manual:
+        print(f"manual: {message}")
+
+    if args.write and rewrites:
+        # Replace from the bottom up so earlier indexes stay valid.
+        for components, want in sorted(rewrites.values(), key=lambda r: -r[0][0][0]):
+            first, last = components[0][0], components[-1][0]
+            lines[first : last + 1] = [f"- {c}" for c in want]
+        args.notice.write_text("\n".join(lines))
+        print(f"Updated {len(rewrites)} section(s) in {args.notice}.")
+
+    if manual or (rewrites and not args.write):
+        sys.exit(1)
+    if not rewrites:
+        print(f"{args.notice} matches {len(entries)} third-party components.")
 
 
 if __name__ == "__main__":

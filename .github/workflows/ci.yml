@@ -81,6 +81,8 @@ jobs:
           distribution: temurin
       - name: "Build and test"
         run: mvn ${{ env.MAVEN_CLI_OPTS }} ${{ env.MAVEN_SETTINGS_OPTS }} clean verify
+      - name: "Check attribution notice"
+        run: python3 scripts/generate-notice.py
 
   batch_indexing_e2e:
     name: "Batch Indexing E2E"

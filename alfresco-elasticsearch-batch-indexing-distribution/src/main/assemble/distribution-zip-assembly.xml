@@ -45,6 +45,10 @@
             <source>${project.basedir}/../LICENSE-GPL-3.0.txt</source>
             <outputDirectory>.</outputDirectory>
         </file>
+        <file>
+            <source>${project.basedir}/../ATTRIBUTION-NOTICE.MD</source>
+            <outputDirectory>.</outputDirectory>
+        </file>
     </files>
 </assembly>
 

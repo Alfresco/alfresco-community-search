@@ -175,7 +175,7 @@ jobs:
         run: bash ./scripts/ci/cleanup_cache.sh
 
   release:
-    name: "Release and deploy to Nexus and S3 Staging Bucket"
+    name: "Release and deploy to Cloudsmith and S3 Staging Bucket"
     runs-on: ubuntu-latest
     needs: [ pre_commit, build, batch_indexing_e2e, batch_indexing_reliability_tests ]
     permissions:
@@ -186,9 +186,6 @@ jobs:
       github.event_name != 'pull_request' &&
       (github.ref_name == 'master' || startsWith(github.ref_name, 'release/')) &&
       contains(github.event.head_commit.message, '[release]')
-    env:
-      MAVEN_USERNAME: ${{ secrets.NEXUS_USERNAME }}
-      MAVEN_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
     steps:
       # Fail before the release starts rather than half-way through: a missing bucket makes
       # the upload target "s3://" and the release completes with nothing published.
@@ -215,11 +212,15 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           token: ${{ steps.app-token.outputs.token }}
-      # Installs .ci.settings.xml, which maps the alfresco-public-* server ids
-      # onto MAVEN_USERNAME / MAVEN_PASSWORD.
+      # Installs .ci.settings.xml, which maps the alfresco-cloudsmith-* server ids
+      # onto CLOUDSMITH_USERNAME / CLOUDSMITH_API_KEY.
       - uses: Alfresco/alfresco-build-tools/.github/actions/setup-java-build@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
         with:
           java-version: ${{ env.JAVA_VERSION }}
+      # Mints the short-lived Cloudsmith token used to deploy the release artifacts.
+      - uses: Alfresco/alfresco-build-tools/.github/actions/cloudsmith-auth@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
+        with:
+          oidc-namespace: ${{ vars.CLOUDSMITH_NAMESPACE }}
       - uses: Alfresco/alfresco-build-tools/.github/actions/configure-git-author@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
         with:
           username: ${{ secrets.BOT_GITHUB_USERNAME }}

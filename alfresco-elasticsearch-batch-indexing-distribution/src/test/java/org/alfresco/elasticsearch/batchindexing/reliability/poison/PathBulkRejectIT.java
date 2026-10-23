@@ -1,6 +1,6 @@
 /*-
  * #%L
- * Alfresco Elasticsearch Connector :: Batch Indexing Distribution
+ * Alfresco Search Community :: Batch Indexing Distribution
  * %%
  * Copyright (C) 2026 Alfresco Software Limited
  * %%

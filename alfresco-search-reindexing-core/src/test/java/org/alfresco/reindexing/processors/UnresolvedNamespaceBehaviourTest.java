@@ -87,7 +87,7 @@ class UnresolvedNamespaceBehaviourTest
     /** A URI that legitimately maps to the empty prefix, as the bundled map's "" entry does. */
     private static final String DEFAULT_NS_URI = "http://www.alfresco.org/model/default/1.0";
 
-    /** Knows the Alfresco namespaces, not the customer's â€” the shape of every stock deployment. */
+    /** Knows the Alfresco namespaces, not the customer's — the shape of every stock deployment. */
     private PrefixNamespaceConfig prefixMap;
 
     @BeforeEach

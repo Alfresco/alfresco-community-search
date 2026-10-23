@@ -6,6 +6,7 @@ WORKDIR /opt
 COPY ${JAR_FILE} app.jar
 COPY THIRD-PARTY.txt THIRD-PARTY.txt
 COPY README.md README.md
+COPY LICENSE.txt LICENSE-GPL-3.0.txt ATTRIBUTION-NOTICE.MD ./
 COPY licenses licenses
 # Postgres driver is bundled in the fat jar. Drivers for other databases (Oracle, SQL Server)
 # can be supplied at runtime by mounting them into /opt/db-drivers; PropertiesLauncher picks

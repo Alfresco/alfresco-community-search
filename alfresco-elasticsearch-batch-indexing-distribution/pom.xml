@@ -76,20 +76,6 @@
         </dependency>
     </dependencies>
 
-    <!-- Published publicly: this is the community deliverable. -->
-    <distributionManagement>
-        <repository>
-            <id>alfresco-public-releases</id>
-            <name>Alfresco Releases Repository</name>
-            <url>https://artifacts.alfresco.com/nexus/content/repositories/releases</url>
-        </repository>
-        <snapshotRepository>
-            <id>alfresco-public-snapshots</id>
-            <name>Alfresco Snapshots Repository</name>
-            <url>https://artifacts.alfresco.com/nexus/content/repositories/snapshots</url>
-        </snapshotRepository>
-    </distributionManagement>
-
     <build>
         <plugins>
             <plugin>
@@ -370,6 +356,14 @@
                                             <includes>
                                                 <include>licenses/*</include>
                                                 <include>Dockerfile</include>
+                                            </includes>
+                                        </resource>
+                                        <resource>
+                                            <directory>${project.basedir}/..</directory>
+                                            <includes>
+                                                <include>LICENSE.txt</include>
+                                                <include>LICENSE-GPL-3.0.txt</include>
+                                                <include>ATTRIBUTION-NOTICE.MD</include>
                                             </includes>
                                         </resource>
                                         <resource>

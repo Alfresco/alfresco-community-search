@@ -29,6 +29,8 @@
         <jacoco-plugin.version>0.8.13</jacoco-plugin.version>
         <spotless-plugin.version>2.45.0</spotless-plugin.version>
         <license-maven-plugin.version>2.5.0</license-maven-plugin.version>
+        <maven-source-plugin.version>3.4.0</maven-source-plugin.version>
+        <maven-javadoc-plugin.version>3.12.0</maven-javadoc-plugin.version>
         <licenseName>community</licenseName>
 
         <!-- Only libraries Spring Boot manages behind a safe release, or does not manage at all,
@@ -42,9 +44,7 @@
         <alfresco.database.connector.version>1.8.0</alfresco.database.connector.version>
         <dist.share.version>26.3.0-A.11</dist.share.version>
         <dist.postgres.version>16.6</dist.postgres.version>
-        <dist.transform.router.version>4.4.5</dist.transform.router.version>
         <dist.transform.core.version>5.4.5</dist.transform.core.version>
-        <dist.transform.sfs.version>4.4.5</dist.transform.sfs.version>
 
         <dist.activemq.docker.tag>6.2-jre17-rockylinux8</dist.activemq.docker.tag>
         <dist.elasticsearch.version>8.17.0</dist.elasticsearch.version>
@@ -432,6 +432,43 @@
         </plugins>
     </build>
 
+    <profiles>
+        <!-- Attaches sources and javadoc to released artifacts; maven-release-slim enables it. -->
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>${maven-source-plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>${maven-javadoc-plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
     <scm>
         <url>https://github.com/Alfresco/alfresco-community-search</url>
         <connection>scm:git:https://github.com/Alfresco/alfresco-community-search.git</connection>
@@ -439,18 +476,16 @@
         <tag>HEAD</tag>
     </scm>
 
-    <!-- Default target is internal. Only the batch-indexing modules override this to publish
-         publicly; the shared libraries stay private until their public API has been reviewed. -->
     <distributionManagement>
         <repository>
-            <id>alfresco-internal</id>
-            <name>Alfresco Internal Repository</name>
-            <url>https://artifacts.alfresco.com/nexus/content/repositories/enterprise-releases/</url>
+            <id>alfresco-public-releases</id>
+            <name>Alfresco Releases Repository</name>
+            <url>https://artifacts.alfresco.com/nexus/content/repositories/releases</url>
         </repository>
         <snapshotRepository>
-            <id>alfresco-internal-snapshots</id>
-            <name>Alfresco Internal Snapshot Repository</name>
-            <url>https://artifacts.alfresco.com/nexus/content/repositories/enterprise-snapshots/</url>
+            <id>alfresco-public-snapshots</id>
+            <name>Alfresco Snapshots Repository</name>
+            <url>https://artifacts.alfresco.com/nexus/content/repositories/snapshots</url>
         </snapshotRepository>
     </distributionManagement>
 </project>

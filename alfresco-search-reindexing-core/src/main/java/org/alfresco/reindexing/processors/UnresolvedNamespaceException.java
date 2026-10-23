@@ -28,7 +28,7 @@ package org.alfresco.reindexing.processors;
 /**
  * A node's own type is in a namespace with no prefix mapping, so the node cannot be indexed (ACS-12851).
  * <p>
- * Raised when {@code alfresco.reindex.onUnresolvedNamespace} is {@code skip} or {@code stop}. Deterministic, so retrying cannot help â€” {@code StepConfigurer} excludes it from retry.
+ * Raised when {@code alfresco.reindex.onUnresolvedNamespace} is {@code skip} or {@code stop}. Deterministic, so retrying cannot help — {@code StepConfigurer} excludes it from retry.
  */
 public class UnresolvedNamespaceException extends RuntimeException
 {

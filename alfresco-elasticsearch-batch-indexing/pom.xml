@@ -26,6 +26,11 @@
       <artifactId>hsqldb</artifactId>
       <scope>runtime</scope>
     </dependency>
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <scope>provided</scope>
+    </dependency>
 
     <dependency>
       <groupId>org.alfresco</groupId>
@@ -50,20 +55,6 @@
     </dependency>
   </dependencies>
 
-  <!-- Published publicly: this is the community deliverable. -->
-  <distributionManagement>
-    <repository>
-      <id>alfresco-public-releases</id>
-      <name>Alfresco Releases Repository</name>
-      <url>https://artifacts.alfresco.com/nexus/content/repositories/releases</url>
-    </repository>
-    <snapshotRepository>
-      <id>alfresco-public-snapshots</id>
-      <name>Alfresco Snapshots Repository</name>
-      <url>https://artifacts.alfresco.com/nexus/content/repositories/snapshots</url>
-    </snapshotRepository>
-  </distributionManagement>
-
   <build>
     <pluginManagement>
       <plugins>
@@ -73,6 +64,13 @@
           <version>${spring-boot.version}</version>
           <configuration>
             <classifier>app</classifier>
+            <!-- Repackage keeps provided dependencies, so Lombok must be excluded by name. -->
+            <excludes>
+              <exclude>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+              </exclude>
+            </excludes>
           </configuration>
           <executions>
             <execution>

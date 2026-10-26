@@ -224,11 +224,11 @@ public class AlfrescoNodeToReindexingEventProcessor extends AlfrescoNodeProcesso
                 .withPrimaryParent(primaryParent)
                 .withSecondaryParents(node.getSecondaryParentAssociations())
                 .withNodeDbId(node.getId())
-                .withArchivedOriginalParentAssoc(isArchived(node) ? archivedOriginalParentAssoc(node, properties) : null)
+                .withArchivedOriginalParentAssoc(isArchived(node) ? archivedOriginalParentAssoc(properties) : null)
                 .build();
     }
 
-    private ArchivedOriginalParentAssoc archivedOriginalParentAssoc(AlfrescoNode node, Map<String, Serializable> properties)
+    private ArchivedOriginalParentAssoc archivedOriginalParentAssoc(Map<String, Serializable> properties)
     {
         return getPrefixedPropertyName(SYSTEM_MODEL_URI, ARCHIVED_ORIGINAL_PARENT_ASSOC)
                 .map(properties::get)

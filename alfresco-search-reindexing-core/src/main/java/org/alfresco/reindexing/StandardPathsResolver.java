@@ -121,7 +121,7 @@ public class StandardPathsResolver
     public Optional<ChildAssocMetaData> findOriginalParentAssociation(ArchivedOriginalParentAssoc original, Long childDbId)
     {
         Optional<ChildAssocMetaData> association = buildAssociation(original.parentUuid(), childDbId, original.assocNamespaceUri(), original.assocLocalName());
-        if (association.isEmpty())
+        if (association.isEmpty() && LOGGER.isDebugEnabled())
         {
             LOGGER.debug("Original parent {} of archived node {} not found", original.parentUuid(), childDbId);
         }

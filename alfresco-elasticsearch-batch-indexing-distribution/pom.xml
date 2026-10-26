@@ -11,7 +11,7 @@
     <packaging>jar</packaging>
 
     <properties>
-        <jolokia-agent-jvm.version>2.6.0</jolokia-agent-jvm.version>
+        <jolokia-agent-jvm.version>2.6.4</jolokia-agent-jvm.version>
         <!-- Empty default so the reliability-tests profile runs all tagged suites when
              no -Dit.groups=... is passed. CI overrides per matrix job. -->
         <it.groups />

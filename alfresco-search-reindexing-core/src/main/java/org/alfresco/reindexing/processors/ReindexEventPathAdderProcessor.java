@@ -26,11 +26,14 @@
 package org.alfresco.reindexing.processors;
 
 import static java.util.Collections.emptySet;
+import static java.util.Optional.ofNullable;
 
 import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.TYPE_DELETED;
 import static org.alfresco.indexing.shared.utils.ResourceTools.categoriesForNode;
 
+import java.time.ZonedDateTime;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 
 import com.google.common.collect.Sets;
@@ -65,27 +68,32 @@ public class ReindexEventPathAdderProcessor implements ItemProcessor<ReindexingE
     @Override
     public ReindexingEvent process(ReindexingEvent item)
     {
-        EventData data = (EventData) item.getData();
-        NodeResource resource = (NodeResource) data.getResource();
+        EventData<NodeResource> data = item.getData();
+        NodeResource resource = data.getResource();
 
         if (elasticsearchReindexProperties.isPathIndexingEnabled() && !resource.getNodeType().equals(TYPE_DELETED))
         {
             LOGGER.debug("Adding paths for {}", resource);
 
-            // Standard paths.
-            Set<ChildAssocMetaData> parents = Sets.union(Set.of(item.getPrimaryParent()), item.getSecondaryParents());
-            Path primaryPath = pathResolver.findPrimaryPath(item.getPrimaryParent(), item.getTime());
-            Set<Path> standardPaths = pathResolver.findPaths(parents, item.getTime());
-            // Pseudo-paths for categories.
-            Set<Path> categoryPaths = getCategoryPaths(resource, item);
+            Optional<ChildAssocMetaData> archivedOriginalParentOpt = ofNullable(item.getArchivedOriginalParentAssoc())
+                    .flatMap(original -> pathResolver.findOriginalParentAssociation(original, item.getNodeDbId()));
+            ChildAssocMetaData primaryParent = archivedOriginalParentOpt.orElse(item.getPrimaryParent());
+            Set<ChildAssocMetaData> secondaryParents = archivedOriginalParentOpt.isPresent() ? emptySet() : item.getSecondaryParents();
 
-            Set<Path> paths = Sets.union(standardPaths, categoryPaths);
-            var eventBuilder = ReindexingEvent.builder()
+            Path primaryPath = pathResolver.findPrimaryPath(primaryParent, item.getTime())
+                    .orElseThrow(() -> new IllegalStateException("Failed to find primary path for node " + item.getNodeDbId()));
+            Set<Path> allPaths = pathResolver.findPaths(Sets.union(Set.of(primaryParent), secondaryParents), item.getTime());
+
+            // Pseudo-paths for categories, ending with the same association as the real paths.
+            Set<Path> categoryPaths = getCategoryPaths(resource, primaryParent, item.getTime());
+            Set<Path> paths = Sets.union(allPaths, categoryPaths);
+
+            return ReindexingEvent.builder()
                     .withRepoEvent(item.getRepoEvent())
                     .withPrimaryPath(primaryPath)
                     .withAllPaths(paths)
-                    .withNodeDbId(item.getNodeDbId());
-            return eventBuilder.build();
+                    .withNodeDbId(item.getNodeDbId())
+                    .build();
         }
 
         return item;
@@ -96,18 +104,18 @@ public class ReindexEventPathAdderProcessor implements ItemProcessor<ReindexingE
      *
      * @param nodeResource
      *            The node information from an event.
-     * @param item
-     *            The reindexing event.
+     * @param primaryParent
+     *            The node's primary parent association.
+     * @param nodeTime
+     *            The node update time.
      * @return The set of paths via categories to the node.
      */
-    @SuppressWarnings("unchecked")
-    protected Set<Path> getCategoryPaths(NodeResource nodeResource, ReindexingEvent item)
+    Set<Path> getCategoryPaths(NodeResource nodeResource, ChildAssocMetaData primaryParent, ZonedDateTime nodeTime)
     {
         if (nodeResource == null || nodeResource.getProperties() == null)
         {
             return emptySet();
         }
-        ChildAssocMetaData primaryParent = item.getPrimaryParent();
         if (primaryParent == null)
         {
             throw new IllegalStateException("Failed to retrieve DB id for node " + nodeResource.getId());
@@ -116,9 +124,7 @@ public class ReindexEventPathAdderProcessor implements ItemProcessor<ReindexingE
         Set<Path> categoryPaths = new HashSet<>();
         for (String categoryId : categoriesForNode(nodeResource))
         {
-            Set<Path> paths = pathResolver.findPaths(categoryId,
-                    primaryParent,
-                    item.getTime());
+            Set<Path> paths = pathResolver.findPaths(categoryId, primaryParent, nodeTime);
             categoryPaths.addAll(paths);
         }
 

@@ -28,6 +28,7 @@ package org.alfresco.reindexing;
 import static java.util.Collections.emptySet;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
@@ -48,6 +49,7 @@ import org.alfresco.database.connector.AlfrescoMetadataRepository;
 import org.alfresco.database.connector.ChildAssocParams;
 import org.alfresco.database.connector.model.ChildAssocMetaData;
 import org.alfresco.database.connector.model.Path;
+import org.alfresco.reindexing.model.ArchivedOriginalParentAssoc;
 
 /** Unit tests for {@link StandardPathsResolver}. */
 @RunWith(MockitoJUnitRunner.class)
@@ -56,6 +58,11 @@ public class StandardPathsResolverTest
     private static final ChildAssocMetaData ASSOC_0 = new ChildAssocMetaData(1, 0, "uri", "name");
     private static final ChildAssocMetaData ASSOC_1 = new ChildAssocMetaData(2, 1, "uri", "name");
     private static final ChildAssocMetaData CYCLE_ASSOC = new ChildAssocMetaData(0, 2, "uri", "name");
+    private static final String CM_URI = "http://www.alfresco.org/model/content/1.0";
+    private static final long ARCHIVED_NODE_ID = 10L;
+    private static final long ORIGINAL_PARENT_ID = 5L;
+    private static final String ORIGINAL_PARENT_UUID = "4f94a1a5-a227-44d7-94a1-a5a22744d740";
+    private static final ArchivedOriginalParentAssoc ORIGINAL = new ArchivedOriginalParentAssoc(ORIGINAL_PARENT_UUID, CM_URI, "test.txt");
 
     @InjectMocks
     StandardPathsResolver standardPathsResolver;
@@ -133,7 +140,7 @@ public class StandardPathsResolverTest
         lenient().when(metadataRepository.getChildAssocMetaData(new ChildAssocParams(Set.of(PRIMARY, SECONDARY), 1L, null))).thenReturn(Set.of(ASSOC_0, secondaryParentAssoc));
 
         // When getting the primary parent we just get the path to node 0.
-        Path path = standardPathsResolver.findPrimaryPath(ASSOC_1, null);
+        Path path = standardPathsResolver.findPrimaryPath(ASSOC_1, null).orElseThrow();
         Path expected = new Path(List.of(ASSOC_1, ASSOC_0));
         assertEquals("Unexpected paths returned", expected, path);
 
@@ -141,6 +148,71 @@ public class StandardPathsResolverTest
         Set<Path> allPaths = standardPathsResolver.findPaths(Set.of(ASSOC_1), null);
         Set<Path> expectedPaths = Set.of(new Path(List.of(ASSOC_1, ASSOC_0)), new Path(List.of(ASSOC_1, secondaryParentAssoc)));
         assertEquals("Unexpected paths returned", expectedPaths, allPaths);
+    }
+
+    @Test
+    public void findPrimaryPath_deletedParent_empty()
+    {
+        ChildAssocMetaData assocToDeletedParent = new ChildAssocMetaData(2L, -1L, "uri", "name");
+
+        assertFalse(standardPathsResolver.findPrimaryPath(assocToDeletedParent, null).isPresent());
+    }
+
+    @Test
+    public void findOriginalParentAssociation_parentFound_associationCarriesOriginalName()
+    {
+        when(metadataRepository.getDBIdFromNodeRef(ORIGINAL_PARENT_UUID)).thenReturn(ORIGINAL_PARENT_ID);
+
+        ChildAssocMetaData association = standardPathsResolver.findOriginalParentAssociation(ORIGINAL, ARCHIVED_NODE_ID).orElseThrow();
+
+        assertEquals(Long.valueOf(ARCHIVED_NODE_ID), association.getChildId());
+        assertEquals(Long.valueOf(ORIGINAL_PARENT_ID), association.getParentId());
+        assertEquals(ORIGINAL_PARENT_UUID, association.getParentUuid());
+        assertEquals(CM_URI, association.getUri());
+        assertEquals("test.txt", association.getName());
+    }
+
+    @Test
+    public void findOriginalParentAssociation_pathsHangUnderOriginalParent()
+    {
+        ChildAssocMetaData parentAssoc = new ChildAssocMetaData(ORIGINAL_PARENT_ID, 1L, "http://www.alfresco.org/model/application/1.0", "company_home");
+        when(metadataRepository.getDBIdFromNodeRef(ORIGINAL_PARENT_UUID)).thenReturn(ORIGINAL_PARENT_ID);
+        when(metadataRepository.getChildAssocMetaData(new ChildAssocParams(Set.of(PRIMARY), ORIGINAL_PARENT_ID, null))).thenReturn(Set.of(parentAssoc));
+        when(metadataRepository.getChildAssocMetaData(new ChildAssocParams(ORIGINAL_PARENT_ID))).thenReturn(Set.of(parentAssoc));
+
+        ChildAssocMetaData association = standardPathsResolver.findOriginalParentAssociation(ORIGINAL, ARCHIVED_NODE_ID).orElseThrow();
+        Path primaryPath = standardPathsResolver.findPrimaryPath(association, null).orElseThrow();
+        Set<Path> allPaths = standardPathsResolver.findPaths(Set.of(association), null);
+
+        Path expected = new Path(List.of(association, parentAssoc));
+        assertEquals("Unexpected primary path", expected, primaryPath);
+        assertEquals("Unexpected paths", Set.of(expected), allPaths);
+    }
+
+    @Test
+    public void findOriginalParentAssociation_parentNotFound_empty()
+    {
+        when(metadataRepository.getDBIdFromNodeRef(ORIGINAL_PARENT_UUID)).thenReturn(-1L);
+
+        assertFalse(standardPathsResolver.findOriginalParentAssociation(ORIGINAL, ARCHIVED_NODE_ID).isPresent());
+    }
+
+    @Test
+    public void findOriginalParentAssociation_parentIdNull_empty()
+    {
+        when(metadataRepository.getDBIdFromNodeRef(ORIGINAL_PARENT_UUID)).thenReturn(null);
+
+        assertFalse(standardPathsResolver.findOriginalParentAssociation(ORIGINAL, ARCHIVED_NODE_ID).isPresent());
+    }
+
+    @Test
+    public void testFindPaths_dBIdNull_returnEmptyPath()
+    {
+        // A null id used to reach traverse() and come back as the store root path "/".
+        String parentNodeRef = "unknown-node";
+        when(metadataRepository.getDBIdFromNodeRef(parentNodeRef)).thenReturn(null);
+
+        assertEquals("Empty paths returned", Set.of(), standardPathsResolver.findPaths(parentNodeRef, ASSOC_1, null));
     }
 
     @Test

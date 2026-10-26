@@ -33,6 +33,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
 
@@ -44,6 +45,7 @@ import org.alfresco.database.connector.ChildAssocParams;
 import org.alfresco.database.connector.ParentChildAssociationOrdinality;
 import org.alfresco.database.connector.model.ChildAssocMetaData;
 import org.alfresco.database.connector.model.Path;
+import org.alfresco.reindexing.model.ArchivedOriginalParentAssoc;
 
 /**
  * This component is responsible for finding all the standard paths for a node (i.e. all paths except category pseudo-paths).
@@ -61,10 +63,19 @@ public class StandardPathsResolver
         this.metadataRepository = metadataRepository;
     }
 
-    public Path findPrimaryPath(ChildAssocMetaData primaryParentAssociation, ZonedDateTime nodeTime)
+    /**
+     * Find the primary path for a node.
+     *
+     * @param primaryParentAssociation
+     *            the node's primary parent association
+     * @param nodeTime
+     *            node update time. used for cache validation
+     * @return the primary path, or empty when the association's parent is a deleted node
+     */
+    public Optional<Path> findPrimaryPath(ChildAssocMetaData primaryParentAssociation, ZonedDateTime nodeTime)
     {
-        return traverse(Set.of(primaryParentAssociation), nodeTime, true).stream().findAny()
-                .orElseThrow(() -> new IllegalStateException("Failed to find primary path for node."));
+        return traverse(Set.of(primaryParentAssociation), nodeTime, true).stream()
+                .findAny();
     }
 
     /**
@@ -93,15 +104,51 @@ public class StandardPathsResolver
      */
     public Set<Path> findPaths(String parentNodeRef, ChildAssocMetaData standardAssociation, ZonedDateTime nodeTime)
     {
-        Long parentDBId = metadataRepository.getDBIdFromNodeRef(parentNodeRef);
-        // Create a fake association using the given parent.
-        ChildAssocMetaData pseudoAssociation = new ChildAssocMetaData();
-        pseudoAssociation.setParentUuid(parentNodeRef);
-        pseudoAssociation.setParentId(parentDBId);
-        pseudoAssociation.setChildId(standardAssociation.getChildId());
-        pseudoAssociation.setName(standardAssociation.getName());
-        pseudoAssociation.setUri(standardAssociation.getUri());
-        return traverse(Set.of(pseudoAssociation), nodeTime, false);
+        return buildAssociation(parentNodeRef, standardAssociation.getChildId(), standardAssociation.getUri(), standardAssociation.getName())
+                .map(association -> traverse(Set.of(association), nodeTime, false))
+                .orElseGet(Set::of);
+    }
+
+    /**
+     * Build the association a trashed node had before it was deleted, from {@code sys:archivedOriginalParentAssoc}. Paths computed from it hang the node under its original parent's current location.
+     *
+     * @param original
+     *            the parsed {@code sys:archivedOriginalParentAssoc}
+     * @param childDbId
+     *            DB id of the archived node
+     * @return the original primary parent association, or empty when the original parent cannot be found
+     */
+    public Optional<ChildAssocMetaData> findOriginalParentAssociation(ArchivedOriginalParentAssoc original, Long childDbId)
+    {
+        Optional<ChildAssocMetaData> association = buildAssociation(original.parentUuid(), childDbId, original.assocNamespaceUri(), original.assocLocalName());
+        if (association.isEmpty())
+        {
+            LOGGER.debug("Original parent {} of archived node {} not found", original.parentUuid(), childDbId);
+        }
+        return association;
+    }
+
+    /**
+     * Create an association from the given parent to a child.
+     *
+     * @param parentUuid
+     *            UUID of the parent node
+     * @return the association, or empty when the parent is not in the database.
+     */
+    private Optional<ChildAssocMetaData> buildAssociation(String parentUuid, Long childId, String uri, String name)
+    {
+        Long parentDbId = metadataRepository.getDBIdFromNodeRef(parentUuid);
+        if (parentDbId == null || parentDbId < 0)
+        {
+            return Optional.empty();
+        }
+        ChildAssocMetaData association = new ChildAssocMetaData();
+        association.setParentUuid(parentUuid);
+        association.setParentId(parentDbId);
+        association.setChildId(childId);
+        association.setUri(uri);
+        association.setName(name);
+        return Optional.of(association);
     }
 
     /**

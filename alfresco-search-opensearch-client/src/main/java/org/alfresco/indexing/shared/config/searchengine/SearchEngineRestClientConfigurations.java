@@ -35,6 +35,7 @@ import org.apache.hc.client5.http.auth.AuthScope;
 import org.apache.hc.client5.http.auth.Credentials;
 import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
 import org.apache.hc.client5.http.config.ConnectionConfig;
+import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.async.HttpAsyncClientBuilder;
 import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
 import org.apache.hc.client5.http.impl.nio.PoolingAsyncClientConnectionManagerBuilder;
@@ -283,6 +284,15 @@ public class SearchEngineRestClientConfigurations
                     .build();
 
             builder.setConnectionManager(connManager);
+        }
+
+        @Override
+        public void customize(RequestConfig.Builder builder)
+        {
+            MAP.from(this.properties::getConnectionTimeout).as(Timeout::of)
+                    .to(builder::setConnectTimeout);
+            MAP.from(this.properties::getSocketTimeout).as(Timeout::of)
+                    .to(builder::setResponseTimeout);
         }
     }
 

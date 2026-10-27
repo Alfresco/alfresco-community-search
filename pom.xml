@@ -36,7 +36,7 @@
         <!-- Only libraries Spring Boot manages behind a safe release, or does not manage at all,
              are pinned here. Tomcat, Netty, snakeyaml and commons-lang3 are deliberately not
              pinned: Spring Boot 4.1.1 already manages the same or a newer version of each. -->
-        <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
+        <maven-resources-plugin.version>3.5.0</maven-resources-plugin.version>
         <maven-antrun-plugin.version>3.1.0</maven-antrun-plugin.version>
 
         <!-- Alfresco dependencies -->

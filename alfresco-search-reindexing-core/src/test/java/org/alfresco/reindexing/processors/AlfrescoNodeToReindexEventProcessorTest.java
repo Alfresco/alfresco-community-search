@@ -51,6 +51,7 @@ import org.alfresco.database.connector.model.PropertyValue;
 import org.alfresco.database.connector.model.PropertyValueType;
 import org.alfresco.reindexing.config.PrefixNamespaceConfig;
 import org.alfresco.reindexing.config.ReindexingCoreProperties;
+import org.alfresco.reindexing.model.ArchivedOriginalParentAssoc;
 import org.alfresco.reindexing.model.ReindexingEvent;
 import org.alfresco.repo.event.v1.model.EventType;
 import org.alfresco.repo.event.v1.model.NodeResource;
@@ -58,6 +59,7 @@ import org.alfresco.repo.event.v1.model.NodeResource;
 @ExtendWith(MockitoExtension.class)
 public class AlfrescoNodeToReindexEventProcessorTest
 {
+    private static final String SYS_URI = "http://www.alfresco.org/model/system/1.0";
 
     @Mock
     private PrefixNamespaceConfig prefixNamespaceConfig;
@@ -126,6 +128,48 @@ public class AlfrescoNodeToReindexEventProcessorTest
 
         assertThat(processResult.getType()).isEqualTo(EventType.NODE_DELETED.getType());
         assertThat(((NodeResource) processResult.getData().getResource()).isPermanentlyDeleted()).isFalse();
+    }
+
+    @Test
+    public void shouldCarryArchivedOriginalParentAssocForArchivedNode()
+    {
+        PrefixUriMapper prefixUriMapper = (a) -> Map.of("http://www.alfresco.org/model/content/1.0", "cm", SYS_URI, "sys").get(a);
+        when(prefixNamespaceConfig.prefixUriMapper()).thenReturn(prefixUriMapper);
+        when(alfrescoNode.getNodeProperties()).thenReturn(Set.of(buildArchivedOriginalParentAssocProperty(
+                "workspace://SpacesStore/parent-uuid|workspace://SpacesStore/child-uuid"
+                        + "|{http://www.alfresco.org/model/content/1.0}contains|{http://www.alfresco.org/model/content/1.0}doc.txt|true|-1")));
+        when(alfrescoNode.getProtocol()).thenReturn("archive");
+
+        AlfrescoNodeToReindexingEventProcessor eventProcessor = new AlfrescoNodeToReindexingEventProcessor(prefixNamespaceConfig, reindexingCoreProperties.getNonReadPermissions());
+        ReindexingEvent processResult = eventProcessor.process(alfrescoNode);
+
+        assertThat(processResult.getArchivedOriginalParentAssoc()).isEqualTo(new ArchivedOriginalParentAssoc(
+                "parent-uuid", "http://www.alfresco.org/model/content/1.0", "doc.txt"));
+    }
+
+    @Test
+    public void shouldIgnoreMalformedArchivedOriginalParentAssoc()
+    {
+        PrefixUriMapper prefixUriMapper = (a) -> Map.of(SYS_URI, "sys").get(a);
+        when(prefixNamespaceConfig.prefixUriMapper()).thenReturn(prefixUriMapper);
+        when(alfrescoNode.getNodeProperties()).thenReturn(Set.of(buildArchivedOriginalParentAssocProperty("not-a-child-assoc-ref")));
+        when(alfrescoNode.getProtocol()).thenReturn("archive");
+
+        AlfrescoNodeToReindexingEventProcessor eventProcessor = new AlfrescoNodeToReindexingEventProcessor(prefixNamespaceConfig, reindexingCoreProperties.getNonReadPermissions());
+        ReindexingEvent processResult = eventProcessor.process(alfrescoNode);
+
+        assertThat(processResult.getArchivedOriginalParentAssoc()).isNull();
+    }
+
+    @Test
+    public void shouldNotCarryArchivedOriginalParentAssocForWorkspaceNode()
+    {
+        when(alfrescoNode.getProtocol()).thenReturn("workspace");
+
+        AlfrescoNodeToReindexingEventProcessor eventProcessor = new AlfrescoNodeToReindexingEventProcessor(prefixNamespaceConfig, reindexingCoreProperties.getNonReadPermissions());
+        ReindexingEvent processResult = eventProcessor.process(alfrescoNode);
+
+        assertThat(processResult.getArchivedOriginalParentAssoc()).isNull();
     }
 
     @Test
@@ -245,6 +289,22 @@ public class AlfrescoNodeToReindexEventProcessorTest
         ace.setPermission(permission);
         ace.setAllowed(allowed);
         return ace;
+    }
+
+    private NodeProperty buildArchivedOriginalParentAssocProperty(String value)
+    {
+        PropertyKey propertyKey = new PropertyKey();
+        propertyKey.setUri(SYS_URI);
+        propertyKey.setLocalName("archivedOriginalParentAssoc");
+        // d:childassocref is persisted as a string.
+        PropertyValue propertyValue = new PropertyValue();
+        propertyValue.setPersistedType(PropertyValueType.STRING.getOrd());
+        propertyValue.setActualType(PropertyValueType.CHILD_ASSOC_REF.getOrd());
+        propertyValue.setStringValue(value);
+        NodeProperty nodeProperty = new NodeProperty();
+        nodeProperty.setPropertyKey(propertyKey);
+        nodeProperty.setPropertyValue(propertyValue);
+        return nodeProperty;
     }
 
     @NotNull private NodeProperty buildIsIndexedNodeProperties(boolean value)

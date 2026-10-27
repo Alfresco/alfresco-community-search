@@ -28,7 +28,9 @@ package org.alfresco.reindexing.processors;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -36,7 +38,9 @@ import static org.mockito.Mockito.when;
 import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.CM_CATEGORIES;
 
 import java.io.Serializable;
+import java.time.ZonedDateTime;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -49,6 +53,7 @@ import org.alfresco.database.connector.model.ChildAssocMetaData;
 import org.alfresco.database.connector.model.Path;
 import org.alfresco.reindexing.StandardPathsResolver;
 import org.alfresco.reindexing.config.ReindexingCoreProperties;
+import org.alfresco.reindexing.model.ArchivedOriginalParentAssoc;
 import org.alfresco.reindexing.model.ReindexingEvent;
 import org.alfresco.repo.event.v1.model.EventData;
 import org.alfresco.repo.event.v1.model.NodeResource;
@@ -89,16 +94,89 @@ public class ReindexEventPathAdderTest
         when(reindexingEvent.getPrimaryParent()).thenReturn(parent);
         when(reindexingEvent.getRepoEvent()).thenReturn(repoEvent);
         when(nodeResource.getNodeType()).thenReturn("cm:content");
-        when(pathsResolver.findPrimaryPath(any(), any())).thenReturn(path);
+        when(pathsResolver.findPrimaryPath(any(), any())).thenReturn(Optional.of(path));
         when(pathsResolver.findPaths(any(), any())).thenReturn(Set.of(path));
 
         ReindexingEvent result = processor.process(reindexingEvent);
 
         verify(pathsResolver).findPaths(eq(Set.of(parent)), any());
+        verify(pathsResolver, never()).findOriginalParentAssociation(any(), any());
 
         assertThat(result.getPrimaryPath()).isEqualTo(path);
         assertThat(result.getAllPaths()).isEqualTo(Set.of(path));
         assertThat(result.getRepoEvent()).isEqualTo(repoEvent);
+    }
+
+    @Test
+    public void testProcess_noPrimaryPath_throws()
+    {
+        when(elasticsearchReindexProperties.isPathIndexingEnabled()).thenReturn(true);
+        when(reindexingEvent.getData()).thenReturn(data);
+        when(data.getResource()).thenReturn(nodeResource);
+        when(reindexingEvent.getPrimaryParent()).thenReturn(ChildAssocMetaData.createRootNode(1234L));
+        when(nodeResource.getNodeType()).thenReturn("cm:content");
+        when(pathsResolver.findPrimaryPath(any(), any())).thenReturn(Optional.empty());
+
+        assertThrows(IllegalStateException.class, () -> processor.process(reindexingEvent));
+    }
+
+    @Test
+    public void testProcess_archivedNodeWithResolvableOriginalParent_pathsStartFromOriginalParent()
+    {
+        ChildAssocMetaData archiveParent = new ChildAssocMetaData(10L, 1L, "http://www.alfresco.org/model/system/1.0", "archivedItem");
+        ChildAssocMetaData archiveLink = new ChildAssocMetaData(10L, 2L, "http://www.alfresco.org/model/system/1.0", "doc.txt");
+        ChildAssocMetaData originalParent = new ChildAssocMetaData(10L, 5L, "uri", "doc.txt");
+        ArchivedOriginalParentAssoc original = new ArchivedOriginalParentAssoc("parent-uuid", "uri", "doc.txt");
+        ZonedDateTime time = ZonedDateTime.now();
+        when(elasticsearchReindexProperties.isPathIndexingEnabled()).thenReturn(true);
+        when(reindexingEvent.getData()).thenReturn(data);
+        when(data.getResource()).thenReturn(nodeResource);
+        when(reindexingEvent.getRepoEvent()).thenReturn(repoEvent);
+        when(reindexingEvent.getNodeDbId()).thenReturn(10L);
+        when(reindexingEvent.getTime()).thenReturn(time);
+        when(reindexingEvent.getPrimaryParent()).thenReturn(archiveParent);
+        lenient().when(reindexingEvent.getSecondaryParents()).thenReturn(Set.of(archiveLink));
+        when(reindexingEvent.getArchivedOriginalParentAssoc()).thenReturn(original);
+        when(nodeResource.getNodeType()).thenReturn("cm:content");
+        when(pathsResolver.findOriginalParentAssociation(original, 10L)).thenReturn(Optional.of(originalParent));
+        when(pathsResolver.findPrimaryPath(originalParent, time)).thenReturn(Optional.of(path));
+        when(pathsResolver.findPaths(Set.of(originalParent), time)).thenReturn(Set.of(path));
+        Map<String, Object> category = Map.of("protocol", "workspace", "identifier", "SpacesStore", "id", "56785678-5678-5678-5678-567856785678");
+        when(nodeResource.getProperties()).thenReturn(Map.of(CM_CATEGORIES, (Serializable) Set.of(category)));
+
+        ReindexingEvent result = processor.process(reindexingEvent);
+
+        // Archive-store parents (primary sys:archivedItem and secondary sys:archivedLink) are not used.
+        verify(pathsResolver, never()).findPrimaryPath(eq(archiveParent), any());
+        verify(pathsResolver, never()).findPaths(eq(Set.of(archiveParent, archiveLink)), any());
+        // Category pseudo-paths end with the original association too, not sys:archivedItem.
+        verify(pathsResolver).findPaths(anyString(), eq(originalParent), eq(time));
+        verify(pathsResolver, never()).findPaths(anyString(), eq(archiveParent), any());
+        assertThat(result.getPrimaryPath()).isEqualTo(path);
+        assertThat(result.getAllPaths()).isEqualTo(Set.of(path));
+    }
+
+    @Test
+    public void testProcess_archivedNodeWithUnresolvableOriginalParent_fallsBackToArchivePaths()
+    {
+        ChildAssocMetaData archiveParent = new ChildAssocMetaData(10L, 1L, "http://www.alfresco.org/model/system/1.0", "archivedItem");
+        ArchivedOriginalParentAssoc original = new ArchivedOriginalParentAssoc("purged-uuid", "uri", "doc.txt");
+        when(elasticsearchReindexProperties.isPathIndexingEnabled()).thenReturn(true);
+        when(reindexingEvent.getData()).thenReturn(data);
+        when(data.getResource()).thenReturn(nodeResource);
+        when(reindexingEvent.getRepoEvent()).thenReturn(repoEvent);
+        when(reindexingEvent.getPrimaryParent()).thenReturn(archiveParent);
+        when(reindexingEvent.getArchivedOriginalParentAssoc()).thenReturn(original);
+        when(nodeResource.getNodeType()).thenReturn("cm:content");
+        when(pathsResolver.findOriginalParentAssociation(eq(original), any())).thenReturn(Optional.empty());
+        when(pathsResolver.findPrimaryPath(eq(archiveParent), any())).thenReturn(Optional.of(path));
+        when(pathsResolver.findPaths(any(), any())).thenReturn(Set.of(path));
+
+        ReindexingEvent result = processor.process(reindexingEvent);
+
+        verify(pathsResolver).findPaths(eq(Set.of(archiveParent)), any());
+        assertThat(result.getPrimaryPath()).isEqualTo(path);
+        assertThat(result.getAllPaths()).isEqualTo(Set.of(path));
     }
 
     @Test
@@ -138,7 +216,7 @@ public class ReindexEventPathAdderTest
     {
         when(nodeResource.getProperties()).thenReturn(null);
 
-        Set<Path> categoryPaths = processor.getCategoryPaths(nodeResource, reindexingEvent);
+        Set<Path> categoryPaths = processor.getCategoryPaths(nodeResource, null, null);
 
         assertThat(categoryPaths).isEmpty();
     }
@@ -146,14 +224,13 @@ public class ReindexEventPathAdderTest
     @Test
     public void testGetCategoryPathsWithoutParentAssoc()
     {
-        assertThrows(IllegalStateException.class, () -> processor.getCategoryPaths(nodeResource, reindexingEvent));
+        assertThrows(IllegalStateException.class, () -> processor.getCategoryPaths(nodeResource, null, null));
     }
 
     @Test
     public void testGetCategoryPaths()
     {
         ChildAssocMetaData parent = ChildAssocMetaData.createRootNode(1234L);
-        when(reindexingEvent.getPrimaryParent()).thenReturn(parent);
 
         Map<String, Object> categoryA = Map.of("protocol", "workspace", "identifier", "SpacesStore", "id", "56785678-5678-5678-5678-567856785678");
         Map<String, Object> categoryB = Map.of("protocol", "workspace", "identifier", "SpacesStore", "id", "9abc9abc-9abc-9abc-9abc-9abc9abc9abc");
@@ -161,7 +238,7 @@ public class ReindexEventPathAdderTest
         Map<String, Serializable> properties = Map.of(CM_CATEGORIES, cmCategories);
         when(nodeResource.getProperties()).thenReturn(properties);
 
-        Set<Path> categoryPaths = processor.getCategoryPaths(nodeResource, reindexingEvent);
+        Set<Path> categoryPaths = processor.getCategoryPaths(nodeResource, parent, null);
 
         assertThat(categoryPaths).isEmpty();
     }

@@ -11,12 +11,7 @@
           xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
   <servers>
     <server>
-      <id>alfresco-cloudsmith-releases</id>
-      <username>${env.CLOUDSMITH_USERNAME}</username>
-      <password>${env.CLOUDSMITH_API_KEY}</password>
-    </server>
-    <server>
-      <id>alfresco-cloudsmith-snapshots</id>
+      <id>alfresco-releases</id>
       <username>${env.CLOUDSMITH_USERNAME}</username>
       <password>${env.CLOUDSMITH_API_KEY}</password>
     </server>

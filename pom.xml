@@ -478,14 +478,9 @@
 
     <distributionManagement>
         <repository>
-            <id>alfresco-cloudsmith-releases</id>
-            <name>Alfresco Cloudsmith Community Releases</name>
-            <url>https://maven.cloudsmith.io/hyland/alfresco-community-releases/</url>
+            <id>alfresco-releases</id>
+            <name>Alfresco Community Releases</name>
+            <url>https://artifacts.hyland.dev/basic/alfresco-community-releases/maven/</url>
         </repository>
-        <snapshotRepository>
-            <id>alfresco-cloudsmith-snapshots</id>
-            <name>Alfresco Cloudsmith Snapshots</name>
-            <url>https://maven.cloudsmith.io/hyland/alfresco-community-releases/</url>
-        </snapshotRepository>
     </distributionManagement>
 </project>

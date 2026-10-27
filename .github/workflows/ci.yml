@@ -212,7 +212,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           token: ${{ steps.app-token.outputs.token }}
-      # Installs .ci.settings.xml, which maps the alfresco-cloudsmith-* server ids
+      # Installs .ci.settings.xml, which maps the alfresco-releases server id
       # onto CLOUDSMITH_USERNAME / CLOUDSMITH_API_KEY.
       - uses: Alfresco/alfresco-build-tools/.github/actions/setup-java-build@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
         with:

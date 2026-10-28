@@ -57,6 +57,7 @@ public class ReindexingEvent implements EventAttributes
     private final Path primaryPath;
     private final Set<Path> allPaths;
     private final Long nodeDbId;
+    private final ArchivedOriginalParentAssoc archivedOriginalParentAssoc;
 
     @Override
     public String getSpecversion()

@@ -55,6 +55,7 @@ import org.alfresco.elasticsearch.shared.ElasticsearchConstants;
 import org.alfresco.metrics.ReindexingMetrics;
 import org.alfresco.reindexing.config.PrefixNamespaceConfig;
 import org.alfresco.reindexing.config.UnresolvedNamespaceAction;
+import org.alfresco.reindexing.model.ArchivedOriginalParentAssoc;
 import org.alfresco.reindexing.model.ReindexingEvent;
 import org.alfresco.repo.event.v1.model.ContentInfo;
 import org.alfresco.repo.event.v1.model.EventData;
@@ -72,6 +73,8 @@ public class AlfrescoNodeToReindexingEventProcessor extends AlfrescoNodeProcesso
     private static final Logger LOGGER = LoggerFactory.getLogger(AlfrescoNodeToReindexingEventProcessor.class);
 
     private static final String ARCHIVE_STORE_PROTOCOL = "archive";
+    private static final String SYSTEM_MODEL_URI = "http://www.alfresco.org/model/system/1.0";
+    private static final String ARCHIVED_ORIGINAL_PARENT_ASSOC = "archivedOriginalParentAssoc";
 
     /** Optional. Nullable in tests; wired in production via SharedBatchProcessingConfig. */
     private final UnresolvedNamespaceListener unresolvedNamespaceListener;
@@ -221,7 +224,16 @@ public class AlfrescoNodeToReindexingEventProcessor extends AlfrescoNodeProcesso
                 .withPrimaryParent(primaryParent)
                 .withSecondaryParents(node.getSecondaryParentAssociations())
                 .withNodeDbId(node.getId())
+                .withArchivedOriginalParentAssoc(isArchived(node) ? archivedOriginalParentAssoc(properties) : null)
                 .build();
+    }
+
+    private ArchivedOriginalParentAssoc archivedOriginalParentAssoc(Map<String, Serializable> properties)
+    {
+        return getPrefixedPropertyName(SYSTEM_MODEL_URI, ARCHIVED_ORIGINAL_PARENT_ASSOC)
+                .map(properties::get)
+                .flatMap(ArchivedOriginalParentAssoc::parse)
+                .orElse(null);
     }
 
     private UserInfo userInfo(String userId)

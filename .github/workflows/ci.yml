@@ -227,11 +227,12 @@ jobs:
           email: ${{ secrets.BOT_GITHUB_EMAIL }}
       - name: "Release"
         timeout-minutes: ${{ fromJSON(env.GITHUB_ACTIONS_DEPLOY_TIMEOUT) }}
-        uses: Alfresco/alfresco-build-tools/.github/actions/maven-release-slim@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
+        uses: Alfresco/alfresco-build-tools/.github/actions/maven-release-slim@080221fd2e8016826418a3d6c350ac6571681912 # v19.8.0
         with:
           token: ${{ steps.app-token.outputs.token }}
           release-version: ${{ env.RELEASE_VERSION }}
           development-version: ${{ env.DEVELOPMENT_VERSION }}
+          prerelease-profile: prerelease
       # Same S3 layout the connector used to publish this artifact under, so the
       # download URL does not change when publication moves here.
       - run: mkdir -p deploy_dir/community/alfresco-elasticsearch-batch-indexing/${{ env.RELEASE_VERSION }}

@@ -467,6 +467,17 @@
                 </plugins>
             </build>
         </profile>
+        <!-- Deploys -A.x versions to internal releases; maven-release-slim enables it via prerelease-profile. -->
+        <profile>
+            <id>prerelease</id>
+            <distributionManagement>
+                <repository>
+                    <id>alfresco-releases</id>
+                    <name>Alfresco Internal Releases</name>
+                    <url>https://artifacts.hyland.dev/basic/alfresco-internal-releases/maven/</url>
+                </repository>
+            </distributionManagement>
+        </profile>
     </profiles>
 
     <scm>

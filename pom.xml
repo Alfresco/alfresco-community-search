@@ -474,7 +474,8 @@
                 <repository>
                     <id>alfresco-releases</id>
                     <name>Alfresco Internal Releases</name>
-                    <url>https://artifacts.hyland.dev/basic/alfresco-internal-releases/maven/</url>
+                    <!-- TODO: switch to maven.artifacts.hyland.dev once its DNS record exists -->
+                    <url>https://maven.cloudsmith.io/hyland/alfresco-internal-releases/</url>
                 </repository>
             </distributionManagement>
         </profile>

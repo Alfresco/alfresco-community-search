@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # No maven credentials: every dependency of the community modules resolves from Maven Central
-      # or the public Alfresco Cloudsmith repository. The empty settings file keeps that honest.
+      # or the public Alfresco repository. The empty settings file keeps that honest.
       - uses: Alfresco/alfresco-build-tools/.github/actions/maven-dependency-scan@148e8c308239d720af80dc33c6cc3cf897764610 # v19.9.0
         with:
           java-version: '17'

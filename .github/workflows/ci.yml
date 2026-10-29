@@ -217,7 +217,7 @@ jobs:
       - uses: Alfresco/alfresco-build-tools/.github/actions/setup-java-build@148e8c308239d720af80dc33c6cc3cf897764610 # v19.9.0
         with:
           java-version: ${{ env.JAVA_VERSION }}
-      # Mints the short-lived Cloudsmith token used to deploy the release artifacts.
+      # Mints the short-lived token used to deploy the release artifacts.
       - uses: Alfresco/alfresco-build-tools/.github/actions/cloudsmith-auth@148e8c308239d720af80dc33c6cc3cf897764610 # v19.9.0
         with:
           oidc-namespace: ${{ vars.CLOUDSMITH_NAMESPACE }}

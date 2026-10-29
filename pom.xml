@@ -87,7 +87,7 @@
                 <enabled>false</enabled>
             </snapshots>
         </repository>
-        <!-- Public, anonymous Cloudsmith repository: the Alfresco artifacts that are not on Maven Central. -->
+        <!-- Public, anonymous Alfresco repository: the Alfresco artifacts that are not on Maven Central. -->
         <repository>
             <id>alfresco-public</id>
             <name>Alfresco Public Repository</name>
@@ -101,7 +101,7 @@
         </repository>
     </repositories>
 
-    <!-- Central first: the Cloudsmith repository does not serve Maven Central content, and asking it first
+    <!-- Central first: alfresco-public does not serve Maven Central content, and asking it first
          for every plugin slows the build down. -->
     <pluginRepositories>
         <pluginRepository>

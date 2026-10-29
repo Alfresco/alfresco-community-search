@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!--
   Cloudsmith credentials for publishing to the community repository
+  Credentials for publishing to the release repositories
   (exported by the cloudsmith-auth action).
-  Installed by the setup-java-build action; used only by the release job.
   The build job overrides it with .github/empty-settings.xml so that the
   ordinary build is proven to need no credentials.
 -->

@@ -175,7 +175,7 @@ jobs:
         run: bash ./scripts/ci/cleanup_cache.sh
 
   release:
-    name: "Release and deploy to Cloudsmith and S3 Staging Bucket"
+    name: "Release and deploy to Maven and S3 Staging Bucket"
     runs-on: ubuntu-latest
     needs: [ pre_commit, build, batch_indexing_e2e, batch_indexing_reliability_tests ]
     permissions:

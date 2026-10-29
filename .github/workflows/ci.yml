@@ -18,10 +18,10 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 env:
   MAVEN_CLI_OPTS: "-B -e -fae -V -DinstallAtEnd=true -Dspring.main.banner-mode=off -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
-  MAVEN_SETTINGS_OPTS: "-s .github/empty-settings.xml -gs .github/empty-settings.xml"
   JAVA_VERSION: "17"
   GITHUB_ACTIONS_DEPLOY_TIMEOUT: 60
   # Both variables are required to be set before the release process starts .
@@ -64,6 +64,9 @@ jobs:
       - uses: Alfresco/alfresco-build-tools/.github/actions/setup-java-build@148e8c308239d720af80dc33c6cc3cf897764610 # v19.9.0
         with:
           java-version: ${{ env.JAVA_VERSION }}
+      - uses: Alfresco/alfresco-build-tools/.github/actions/cloudsmith-auth@148e8c308239d720af80dc33c6cc3cf897764610 # v19.9.0
+        with:
+          oidc-namespace: ${{ vars.CLOUDSMITH_NAMESPACE }}
       - uses: Alfresco/ya-pmd-scan@1f36f8e45695ce60362010345a99a0c8f7310264 # v4.4.1
         with:
           create-github-annotations: "false"
@@ -75,12 +78,14 @@ jobs:
     if: needs.test_run_check.outputs.tests == 'true'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+      - uses: Alfresco/alfresco-build-tools/.github/actions/setup-java-build@148e8c308239d720af80dc33c6cc3cf897764610 # v19.9.0
         with:
           java-version: ${{ env.JAVA_VERSION }}
-          distribution: temurin
+      - uses: Alfresco/alfresco-build-tools/.github/actions/cloudsmith-auth@148e8c308239d720af80dc33c6cc3cf897764610 # v19.9.0
+        with:
+          oidc-namespace: ${{ vars.CLOUDSMITH_NAMESPACE }}
       - name: "Build and test"
-        run: mvn ${{ env.MAVEN_CLI_OPTS }} ${{ env.MAVEN_SETTINGS_OPTS }} clean verify
+        run: mvn ${{ env.MAVEN_CLI_OPTS }} clean verify
       - name: "Check attribution notice"
         run: python3 scripts/generate-notice.py
 
@@ -90,23 +95,25 @@ jobs:
     needs: [ pre_commit, test_run_check ]
     if: needs.test_run_check.outputs.tests == 'true'
     steps:
-      # No registry login: every image this stack pulls is public, which is what lets a
-      # fork pull request run the whole suite with no secrets.
+      # No registry login: every image this stack pulls is public.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: Alfresco/alfresco-build-tools/.github/actions/get-build-info@148e8c308239d720af80dc33c6cc3cf897764610 # v19.9.0
       - uses: Alfresco/alfresco-build-tools/.github/actions/free-hosted-runner-disk-space@148e8c308239d720af80dc33c6cc3cf897764610 # v19.9.0
       - uses: Alfresco/alfresco-build-tools/.github/actions/setup-java-build@148e8c308239d720af80dc33c6cc3cf897764610 # v19.9.0
         with:
           java-version: ${{ env.JAVA_VERSION }}
+      - uses: Alfresco/alfresco-build-tools/.github/actions/cloudsmith-auth@148e8c308239d720af80dc33c6cc3cf897764610 # v19.9.0
+        with:
+          oidc-namespace: ${{ vars.CLOUDSMITH_NAMESPACE }}
       - name: "Build application"
-        run: mvn ${{ env.MAVEN_CLI_OPTS }} ${{ env.MAVEN_SETTINGS_OPTS }} clean install -DskipTests -P docker-image
+        run: mvn ${{ env.MAVEN_CLI_OPTS }} clean install -DskipTests -P docker-image
       - name: "Build docker images"
         run: bash ./scripts/ci/buildDockerImagesCi.sh
         env:
           COMMIT_MESSAGE: ${{ github.sha }}
       - name: "Run BatchIndexingDockerComposeIT"
         run: |
-          mvn ${{ env.MAVEN_CLI_OPTS }} ${{ env.MAVEN_SETTINGS_OPTS }} verify -Dlogging.root.level=off \
+          mvn ${{ env.MAVEN_CLI_OPTS }} verify -Dlogging.root.level=off \
             -pl alfresco-elasticsearch-batch-indexing-distribution \
             -P docker-compose-test
       - name: "Dump all Docker containers logs"
@@ -145,15 +152,18 @@ jobs:
       - uses: Alfresco/alfresco-build-tools/.github/actions/setup-java-build@148e8c308239d720af80dc33c6cc3cf897764610 # v19.9.0
         with:
           java-version: ${{ env.JAVA_VERSION }}
+      - uses: Alfresco/alfresco-build-tools/.github/actions/cloudsmith-auth@148e8c308239d720af80dc33c6cc3cf897764610 # v19.9.0
+        with:
+          oidc-namespace: ${{ vars.CLOUDSMITH_NAMESPACE }}
       - name: "Build application"
-        run: mvn ${{ env.MAVEN_CLI_OPTS }} ${{ env.MAVEN_SETTINGS_OPTS }} clean install -DskipTests -P docker-image
+        run: mvn ${{ env.MAVEN_CLI_OPTS }} clean install -DskipTests -P docker-image
       - name: "Build docker images"
         run: bash ./scripts/ci/buildDockerImagesCi.sh
         env:
           COMMIT_MESSAGE: ${{ github.sha }}
       - name: "Run reliability IT"
         run: |
-          mvn ${{ env.MAVEN_CLI_OPTS }} ${{ env.MAVEN_SETTINGS_OPTS }} verify -Dlogging.root.level=off \
+          mvn ${{ env.MAVEN_CLI_OPTS }} verify -Dlogging.root.level=off \
             -pl alfresco-elasticsearch-batch-indexing-distribution \
             -P reliability-tests ${{ matrix.tests.params }}
         env:
@@ -212,12 +222,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           token: ${{ steps.app-token.outputs.token }}
-      # Installs .ci.settings.xml, which maps the alfresco-releases server id
-      # onto CLOUDSMITH_USERNAME / CLOUDSMITH_API_KEY.
       - uses: Alfresco/alfresco-build-tools/.github/actions/setup-java-build@148e8c308239d720af80dc33c6cc3cf897764610 # v19.9.0
         with:
           java-version: ${{ env.JAVA_VERSION }}
-      # Mints the short-lived token used to deploy the release artifacts.
       - uses: Alfresco/alfresco-build-tools/.github/actions/cloudsmith-auth@148e8c308239d720af80dc33c6cc3cf897764610 # v19.9.0
         with:
           oidc-namespace: ${{ vars.CLOUDSMITH_NAMESPACE }}
@@ -282,12 +289,15 @@ jobs:
       - uses: Alfresco/alfresco-build-tools/.github/actions/setup-java-build@148e8c308239d720af80dc33c6cc3cf897764610 # v19.9.0
         with:
           java-version: ${{ env.JAVA_VERSION }}
+      - uses: Alfresco/alfresco-build-tools/.github/actions/cloudsmith-auth@148e8c308239d720af80dc33c6cc3cf897764610 # v19.9.0
+        with:
+          oidc-namespace: ${{ vars.CLOUDSMITH_NAMESPACE }}
       - name: "Set release version"
         run: mvn versions:set -DnewVersion=${{ env.RELEASE_VERSION }}
       # The docker-image profile stages the Dockerfile under target/classes, which is
       # where the release script looks for it.
       - name: "Build application"
-        run: mvn ${{ env.MAVEN_CLI_OPTS }} ${{ env.MAVEN_SETTINGS_OPTS }} clean install -DskipTests -P docker-image
+        run: mvn ${{ env.MAVEN_CLI_OPTS }} clean install -DskipTests -P docker-image
       - name: "Revert release version"
         run: mvn versions:revert
       - name: "Push release image to Docker Hub"

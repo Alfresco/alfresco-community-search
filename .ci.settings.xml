@@ -1,14 +1,26 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!--
-  Credentials for publishing to the release repositories
-  (exported by the cloudsmith-auth action).
-  The build job overrides it with .github/empty-settings.xml so that the
-  ordinary build is proven to need no credentials.
+  Maven Central goes through cic-ext-pull-through, as supply-chain policy requires;
+  alfresco-public stays anonymous. Credentials are exported by the cloudsmith-auth action.
 -->
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
           xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+  <mirrors>
+    <mirror>
+      <id>cic-ext-pull-through</id>
+      <name>Maven Central</name>
+      <url>https://artifacts.hyland.dev/basic/cic-ext-pull-through/maven/</url>
+      <mirrorOf>central</mirrorOf>
+    </mirror>
+  </mirrors>
+
   <servers>
+    <server>
+      <id>cic-ext-pull-through</id>
+      <username>${env.CLOUDSMITH_USERNAME}</username>
+      <password>${env.CLOUDSMITH_API_KEY}</password>
+    </server>
     <server>
       <id>alfresco-releases</id>
       <username>${env.CLOUDSMITH_USERNAME}</username>

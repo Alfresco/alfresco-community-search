@@ -34,7 +34,7 @@ jobs:
   pre_commit:
     runs-on: ubuntu-latest
     steps:
-      - uses: Alfresco/alfresco-build-tools/.github/actions/pre-commit@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
+      - uses: Alfresco/alfresco-build-tools/.github/actions/pre-commit@482401ef42e6503cfa54d5873f1a768a0ecb3e0e # v19.11.0
 
   test_run_check:
     name: "Test run check"
@@ -59,9 +59,9 @@ jobs:
     needs: [ test_run_check ]
     if: needs.test_run_check.outputs.tests == 'true' && github.event_name == 'pull_request'
     steps:
-      - uses: Alfresco/alfresco-build-tools/.github/actions/get-build-info@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
-      - uses: Alfresco/alfresco-build-tools/.github/actions/free-hosted-runner-disk-space@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
-      - uses: Alfresco/alfresco-build-tools/.github/actions/setup-java-build@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
+      - uses: Alfresco/alfresco-build-tools/.github/actions/get-build-info@482401ef42e6503cfa54d5873f1a768a0ecb3e0e # v19.11.0
+      - uses: Alfresco/alfresco-build-tools/.github/actions/free-hosted-runner-disk-space@482401ef42e6503cfa54d5873f1a768a0ecb3e0e # v19.11.0
+      - uses: Alfresco/alfresco-build-tools/.github/actions/setup-java-build@482401ef42e6503cfa54d5873f1a768a0ecb3e0e # v19.11.0
         with:
           java-version: ${{ env.JAVA_VERSION }}
       - uses: Alfresco/ya-pmd-scan@1f36f8e45695ce60362010345a99a0c8f7310264 # v4.4.1
@@ -75,7 +75,7 @@ jobs:
     if: needs.test_run_check.outputs.tests == 'true'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
@@ -93,9 +93,9 @@ jobs:
       # No registry login: every image this stack pulls is public, which is what lets a
       # fork pull request run the whole suite with no secrets.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: Alfresco/alfresco-build-tools/.github/actions/get-build-info@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
-      - uses: Alfresco/alfresco-build-tools/.github/actions/free-hosted-runner-disk-space@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
-      - uses: Alfresco/alfresco-build-tools/.github/actions/setup-java-build@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
+      - uses: Alfresco/alfresco-build-tools/.github/actions/get-build-info@482401ef42e6503cfa54d5873f1a768a0ecb3e0e # v19.11.0
+      - uses: Alfresco/alfresco-build-tools/.github/actions/free-hosted-runner-disk-space@482401ef42e6503cfa54d5873f1a768a0ecb3e0e # v19.11.0
+      - uses: Alfresco/alfresco-build-tools/.github/actions/setup-java-build@482401ef42e6503cfa54d5873f1a768a0ecb3e0e # v19.11.0
         with:
           java-version: ${{ env.JAVA_VERSION }}
       - name: "Build application"
@@ -111,7 +111,7 @@ jobs:
             -P docker-compose-test
       - name: "Dump all Docker containers logs"
         if: failure()
-        uses: Alfresco/alfresco-build-tools/.github/actions/docker-dump-containers-logs@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
+        uses: Alfresco/alfresco-build-tools/.github/actions/docker-dump-containers-logs@482401ef42e6503cfa54d5873f1a768a0ecb3e0e # v19.11.0
       - name: "Clean Maven cache"
         run: bash ./scripts/ci/cleanup_cache.sh
 
@@ -140,9 +140,9 @@ jobs:
     if: needs.test_run_check.outputs.tests == 'true'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: Alfresco/alfresco-build-tools/.github/actions/get-build-info@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
-      - uses: Alfresco/alfresco-build-tools/.github/actions/free-hosted-runner-disk-space@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
-      - uses: Alfresco/alfresco-build-tools/.github/actions/setup-java-build@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
+      - uses: Alfresco/alfresco-build-tools/.github/actions/get-build-info@482401ef42e6503cfa54d5873f1a768a0ecb3e0e # v19.11.0
+      - uses: Alfresco/alfresco-build-tools/.github/actions/free-hosted-runner-disk-space@482401ef42e6503cfa54d5873f1a768a0ecb3e0e # v19.11.0
+      - uses: Alfresco/alfresco-build-tools/.github/actions/setup-java-build@482401ef42e6503cfa54d5873f1a768a0ecb3e0e # v19.11.0
         with:
           java-version: ${{ env.JAVA_VERSION }}
       - name: "Build application"
@@ -160,7 +160,7 @@ jobs:
           RELIABILITY_TESTS: true
       - name: "Dump all Docker containers logs"
         if: failure()
-        uses: Alfresco/alfresco-build-tools/.github/actions/docker-dump-containers-logs@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
+        uses: Alfresco/alfresco-build-tools/.github/actions/docker-dump-containers-logs@482401ef42e6503cfa54d5873f1a768a0ecb3e0e # v19.11.0
       - name: "Upload reliability output"
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -207,7 +207,7 @@ jobs:
           fi
       - name: "Generate GitHub App token"
         id: app-token
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
           client-id: ${{ vars.GH_APP_ENGINEERING_CONTRIB_CLIENT_ID }}
           private-key: ${{ secrets.GH_APP_ENGINEERING_CONTRIB_PRIVATE_KEY }}
@@ -217,16 +217,16 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
       # Installs .ci.settings.xml, which maps the alfresco-public-* server ids
       # onto MAVEN_USERNAME / MAVEN_PASSWORD.
-      - uses: Alfresco/alfresco-build-tools/.github/actions/setup-java-build@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
+      - uses: Alfresco/alfresco-build-tools/.github/actions/setup-java-build@482401ef42e6503cfa54d5873f1a768a0ecb3e0e # v19.11.0
         with:
           java-version: ${{ env.JAVA_VERSION }}
-      - uses: Alfresco/alfresco-build-tools/.github/actions/configure-git-author@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
+      - uses: Alfresco/alfresco-build-tools/.github/actions/configure-git-author@482401ef42e6503cfa54d5873f1a768a0ecb3e0e # v19.11.0
         with:
           username: ${{ secrets.BOT_GITHUB_USERNAME }}
           email: ${{ secrets.BOT_GITHUB_EMAIL }}
       - name: "Release"
         timeout-minutes: ${{ fromJSON(env.GITHUB_ACTIONS_DEPLOY_TIMEOUT) }}
-        uses: Alfresco/alfresco-build-tools/.github/actions/maven-release-slim@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
+        uses: Alfresco/alfresco-build-tools/.github/actions/maven-release-slim@482401ef42e6503cfa54d5873f1a768a0ecb3e0e # v19.11.0
         with:
           token: ${{ steps.app-token.outputs.token }}
           release-version: ${{ env.RELEASE_VERSION }}
@@ -240,7 +240,7 @@ jobs:
              "deploy_dir/community/alfresco-elasticsearch-batch-indexing/${{ env.RELEASE_VERSION }}/"
       - name: "Clone Alfresco/third-party-license-overrides"
         run: git clone --depth=1 https://github.com/Alfresco/third-party-license-overrides.git
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
       - name: "Create third party license csv file and add it to the deploy directory"
         run: |
           python3 ./third-party-license-overrides/thirdPartyLicenseCSVCreator.py \
@@ -248,7 +248,7 @@ jobs:
             --version "${{ env.RELEASE_VERSION }}" --combined \
             --output "deploy_dir/community/alfresco-elasticsearch-batch-indexing/${{ env.RELEASE_VERSION }}"
       - name: "Deploy to S3 Staging Bucket"
-        uses: Alfresco/alfresco-build-tools/.github/actions/s3-upload@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
+        uses: Alfresco/alfresco-build-tools/.github/actions/s3-upload@482401ef42e6503cfa54d5873f1a768a0ecb3e0e # v19.11.0
         with:
           aws-region: ${{ vars.AWS_STAGING_ARTIFACT_UPLOAD_REGION }}
           aws-role-arn: ${{ vars.AWS_STAGING_ARTIFACT_UPLOAD_ROLE_ARN }}
@@ -272,12 +272,12 @@ jobs:
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       # Docker Hub only. The batch-indexing image is public; nothing here goes to quay.io.
       - name: "Login to Docker Hub"
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-      - uses: Alfresco/alfresco-build-tools/.github/actions/free-hosted-runner-disk-space@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
-      - uses: Alfresco/alfresco-build-tools/.github/actions/setup-java-build@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
+      - uses: Alfresco/alfresco-build-tools/.github/actions/free-hosted-runner-disk-space@482401ef42e6503cfa54d5873f1a768a0ecb3e0e # v19.11.0
+      - uses: Alfresco/alfresco-build-tools/.github/actions/setup-java-build@482401ef42e6503cfa54d5873f1a768a0ecb3e0e # v19.11.0
         with:
           java-version: ${{ env.JAVA_VERSION }}
       - name: "Set release version"
@@ -320,7 +320,7 @@ jobs:
           fi
       - name: "Copy community release to S3 Downloads Bucket"
         if: steps.check-release-version.outputs.is-release == 'true'
-        uses: Alfresco/alfresco-build-tools/.github/actions/s3-upload@f2ba011b2bd8bee8d7418b046541ce2f75d1fbed # v19.4.0
+        uses: Alfresco/alfresco-build-tools/.github/actions/s3-upload@482401ef42e6503cfa54d5873f1a768a0ecb3e0e # v19.11.0
         with:
           aws-region: ${{ vars.AWS_RELEASE_ARTIFACT_UPLOAD_REGION }}
           aws-role-arn: ${{ vars.AWS_RELEASE_ARTIFACT_UPLOAD_ROLE_ARN }}

@@ -113,7 +113,7 @@ supplies the implementation.
 ## Artifacts
 
 Releases publish to the
-[Alfresco public Maven repository](https://artifacts.alfresco.com/nexus/#browse/browse:public)
+[Alfresco public Maven repository](https://artifacts.hyland.dev/public/alfresco-public/maven/)
 under the `org.alfresco` group, with sources, and resolve anonymously — no credentials are needed
 to build against them.
 

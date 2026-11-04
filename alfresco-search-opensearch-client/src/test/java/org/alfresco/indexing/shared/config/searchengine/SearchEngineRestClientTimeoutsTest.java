@@ -47,10 +47,10 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Verifies that the configured connection and socket/read timeouts reach the requests issued by the {@link RestClient} built by
- * {@link SearchEngineRestClientConfigurations.RestClientBuilderConfiguration}, instead of OpenSearch's per-request defaults.
+ * Verifies that the configured connection and socket/read timeouts reach the requests issued by the {@link RestClient} built by {@link SearchEngineRestClientConfigurations.RestClientBuilderConfiguration}, instead of OpenSearch's per-request defaults.
  */
-@SuppressWarnings("deprecation")
+// Assertions run inside the ApplicationContextRunner callback, which PMD's UnitTestShouldIncludeAssert cannot see.
+@SuppressWarnings({"deprecation", "PMD.UnitTestShouldIncludeAssert"})
 class SearchEngineRestClientTimeoutsTest
 {
     private static final String UNREACHABLE_URI = "http://10.255.255.1:9200";

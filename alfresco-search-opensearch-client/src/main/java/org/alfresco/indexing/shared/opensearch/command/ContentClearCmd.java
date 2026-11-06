@@ -39,5 +39,4 @@ import lombok.NonNull;
  *            content indexed after this point is newer than the exclusion and is left alone
  */
 public record ContentClearCmd(@NonNull String id, long contentTimestamp, long conflictCutoff)
-{
-}
+{}

@@ -110,8 +110,8 @@ class OpensearchContentModifierClearTest
         assertThatThrownBy(() -> modifier.clearContents(List.of(
                 new ContentClearCmd("a", CONTENT_TIMESTAMP, CONFLICT_CUTOFF),
                 new ContentClearCmd("b", CONTENT_TIMESTAMP, CONFLICT_CUTOFF))))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("Failed to clear excluded content for 1 of 2 nodes");
+                        .isInstanceOf(IllegalStateException.class)
+                        .hasMessage("Failed to clear excluded content for 1 of 2 nodes");
     }
 
     @Test

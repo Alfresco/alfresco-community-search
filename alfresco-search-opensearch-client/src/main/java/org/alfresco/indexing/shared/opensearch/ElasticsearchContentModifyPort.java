@@ -45,9 +45,14 @@ public interface ElasticsearchContentModifyPort
 
     /**
      * Clears the indexed content and transform status of several excluded nodes in one bulk request. Fails if any of them could not be cleared.
+     * <p>
+     * Defaults to throwing {@link UnsupportedOperationException} so existing implementations keep compiling; adapters used with a content indexing filter must override it.
      *
      * @param clears
      *            the clear commands, one per node
      */
-    void clearContents(List<ContentClearCmd> clears);
+    default void clearContents(List<ContentClearCmd> clears)
+    {
+        throw new UnsupportedOperationException(getClass().getName() + " does not support clearing excluded content");
+    }
 }

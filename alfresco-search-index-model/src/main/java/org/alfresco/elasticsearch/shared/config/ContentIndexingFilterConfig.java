@@ -49,7 +49,13 @@ public class ContentIndexingFilterConfig
             @Value("${alfresco.content-indexing.filter.excluded-mime-types:}") List<String> excludedMimeTypes,
             @Value("${alfresco.content-indexing.filter.max-content-size:0}") DataSize maxContentSize)
     {
-        ContentIndexingFilter filter = new ContentIndexingFilter(excludedMimeTypes, maxContentSize.toBytes());
+        // An empty property value binds to null instead of falling back to the default.
+        long maxContentSizeBytes = maxContentSize == null ? 0L : maxContentSize.toBytes();
+        if (maxContentSizeBytes < 0)
+        {
+            throw new IllegalArgumentException("alfresco.content-indexing.filter.max-content-size must not be negative: " + maxContentSize);
+        }
+        ContentIndexingFilter filter = new ContentIndexingFilter(excludedMimeTypes == null ? List.of() : excludedMimeTypes, maxContentSizeBytes);
         LOGGER.info("Content indexing policy: {}", filter);
         return filter;
     }

@@ -26,14 +26,17 @@
 package org.alfresco.indexing.shared.opensearch.request;
 
 import static java.util.Collections.emptyMap;
+import static java.util.Optional.ofNullable;
 
 import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.ALIVE;
+import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.CM_CONTENT_TR_EX;
 import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.CM_CONTENT_TR_STATUS;
 import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.CONTENT_INDEXING_LAST_UPDATE;
 import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.METADATA_INDEXING_LAST_UPDATE;
 import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.PATH_INDEXING_LAST_UPDATE;
 import static org.alfresco.indexing.shared.utils.EsScriptUtils.archiveDocumentScriptSource;
 import static org.alfresco.indexing.shared.utils.EsScriptUtils.contentInProgressScriptSource;
+import static org.alfresco.indexing.shared.utils.EsScriptUtils.contentUpsertScriptSource;
 import static org.alfresco.indexing.shared.utils.EsScriptUtils.deleteDocumentScriptSource;
 import static org.alfresco.indexing.shared.utils.EsScriptUtils.removeFieldScriptSource;
 import static org.alfresco.indexing.shared.utils.EventUtils.getEventTimestamp;
@@ -48,10 +51,12 @@ import org.opensearch.client.opensearch._types.Script;
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.client.opensearch.core.bulk.UpdateOperation;
 
+import org.alfresco.elasticsearch.shared.translator.AlfrescoQualifiedNameTranslator;
 import org.alfresco.indexing.shared.ElasticsearchProperties;
 import org.alfresco.indexing.shared.extractor.EncodedFields;
 import org.alfresco.indexing.shared.extractor.EncodedFieldsExtractor;
 import org.alfresco.indexing.shared.utils.EsScriptUtils;
+import org.alfresco.repo.event.v1.model.ContentInfo;
 import org.alfresco.repo.event.v1.model.NodeResource;
 import org.alfresco.repo.event.v1.model.RepoEvent;
 
@@ -61,6 +66,10 @@ import org.alfresco.repo.event.v1.model.RepoEvent;
 @SuppressWarnings("PMD.AbstractClassWithoutAbstractMethod")
 public abstract class AbstractElasticsearchRequestBuilder
 {
+    protected static final String ENCODED_CM_CONTENT = "cm%3Acontent";
+    protected static final String ENCODED_CM_CONTENT_TR_STATUS = AlfrescoQualifiedNameTranslator.encode(CM_CONTENT_TR_STATUS);
+    protected static final String ENCODED_CM_CONTENT_TR_EX = AlfrescoQualifiedNameTranslator.encode(CM_CONTENT_TR_EX);
+
     protected final ElasticsearchProperties elasticsearchProperties;
     protected final EncodedFieldsExtractor encodedFieldsExtractor;
 
@@ -84,6 +93,35 @@ public abstract class AbstractElasticsearchRequestBuilder
         Set<String> fieldNames = fieldsMapping.keySet();
         var script = EsScriptUtils.buildInlineScript(fieldsMapping, contentInProgressScriptSource(fieldNames));
         return Optional.of(createUpsertOperation(getIdFromEvent(event), fieldsMapping, script));
+    }
+
+    /**
+     * Drops the content fields of an excluded node: {@code cm:content} and any transform status or error. Clearing the status keeps the node healthy in search health checks. {@code contentTimestamp} is written to {@code CONTENT_INDEXING_LAST_UPDATE} and guards the script, so an older transform reply cannot undo this.
+     */
+    protected BulkOperation createContentExclusionRequest(RepoEvent event, long contentTimestamp)
+    {
+        var encodedFields = new EncodedFields();
+        encodedFields.put(CONTENT_INDEXING_LAST_UPDATE, contentTimestamp);
+        var fieldsMapping = encodedFields.getEncodedMapping();
+        var script = EsScriptUtils.buildInlineScript(fieldsMapping,
+                contentUpsertScriptSource(fieldsMapping.keySet(),
+                        Set.of(ENCODED_CM_CONTENT, ENCODED_CM_CONTENT_TR_STATUS, ENCODED_CM_CONTENT_TR_EX)));
+        return createUpsertOperation(getIdFromEvent(event), fieldsMapping, script);
+    }
+
+    /** The node's content after this event, falling back to the previous content when the update does not restate it. */
+    protected ContentInfo getContent(RepoEvent event)
+    {
+        NodeResource resource = (NodeResource) event.getData().getResource();
+        if (resource != null && resource.getContent() != null)
+        {
+            return resource.getContent();
+        }
+        return ofNullable(event.getData().getResourceBefore())
+                .filter(NodeResource.class::isInstance)
+                .map(NodeResource.class::cast)
+                .map(NodeResource::getContent)
+                .orElse(null);
     }
 
     /**

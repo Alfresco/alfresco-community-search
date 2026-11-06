@@ -36,11 +36,13 @@ import static org.alfresco.repo.event.v1.model.EventType.NODE_UPDATED;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -50,10 +52,12 @@ import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import org.alfresco.elasticsearch.shared.filter.ContentIndexingFilter;
 import org.alfresco.indexing.shared.TransformStatus;
 import org.alfresco.indexing.shared.transform.TransformStatusExtender;
 import org.alfresco.reindexing.domain.transform.ContentTransformSupportService;
 import org.alfresco.reindexing.model.ReindexingEvent;
+import org.alfresco.repo.event.v1.model.ContentInfo;
 import org.alfresco.repo.event.v1.model.EventData;
 import org.alfresco.repo.event.v1.model.EventType;
 import org.alfresco.repo.event.v1.model.NodeResource;
@@ -69,7 +73,8 @@ class ReindexEventTrStatusAdderProcessorTest
     @BeforeEach
     void setUp()
     {
-        sut = new ReindexEventTrStatusAdderProcessor(contentTransformSupportService, new TransformStatusExtender());
+        sut = new ReindexEventTrStatusAdderProcessor(contentTransformSupportService, new TransformStatusExtender(),
+                ContentIndexingFilter.acceptAll());
     }
 
     @ParameterizedTest
@@ -138,6 +143,39 @@ class ReindexEventTrStatusAdderProcessorTest
         // then
         assertThat(processedEvent.getData().getResource().getProperties())
                 .isNull();
+    }
+
+    @Test
+    @DisplayName("should not add transform status when content is excluded by the indexing filter")
+    void shouldNotAddTrStatusForExcludedContent()
+    {
+        // given a processor whose filter excludes application/pdf and a pdf node
+        var excludingSut = new ReindexEventTrStatusAdderProcessor(contentTransformSupportService,
+                new TransformStatusExtender(), new ContentIndexingFilter(List.of("application/pdf"), 0L));
+        doReturn(true).when(contentTransformSupportService).isContentTransformSupported(ArgumentMatchers.any());
+        var event = contentEvent("application/pdf");
+
+        // when
+        var processedEvent = excludingSut.process(event);
+
+        // then no transform status is stamped, so the reindex builder can clear content without a health-check failure
+        assertThat(processedEvent.getData().getResource().getProperties())
+                .doesNotContainKey(CM_CONTENT_TR_STATUS);
+    }
+
+    private static ReindexingEvent contentEvent(String mimeType)
+    {
+        NodeResource resource = NodeResource.builder()
+                .setId("node")
+                .setContent(new ContentInfo(mimeType, 12L, "UTF-8"))
+                .setProperties(new HashMap<>())
+                .build();
+        return ReindexingEvent.builder()
+                .withRepoEvent(RepoEvent.<EventData<NodeResource>> builder()
+                        .setType(NODE_CREATED.getType())
+                        .setData(EventData.<NodeResource> builder().setResource(resource).build())
+                        .build())
+                .build();
     }
 
     private static ReindexingEvent event(EventType eventType, boolean withProperties)

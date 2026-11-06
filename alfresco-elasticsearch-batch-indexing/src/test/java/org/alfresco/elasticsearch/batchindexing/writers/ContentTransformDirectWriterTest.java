@@ -32,6 +32,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 import java.time.ZonedDateTime;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -47,6 +48,7 @@ import org.springframework.batch.infrastructure.item.Chunk;
 import org.alfresco.elasticsearch.batchindexing.domain.transform.ContentTransformClient;
 import org.alfresco.elasticsearch.batchindexing.domain.transform.ContentTransformFailure;
 import org.alfresco.elasticsearch.batchindexing.domain.transform.ContentTransformResult;
+import org.alfresco.elasticsearch.shared.filter.ContentIndexingFilter;
 import org.alfresco.indexing.shared.opensearch.ElasticsearchContentModifyPort;
 import org.alfresco.indexing.shared.opensearch.command.ContentIndexCmd;
 import org.alfresco.reindexing.domain.transform.ContentTransformSupportService;
@@ -96,6 +98,52 @@ class ContentTransformDirectWriterTest
 
             verifyNoInteractions(contentTransformClient);
             verifyNoInteractions(contentModifyPort);
+        }
+
+        @Test
+        @DisplayName("Content excluded by the indexing filter is never fetched or transformed")
+        void excludedByContentIndexingFilter() throws Exception
+        {
+            var filteringWriter = new ContentTransformDirectWriter(
+                    contentTransformSupportService, contentTransformClient, contentModifyPort, STORE_REF, 1, null, null,
+                    new ContentIndexingFilter(List.of(MIME_TYPE), 0L));
+            when(contentTransformSupportService.isContentTransformSupported(any())).thenReturn(true);
+
+            filteringWriter.write(Chunk.of(buildEvent(RESOURCE_UUID, NODE_DB_ID, MIME_TYPE)));
+
+            verifyNoInteractions(contentTransformClient);
+            verifyNoInteractions(contentModifyPort);
+        }
+
+        @Test
+        @DisplayName("Content over the size limit is never fetched or transformed")
+        void excludedBySizeLimit() throws Exception
+        {
+            var filteringWriter = new ContentTransformDirectWriter(
+                    contentTransformSupportService, contentTransformClient, contentModifyPort, STORE_REF, 1, null, null,
+                    new ContentIndexingFilter(List.of(), 1L));
+            when(contentTransformSupportService.isContentTransformSupported(any())).thenReturn(true);
+
+            filteringWriter.write(Chunk.of(buildEvent(RESOURCE_UUID, NODE_DB_ID, MIME_TYPE)));
+
+            verifyNoInteractions(contentTransformClient);
+            verifyNoInteractions(contentModifyPort);
+        }
+
+        @Test
+        @DisplayName("Content allowed by the indexing filter is still transformed")
+        void allowedByContentIndexingFilter() throws Exception
+        {
+            var filteringWriter = new ContentTransformDirectWriter(
+                    contentTransformSupportService, contentTransformClient, contentModifyPort, STORE_REF, 1, null, null,
+                    new ContentIndexingFilter(List.of("application/zip"), 0L));
+            when(contentTransformSupportService.isContentTransformSupported(any())).thenReturn(true);
+            when(contentTransformClient.transformContent(anyLong()))
+                    .thenReturn(ContentTransformResult.ofText(TRANSFORMED_TEXT));
+
+            filteringWriter.write(Chunk.of(buildEvent(RESOURCE_UUID, NODE_DB_ID, MIME_TYPE)));
+
+            verify(contentTransformClient).transformContent(NODE_DB_ID);
         }
 
         @Test

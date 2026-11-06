@@ -27,6 +27,7 @@ package org.alfresco.indexing.shared.opensearch;
 
 import java.util.List;
 
+import org.alfresco.indexing.shared.exception.ContentClearException;
 import org.alfresco.indexing.shared.opensearch.command.ContentClearCmd;
 import org.alfresco.indexing.shared.opensearch.command.ContentIndexCmd;
 
@@ -44,15 +45,15 @@ public interface ElasticsearchContentModifyPort
     void upsertContent(ContentIndexCmd contentIndexCmd);
 
     /**
-     * Clears the indexed content and transform status of several excluded nodes in one bulk request. Fails if any of them could not be cleared.
+     * Clears the indexed content and transform status of several excluded nodes in one bulk request. Any failure must be thrown as {@link ContentClearException}, which reindex steps retry but never skip.
      * <p>
-     * Defaults to throwing {@link UnsupportedOperationException} so existing implementations keep compiling; adapters used with a content indexing filter must override it.
+     * The default throws {@link ContentClearException} so existing implementations keep compiling; adapters used with a content indexing filter must override it.
      *
      * @param clears
      *            the clear commands, one per node
      */
     default void clearContents(List<ContentClearCmd> clears)
     {
-        throw new UnsupportedOperationException(getClass().getName() + " does not support clearing excluded content");
+        throw new ContentClearException(getClass().getName() + " does not support clearing excluded content");
     }
 }

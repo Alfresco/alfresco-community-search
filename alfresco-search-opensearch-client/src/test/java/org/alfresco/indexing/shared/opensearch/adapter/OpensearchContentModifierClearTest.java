@@ -52,6 +52,7 @@ import org.opensearch.client.opensearch.core.bulk.OperationType;
 
 import org.alfresco.indexing.shared.ElasticsearchProperties;
 import org.alfresco.indexing.shared.exception.ContentClearException;
+import org.alfresco.indexing.shared.opensearch.ElasticsearchContentModifyPort;
 import org.alfresco.indexing.shared.opensearch.command.ContentClearCmd;
 import org.alfresco.indexing.shared.opensearch.request.ContentRequestBuilder;
 
@@ -125,6 +126,16 @@ class OpensearchContentModifierClearTest
         assertThatThrownBy(() -> modifier.clearContents(List.of(new ContentClearCmd("a", CONTENT_TIMESTAMP, CONFLICT_CUTOFF))))
                 .isInstanceOf(ContentClearException.class)
                 .hasCause(cause);
+    }
+
+    @Test
+    @DisplayName("a port that does not implement clearing fails with the non-skippable content clear failure")
+    void defaultClearFailsWithContentClearException()
+    {
+        ElasticsearchContentModifyPort portWithoutClear = contentIndexCmd -> {};
+
+        assertThatThrownBy(() -> portWithoutClear.clearContents(List.of(new ContentClearCmd("a", CONTENT_TIMESTAMP, CONFLICT_CUTOFF))))
+                .isInstanceOf(ContentClearException.class);
     }
 
     @Test

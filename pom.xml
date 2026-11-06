@@ -48,8 +48,8 @@
 
         <dist.activemq.docker.tag>6.2-jre17-rockylinux8</dist.activemq.docker.tag>
         <dist.elasticsearch.version>8.17.0</dist.elasticsearch.version>
-        <opensearch-java.version>3.9.0</opensearch-java.version>
-        <opensearch-rest-client.version>3.8.0</opensearch-rest-client.version>
+        <opensearch-java.version>3.10.0</opensearch-java.version>
+        <opensearch-rest-client.version>3.9.0</opensearch-rest-client.version>
         <parsson.version>1.1.9</parsson.version>
         <spring-retry.version>2.0.13</spring-retry.version>
         <guava.version>33.4.8-jre</guava.version>

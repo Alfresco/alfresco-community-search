@@ -46,6 +46,7 @@ import org.springframework.core.retry.RetryPolicy;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.backoff.ExponentialBackOff;
 
+import org.alfresco.indexing.shared.exception.ContentClearException;
 import org.alfresco.indexing.shared.exception.MissingTagException;
 import org.alfresco.metrics.ReindexingMetrics;
 import org.alfresco.reindexing.config.ReindexingCoreProperties;
@@ -137,6 +138,8 @@ class StepConfigurerTest
 
         // A transient fault is worth another chunk attempt.
         assertThat(policy.getValue().shouldRetry(new RuntimeException("connection reset"))).isTrue();
+        // A failed clear of excluded content is retried (it is never skipped instead).
+        assertThat(policy.getValue().shouldRetry(new ContentClearException("bulk clear failed"))).isTrue();
         // These are deterministic: retrying only repeats the writes that already succeeded.
         assertThat(policy.getValue().shouldRetry(new UnresolvedNamespaceException(1L, "http://acme", "foo", true))).isFalse();
         assertThat(policy.getValue().shouldRetry(new MissingTagException("deadc0de-c0de-c0de-c0de-c0dec0dec0de"))).isFalse();

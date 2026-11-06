@@ -50,6 +50,7 @@ import org.alfresco.content.mediatype.AcceptedContentMediaTypesCacheProperties;
 import org.alfresco.database.connector.AlfrescoMetadataRepository;
 import org.alfresco.database.connector.model.AlfrescoNode;
 import org.alfresco.database.connector.model.TagData;
+import org.alfresco.elasticsearch.shared.filter.ContentIndexingFilter;
 import org.alfresco.indexing.shared.ElasticsearchFieldsPostProcessor;
 import org.alfresco.indexing.shared.ElasticsearchProperties;
 import org.alfresco.indexing.shared.config.FilteringConfig;
@@ -139,9 +140,10 @@ public class SharedBatchProcessingConfig
     @Bean
     public ContentTransformSupportService contentTransformSupportService(
             FilteringConfig filteringConfig,
-            AcceptedContentMediaTypesCache mediaTypesCache)
+            AcceptedContentMediaTypesCache mediaTypesCache,
+            ContentIndexingFilter contentIndexingFilter)
     {
-        return new ContentTransformSupportService(filteringConfig, mediaTypesCache);
+        return new ContentTransformSupportService(filteringConfig, mediaTypesCache, contentIndexingFilter);
     }
 
     @Bean

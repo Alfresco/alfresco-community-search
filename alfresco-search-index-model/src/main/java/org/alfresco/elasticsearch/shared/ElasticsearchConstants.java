@@ -36,6 +36,7 @@ public class ElasticsearchConstants
     public static final String METADATA_INDEXING_LAST_UPDATE = "METADATA_INDEXING_LAST_UPDATE";
     public static final String CONTENT_INDEXING_LAST_UPDATE = "CONTENT_INDEXING_LAST_UPDATE";
     public static final String PATH_INDEXING_LAST_UPDATE = "PATH_INDEXING_LAST_UPDATE";
+    public static final String CONTENT_EXCLUSION_CUTOFF = "CONTENT_EXCLUSION_CUTOFF";
     public static final String REINDEXING_START_TIME = "reindexingStartTime";
     public static final String ASPECT = "ASPECT";
     public static final String PATH = "PATH";

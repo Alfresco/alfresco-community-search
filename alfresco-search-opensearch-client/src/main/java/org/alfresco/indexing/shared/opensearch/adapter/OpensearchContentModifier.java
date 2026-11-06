@@ -26,10 +26,12 @@
 package org.alfresco.indexing.shared.opensearch.adapter;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
 import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.BulkResponse;
+import org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
 
 import org.alfresco.indexing.shared.exception.ContentClearException;
 import org.alfresco.indexing.shared.opensearch.ElasticsearchContentModifyPort;
@@ -43,6 +45,9 @@ import org.alfresco.indexing.shared.opensearch.request.ContentRequestBuilder;
 @RequiredArgsConstructor
 public class OpensearchContentModifier implements ElasticsearchContentModifyPort
 {
+    /** Failed nodes listed in a clear failure message, so the error stays readable for large chunks. */
+    private static final int MAX_FAILURES_IN_MESSAGE = 5;
+
     private final ContentRequestBuilder contentRequestBuilder;
     private final OpensearchUpdater opensearchUpdater;
 
@@ -74,9 +79,13 @@ public class OpensearchContentModifier implements ElasticsearchContentModifyPort
         }
         if (response.errors())
         {
-            long failed = response.items().stream().filter(item -> item.error() != null).count();
-            throw new ContentClearException(
-                    "Failed to clear excluded content for %d of %d nodes".formatted(failed, clears.size()));
+            List<BulkResponseItem> failed = response.items().stream().filter(item -> item.error() != null).toList();
+            String sample = failed.stream()
+                    .limit(MAX_FAILURES_IN_MESSAGE)
+                    .map(item -> "%s (%s: %s)".formatted(item.id(), item.error().type(), item.error().reason()))
+                    .collect(Collectors.joining(", "));
+            throw new ContentClearException("Failed to clear excluded content for %d of %d nodes: %s%s".formatted(
+                    failed.size(), clears.size(), sample, failed.size() > MAX_FAILURES_IN_MESSAGE ? ", ..." : ""));
         }
     }
 }

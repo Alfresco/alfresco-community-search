@@ -113,7 +113,26 @@ class OpensearchContentModifierClearTest
                 new ContentClearCmd("a", CONTENT_TIMESTAMP, CONFLICT_CUTOFF),
                 new ContentClearCmd("b", CONTENT_TIMESTAMP, CONFLICT_CUTOFF))))
                         .isInstanceOf(ContentClearException.class)
-                        .hasMessage("Failed to clear excluded content for 1 of 2 nodes");
+                        .hasMessage("Failed to clear excluded content for 1 of 2 nodes: b (mapper_parsing_exception: boom)");
+    }
+
+    @Test
+    @DisplayName("the failure message lists at most five failed nodes")
+    void failureMessageIsBounded()
+    {
+        when(opensearchUpdater.sendBulk(any(BulkRequest.class), anyString()))
+                .thenReturn(bulkResponse(true, failedItem("n1"), failedItem("n2"), failedItem("n3"),
+                        failedItem("n4"), failedItem("n5"), failedItem("n6")));
+        var clears = List.of("n1", "n2", "n3", "n4", "n5", "n6").stream()
+                .map(id -> new ContentClearCmd(id, CONTENT_TIMESTAMP, CONFLICT_CUTOFF))
+                .toList();
+
+        assertThatThrownBy(() -> modifier.clearContents(clears))
+                .isInstanceOf(ContentClearException.class)
+                .hasMessageStartingWith("Failed to clear excluded content for 6 of 6 nodes: n1 (")
+                .hasMessageContaining("n5 (mapper_parsing_exception: boom)")
+                .hasMessageNotContaining("n6")
+                .hasMessageEndingWith(", ...");
     }
 
     @Test

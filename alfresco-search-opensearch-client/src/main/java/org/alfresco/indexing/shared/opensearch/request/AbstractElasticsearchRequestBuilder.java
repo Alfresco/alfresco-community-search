@@ -87,7 +87,7 @@ public abstract class AbstractElasticsearchRequestBuilder
     /**
      * Drops the content fields of an excluded node: {@code cm:content} and any transform status or error. Clearing the status keeps the node healthy in search health checks.
      * <p>
-     * {@code contentTimestamp} is stored as {@code CONTENT_INDEXING_LAST_UPDATE}, so later writes carrying a node-derived timestamp are not locked out. {@code conflictCutoff} only decides whether to clear: anything indexed after it is newer than this operation and is left alone. Reindexing passes its start time here so the clear is not skipped for a node whose indexed content is newer than its own event.
+     * {@code contentTimestamp} is stored as {@code CONTENT_INDEXING_LAST_UPDATE}, so later writes carrying a node-derived timestamp are not locked out. {@code conflictCutoff} only decides whether to clear: anything indexed after it is newer than this operation and is left alone. Used by live indexing; reindexing clears excluded content in its content stage instead.
      */
     protected BulkOperation createContentExclusionRequest(RepoEvent event, long contentTimestamp, long conflictCutoff)
     {

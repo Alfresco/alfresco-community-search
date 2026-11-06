@@ -50,7 +50,6 @@ import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.alfresco.elasticsearch.shared.filter.ContentIndexingFilter;
 import org.alfresco.indexing.shared.ElasticsearchProperties;
 import org.alfresco.indexing.shared.extractor.EncodedFieldsExtractor;
 import org.alfresco.indexing.shared.opensearch.request.AbstractElasticsearchRequestBuilder;
@@ -64,18 +63,9 @@ public class ReindexingRequestBuilder extends AbstractElasticsearchRequestBuilde
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(ReindexingRequestBuilder.class);
 
-    private final ContentIndexingFilter contentIndexingFilter;
-
     public ReindexingRequestBuilder(ElasticsearchProperties elasticsearchProperties, EncodedFieldsExtractor encodedFieldsExtractor)
     {
-        this(elasticsearchProperties, encodedFieldsExtractor, ContentIndexingFilter.acceptAll());
-    }
-
-    public ReindexingRequestBuilder(ElasticsearchProperties elasticsearchProperties, EncodedFieldsExtractor encodedFieldsExtractor,
-            ContentIndexingFilter contentIndexingFilter)
-    {
         super(elasticsearchProperties, encodedFieldsExtractor);
-        this.contentIndexingFilter = contentIndexingFilter;
     }
 
     public BulkRequest buildBulkRequest(List<RepoEvent> events, long reindexingStartTime)
@@ -116,22 +106,8 @@ public class ReindexingRequestBuilder extends AbstractElasticsearchRequestBuilde
     {
         List<BulkOperation> result = new ArrayList<>();
         result.add(createReindexingMetadataUpsertRequest(event, reindexingStartTime, alive));
-        contentOperationFor(event, reindexingStartTime).ifPresent(result::add);
+        createContentUpsertRequest(event).ifPresent(result::add);
         return result;
-    }
-
-    /**
-     * Clears content and transform status for an excluded node, otherwise emits the normal transform-status upsert. Empty when an indexable node has no content.
-     * <p>
-     * The clear stores the event timestamp but is decided against the reindexing start time. Storing a wall-clock value would lock out later transform replies, while deciding on the event timestamp would skip nodes whose indexed content is newer than their own event, such as after a database restore.
-     */
-    private Optional<BulkOperation> contentOperationFor(RepoEvent event, long reindexingStartTime)
-    {
-        if (!contentIndexingFilter.isIndexable(getIdFromEvent(event), getContent(event)))
-        {
-            return Optional.of(createContentExclusionRequest(event, getEventTimestamp(event), reindexingStartTime));
-        }
-        return createContentUpsertRequest(event);
     }
 
     private BulkOperation createReindexingMetadataUpsertRequest(RepoEvent event, long reindexingStartTime, boolean alive)
@@ -170,19 +146,11 @@ public class ReindexingRequestBuilder extends AbstractElasticsearchRequestBuilde
     }
 
     /**
-     * Build the content transform-status upsert operation for a node, or empty when the node carries no transform status. Does not apply the content exclusion; use {@link #buildContentUpsertOperation(RepoEvent, long)} for that.
+     * Build the optional content transform-status upsert operation for a node (empty when the node has no content). Exposed so the merged writer can keep issuing it as its own bulk operation.
      */
     public Optional<BulkOperation> buildContentUpsertOperation(RepoEvent event)
     {
         return createContentUpsertRequest(event);
-    }
-
-    /**
-     * The content operation for a node, clearing it when the node is excluded by policy. Exposed so the merged writer can issue it as its own bulk operation.
-     */
-    public Optional<BulkOperation> buildContentUpsertOperation(RepoEvent event, long reindexingStartTime)
-    {
-        return contentOperationFor(event, reindexingStartTime);
     }
 
     /**

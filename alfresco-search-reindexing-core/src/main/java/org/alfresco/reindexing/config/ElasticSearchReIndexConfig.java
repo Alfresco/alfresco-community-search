@@ -26,13 +26,11 @@
 package org.alfresco.reindexing.config;
 
 import org.opensearch.client.opensearch.OpenSearchClient;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 
 import org.alfresco.elasticsearch.shared.config.ContentIndexingFilterConfig;
-import org.alfresco.elasticsearch.shared.filter.ContentIndexingFilter;
 import org.alfresco.indexing.shared.ElasticsearchFieldsPostProcessor;
 import org.alfresco.indexing.shared.ElasticsearchProperties;
 import org.alfresco.indexing.shared.PropertiesDeterminingStrategy;
@@ -51,7 +49,7 @@ import org.alfresco.reindexing.writers.FailureSummary;
 import org.alfresco.reindexing.writers.ReindexPathFieldsBuilder;
 
 @Configuration
-// ContentIndexingFilterConfig makes the policy configurable by properties alone; unset means index everything, as before.
+// ContentIndexingFilterConfig provides the content indexing policy used by the content transform decision; unset means index everything, as before.
 @Import({MultilingualSupportSharedConfig.class, ContentIndexingFilterConfig.class})
 public class ElasticSearchReIndexConfig
 {
@@ -66,11 +64,9 @@ public class ElasticSearchReIndexConfig
     @Bean
     public ReindexingRequestBuilder reindexingRequestBuilder(
             ElasticsearchProperties elasticsearchProperties,
-            EncodedFieldsExtractor encodedFieldsExtractor,
-            ObjectProvider<ContentIndexingFilter> contentIndexingFilter)
+            EncodedFieldsExtractor encodedFieldsExtractor)
     {
-        return new ReindexingRequestBuilder(elasticsearchProperties, encodedFieldsExtractor,
-                contentIndexingFilter.getIfAvailable(ContentIndexingFilter::acceptAll));
+        return new ReindexingRequestBuilder(elasticsearchProperties, encodedFieldsExtractor);
     }
 
     @Bean

@@ -40,6 +40,7 @@ import static org.mockito.Mockito.when;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -64,7 +65,7 @@ import org.alfresco.repo.event.v1.model.NodeResource;
 import org.alfresco.repo.event.v1.model.RepoEvent;
 
 /**
- * Unit tests for the merged metadata+path bulk assembly in {@link ElasticSearchUpdateOperationsImpl#getMergedBulkRequest}. The collaborating builders are mocked so these tests pin the orchestration contract: metadata and path fields are combined into a single scripted upsert (path wins on key overlap), deletes bypass the upsert path, and the retry loop is driven exactly once.
+ * Unit tests for the merged metadata+path bulk assembly in {@link ElasticSearchUpdateOperationsImpl#getMergedBulkRequest}. The collaborating builders are mocked so these tests pin the orchestration contract: metadata and path fields are combined into a single scripted upsert (path wins on key overlap), the content op is preserved, deletes bypass the upsert path, and the retry loop is driven exactly once.
  */
 @DisplayName("merged metadata+path bulk assembly")
 class ElasticSearchUpdateOperationsMergedTest
@@ -89,7 +90,7 @@ class ElasticSearchUpdateOperationsMergedTest
     }
 
     @Test
-    @DisplayName("create event folds metadata + path into one upsert; path wins on key overlap")
+    @DisplayName("create event folds metadata + path into one upsert; path wins on key overlap; content op preserved")
     void createEventMergesMetadataAndPathFields() throws Exception
     {
         ReindexingEvent event = createEventWithPaths(EventType.NODE_CREATED);
@@ -99,7 +100,9 @@ class ElasticSearchUpdateOperationsMergedTest
         when(pathFieldsBuilder.buildFields(any(), anyLong()))
                 .thenReturn(Map.of("path", "p", "shared", "fromPath"));
         when(requestBuilder.buildReindexUpsertOperation(any(), any())).thenReturn(dummyOp("n1"));
-        when(openSearchClient.bulk(any(BulkRequest.class))).thenReturn(bulkResponse(successItem("n1")));
+        when(requestBuilder.buildContentUpsertOperation(any())).thenReturn(Optional.of(dummyOp("n1-content")));
+        when(openSearchClient.bulk(any(BulkRequest.class)))
+                .thenReturn(bulkResponse(successItem("n1"), successItem("n1-content")));
 
         var dto = operations.getMergedBulkRequest(List.of(event), START_TIME, 0, 1L);
 
@@ -114,6 +117,7 @@ class ElasticSearchUpdateOperationsMergedTest
 
         assertThat(dto.getNumberOfActions()).isEqualTo(1);
         assertThat(dto.getFailures()).isEmpty();
+        verify(requestBuilder).buildContentUpsertOperation(any());
         verify(openSearchClient, times(1)).bulk(any(BulkRequest.class));
     }
 
@@ -145,13 +149,16 @@ class ElasticSearchUpdateOperationsMergedTest
         when(pathFieldsBuilder.buildFields(any(), anyLong()))
                 .thenReturn(Map.of("path", "p"));
         when(requestBuilder.buildReindexUpsertOperation(any(), any())).thenReturn(dummyOp("n1"));
-        when(openSearchClient.bulk(any(BulkRequest.class))).thenReturn(bulkResponse(successItem("n1")));
+        when(requestBuilder.buildContentUpsertOperation(any())).thenReturn(Optional.of(dummyOp("n1-content")));
+        when(openSearchClient.bulk(any(BulkRequest.class)))
+                .thenReturn(bulkResponse(successItem("n1"), successItem("n1-content")));
 
         var dto = operations.getMergedBulkRequest(List.of(event), START_TIME, 0, 1L);
 
         // archive delete is a soft-delete upsert (ALIVE=false), never a hard delete
         verify(requestBuilder).buildMetadataFields(any(), anyLong(), eq(false));
         verify(requestBuilder).buildReindexUpsertOperation(any(), any());
+        verify(requestBuilder).buildContentUpsertOperation(any());
         verify(requestBuilder, never()).buildDeleteOperation(any());
         assertThat(dto.getNumberOfActions()).isEqualTo(1);
         assertThat(dto.getFailures()).isEmpty();

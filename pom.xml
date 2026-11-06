@@ -54,7 +54,7 @@
         <spring-retry.version>2.0.13</spring-retry.version>
         <guava.version>33.4.8-jre</guava.version>
         <okhttp3.version>5.5.0</okhttp3.version>
-        <testcontainers.version>2.0.2</testcontainers.version>
+        <testcontainers.version>2.0.5</testcontainers.version>
         <toxiproxy.version>2.1.11</toxiproxy.version>
         <wiremock.version>3.9.2</wiremock.version>
         <awaitility.version>4.3.0</awaitility.version>

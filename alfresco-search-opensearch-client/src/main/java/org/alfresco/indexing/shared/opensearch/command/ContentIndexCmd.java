@@ -33,20 +33,10 @@ import lombok.NonNull;
 import org.alfresco.elasticsearch.shared.ElasticsearchConstants;
 import org.alfresco.indexing.shared.TransformStatus;
 
-/**
- * @param clearsExclusion
- *            {@code true} when the writer has itself just checked the content indexing policy for this content version, so the write may lift an earlier exclusion of the same version (see {@code EsScriptUtils#policyCheckedContentUpsertScriptSource}). Transform replies leave it {@code false}.
- */
 public record ContentIndexCmd(@NonNull String id, @NonNull Long updateTime,
         @NonNull ElasticsearchConstants.ScriptType scriptType, String contentText,
-        String transformationStatus, String transformationError, boolean clearsExclusion)
+        String transformationStatus, String transformationError)
 {
-
-    public ContentIndexCmd(String id, Long updateTime, ElasticsearchConstants.ScriptType scriptType, String contentText,
-            String transformationStatus, String transformationError)
-    {
-        this(id, updateTime, scriptType, contentText, transformationStatus, transformationError, false);
-    }
 
     public static ContentIndexCmd withTextScript(String id, Long updateTime, String contentText)
     {
@@ -59,11 +49,5 @@ public record ContentIndexCmd(@NonNull String id, @NonNull Long updateTime,
         Objects.requireNonNull(transformStatus);
         Objects.requireNonNull(transformError);
         return new ContentIndexCmd(id, updateTime, ElasticsearchConstants.ScriptType.EXCEPTION_SCRIPT, null, transformStatus.name(), transformError);
-    }
-
-    /** A copy of this command that may lift an earlier exclusion of the same content version. */
-    public ContentIndexCmd policyChecked()
-    {
-        return new ContentIndexCmd(id, updateTime, scriptType, contentText, transformationStatus, transformationError, true);
     }
 }

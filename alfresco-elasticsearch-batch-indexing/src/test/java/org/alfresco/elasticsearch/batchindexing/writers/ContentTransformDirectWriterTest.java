@@ -229,6 +229,22 @@ class ContentTransformDirectWriterTest
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessage("bulk clear failed");
         }
+
+        @Test
+        @DisplayName("A clear targets the same document as the content write, even for a store-qualified resource id")
+        void clearUsesContentWriteDocumentId() throws Exception
+        {
+            ReindexingEvent event = buildEvent("workspace://SpacesStore/qualified-uuid", NODE_DB_ID, MIME_TYPE);
+            when(contentTransformSupportService.isContentTransformSupported(any())).thenReturn(true);
+            when(contentTransformClient.transformContent(NODE_DB_ID)).thenReturn(ContentTransformResult.ofText(TRANSFORMED_TEXT));
+            writer.write(Chunk.of(event));
+            verify(contentModifyPort).upsertContent(contentIndexCmdCaptor.capture());
+            String contentWriteId = contentIndexCmdCaptor.getValue().id();
+
+            excludingWriter().write(Chunk.of(event));
+
+            verify(contentModifyPort).clearContents(argThat(clears -> clears.size() == 1 && clears.get(0).id().equals(contentWriteId)));
+        }
     }
 
     @Nested
@@ -271,9 +287,6 @@ class ContentTransformDirectWriterTest
             assertThat(captured.id()).isEqualTo(RESOURCE_UUID);
             assertThat(captured.updateTime()).isEqualTo(EVENT_TIME.toInstant().toEpochMilli());
             assertThat(captured.contentText()).isEqualTo(TRANSFORMED_TEXT);
-            assertThat(captured.clearsExclusion())
-                    .as("the direct writer checks the policy itself, so it may lift an earlier exclusion")
-                    .isTrue();
         }
     }
 

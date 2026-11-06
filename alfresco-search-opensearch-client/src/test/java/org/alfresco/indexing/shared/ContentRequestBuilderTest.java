@@ -52,10 +52,7 @@ class ContentRequestBuilderTest
 {
     private static final String INDEX_NAME = "test_index";
     private static final int RETRY_COUNT = 5;
-    private static final String SCRIPT_TEMPLATE = "if ((ctx._source.CONTENT_INDEXING_LAST_UPDATE != null && ctx._source.CONTENT_INDEXING_LAST_UPDATE > params.CONTENT_INDEXING_LAST_UPDATE) "
-            + "|| (ctx._source.CONTENT_INDEXING_EXCLUDED_AT != null && ctx._source.CONTENT_INDEXING_EXCLUDED_AT >= params.CONTENT_INDEXING_LAST_UPDATE)) "
-            + "{ ctx.op = 'noop'; } else { %s ctx._source.remove('CONTENT_INDEXING_EXCLUDED_AT'); }";
-    private static final String POLICY_CHECKED_PREFIX = "if (ctx._source.CONTENT_INDEXING_EXCLUDED_AT != null && ctx._source.CONTENT_INDEXING_EXCLUDED_AT <= params.CONTENT_INDEXING_LAST_UPDATE) ";
+    private static final String SCRIPT_TEMPLATE = "if (ctx._source.CONTENT_INDEXING_LAST_UPDATE != null && ctx._source.CONTENT_INDEXING_LAST_UPDATE > params.CONTENT_INDEXING_LAST_UPDATE) { ctx.op = 'noop'; } else { %s }";
     private static final String CONTENT_INDEXING_LAST_UPDATE = "CONTENT_INDEXING_LAST_UPDATE";
     private static final String ENCODED_CONTENT = "cm%3Acontent";
     private static final String ENCODED_TR_EX = "cm%3Acontent%2Etr_ex";
@@ -113,30 +110,6 @@ class ContentRequestBuilderTest
                 .isNotNull()
                 .extracting(s -> s.inline().source())
                 .isEqualTo(expectedScript);
-    }
-
-    @Test
-    @DisplayName("transform replies are not policy checked, so they cannot lift an exclusion")
-    void transformReplyDoesNotLiftExclusion()
-    {
-        var updateRequest = requestBuilder.createUpsertRequest(ContentIndexCmd.withTextScript("testNodeId", 1000L, "test"));
-
-        assertThat(updateRequest.script().inline().source()).doesNotStartWith(POLICY_CHECKED_PREFIX);
-    }
-
-    @Test
-    @DisplayName("a policy-checked write lifts an exclusion at or before its timestamp, otherwise uses the reply guard")
-    void policyCheckedWriteLiftsExclusion()
-    {
-        var updateRequest = requestBuilder.createUpsertRequest(ContentIndexCmd.withTextScript("testNodeId", 1000L, "test").policyChecked());
-
-        assertThat(updateRequest.script().inline().source())
-                .startsWith(POLICY_CHECKED_PREFIX
-                        + "{ ctx._source['CONTENT_INDEXING_LAST_UPDATE'] = params['CONTENT_INDEXING_LAST_UPDATE']; ctx._source['cm%3Acontent'] = params['cm%3Acontent']; "
-                        + "ctx._source.remove('cm%3Acontent%2Etr_ex'); ctx._source.remove('cm%3Acontent%2Etr_status'); ctx._source.remove('CONTENT_INDEXING_EXCLUDED_AT'); } else ")
-                .endsWith(SCRIPT_TEMPLATE.formatted(
-                        "ctx._source['CONTENT_INDEXING_LAST_UPDATE'] = params['CONTENT_INDEXING_LAST_UPDATE']; ctx._source['cm%3Acontent'] = params['cm%3Acontent']; "
-                                + "ctx._source.remove('cm%3Acontent%2Etr_ex'); ctx._source.remove('cm%3Acontent%2Etr_status');"));
     }
 
     @Test

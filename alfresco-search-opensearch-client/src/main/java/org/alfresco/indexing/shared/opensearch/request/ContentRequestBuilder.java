@@ -32,7 +32,6 @@ import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.CONTENT_A
 import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.CONTENT_INDEXING_LAST_UPDATE;
 import static org.alfresco.elasticsearch.shared.translator.AlfrescoQualifiedNameTranslator.encode;
 import static org.alfresco.indexing.shared.utils.EsScriptUtils.contentUpsertScriptSource;
-import static org.alfresco.indexing.shared.utils.EsScriptUtils.policyCheckedContentUpsertScriptSource;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -109,18 +108,18 @@ public class ContentRequestBuilder
     private String buildUpsertScript(ContentIndexCmd contentIndexCmd)
     {
         var identifier = contentIndexCmd.scriptType();
-        Set<String> encodedFieldNamesToAssign = switch (identifier)
+        return switch (identifier)
         {
-        case EXCEPTION_SCRIPT -> Set.of(CONTENT_INDEXING_LAST_UPDATE, ENCODED_TR_STATUS, ENCODED_TR_EX);
-        case TEXT_SCRIPT -> Set.of(CONTENT_INDEXING_LAST_UPDATE, ENCODED_CONTENT_TEXT);
+        case EXCEPTION_SCRIPT -> {
+            var encodedFieldNamesToAssign = Set.of(CONTENT_INDEXING_LAST_UPDATE, ENCODED_TR_STATUS, ENCODED_TR_EX);
+            var encodedFieldNamesToRemove = Set.of(ENCODED_CONTENT_TEXT);
+            yield contentUpsertScriptSource(encodedFieldNamesToAssign, encodedFieldNamesToRemove);
+        }
+        case TEXT_SCRIPT -> {
+            var encodedFieldNamesToAssign = Set.of(CONTENT_INDEXING_LAST_UPDATE, ENCODED_CONTENT_TEXT);
+            var encodedFieldNamesToRemove = Set.of(ENCODED_TR_STATUS, ENCODED_TR_EX);
+            yield contentUpsertScriptSource(encodedFieldNamesToAssign, encodedFieldNamesToRemove);
+        }
         };
-        Set<String> encodedFieldNamesToRemove = switch (identifier)
-        {
-        case EXCEPTION_SCRIPT -> Set.of(ENCODED_CONTENT_TEXT);
-        case TEXT_SCRIPT -> Set.of(ENCODED_TR_STATUS, ENCODED_TR_EX);
-        };
-        return contentIndexCmd.clearsExclusion()
-                ? policyCheckedContentUpsertScriptSource(encodedFieldNamesToAssign, encodedFieldNamesToRemove)
-                : contentUpsertScriptSource(encodedFieldNamesToAssign, encodedFieldNamesToRemove);
     }
 }

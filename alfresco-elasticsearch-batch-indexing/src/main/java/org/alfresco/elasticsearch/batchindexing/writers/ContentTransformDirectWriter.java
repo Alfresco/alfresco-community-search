@@ -167,7 +167,7 @@ public class ContentTransformDirectWriter implements ItemStreamWriter<Reindexing
         List<ContentClearCmd> clears = chunk.getItems().stream()
                 .filter(event -> resourceOf(event) != null)
                 .filter(event -> !isContentIndexableByPolicy(event))
-                .map(event -> new ContentClearCmd(resourceOf(event).getId(), getEventTimestamp(event), reindexingStartTime))
+                .map(event -> new ContentClearCmd(contentDocumentId(event), getEventTimestamp(event), reindexingStartTime))
                 .toList();
         if (!clears.isEmpty())
         {
@@ -303,11 +303,10 @@ public class ContentTransformDirectWriter implements ItemStreamWriter<Reindexing
 
             if (result.text().isPresent())
             {
-                String uuid = extractUuid(resourceId);
+                String uuid = contentDocumentId(event);
                 long modifiedAt = getEventTimestamp(event);
-                // This writer checked the content indexing policy itself, so it may lift an earlier exclusion of this version.
                 ContentIndexCmd contentIndexCmd = ContentIndexCmd.withTextScript(
-                        uuid, modifiedAt, result.text().get()).policyChecked();
+                        uuid, modifiedAt, result.text().get());
                 contentModifyPort.upsertContent(contentIndexCmd);
 
                 log.debug("Successfully transformed and indexed content for {}", resourceId);
@@ -357,6 +356,12 @@ public class ContentTransformDirectWriter implements ItemStreamWriter<Reindexing
     private String getResourceId(ReindexingEvent event)
     {
         return storeRef + event.getData().getResource().getId();
+    }
+
+    /** The index document id that content writes and exclusion clears both target, so a clear never misses the indexed text. */
+    private String contentDocumentId(ReindexingEvent event)
+    {
+        return extractUuid(getResourceId(event));
     }
 
     private Optional<String> getMimeType(ReindexingEvent event)

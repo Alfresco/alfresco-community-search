@@ -42,4 +42,8 @@ public class ElasticsearchProperties
 {
     private String indexName;
     private int retryOnConflict;
+    /**
+     * When {@code true}, content writes that carry no fingerprint (and transformation-failure writes) remove the content fingerprint field, so a stale value cannot outlive the content it was computed from. Leave {@code false} for callers that never write the field; their requests are then unchanged.
+     */
+    private boolean contentFingerprintManaged;
 }

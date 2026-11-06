@@ -51,6 +51,7 @@ import org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
 import org.opensearch.client.opensearch.core.bulk.OperationType;
 
 import org.alfresco.indexing.shared.ElasticsearchProperties;
+import org.alfresco.indexing.shared.exception.ContentClearException;
 import org.alfresco.indexing.shared.opensearch.command.ContentClearCmd;
 import org.alfresco.indexing.shared.opensearch.request.ContentRequestBuilder;
 
@@ -110,8 +111,20 @@ class OpensearchContentModifierClearTest
         assertThatThrownBy(() -> modifier.clearContents(List.of(
                 new ContentClearCmd("a", CONTENT_TIMESTAMP, CONFLICT_CUTOFF),
                 new ContentClearCmd("b", CONTENT_TIMESTAMP, CONFLICT_CUTOFF))))
-                        .isInstanceOf(IllegalStateException.class)
+                        .isInstanceOf(ContentClearException.class)
                         .hasMessage("Failed to clear excluded content for 1 of 2 nodes");
+    }
+
+    @Test
+    @DisplayName("a failure to send the clear is reported as a content clear failure")
+    void sendFailureFailsTheClear()
+    {
+        var cause = new RuntimeException("connection refused");
+        when(opensearchUpdater.sendBulk(any(BulkRequest.class), anyString())).thenThrow(cause);
+
+        assertThatThrownBy(() -> modifier.clearContents(List.of(new ContentClearCmd("a", CONTENT_TIMESTAMP, CONFLICT_CUTOFF))))
+                .isInstanceOf(ContentClearException.class)
+                .hasCause(cause);
     }
 
     @Test

@@ -159,7 +159,7 @@ public class ContentTransformDirectWriter implements ItemStreamWriter<Reindexing
     /**
      * Clears anything an excluded node still has indexed, in one bulk request per chunk. The content stage runs even when metadata indexing is switched off, so without this the exclusion would leave stale text and transform status behind in that configuration.
      * <p>
-     * The cutoff is the reindex start time, matching the metadata path, so content indexed after the reindex began is kept. Failures propagate so the chunk is retried instead of advancing past a node that still holds stale content.
+     * The cutoff is the reindex start time, matching the metadata path, so content indexed after the reindex began is kept. A failure propagates as {@code ContentClearException}, which the step retries but never skips, so the step cannot complete while a node still holds stale content.
      */
     private void clearExcludedContent(Chunk<? extends ReindexingEvent> chunk)
     {

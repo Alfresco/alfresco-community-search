@@ -30,7 +30,6 @@ import static java.util.Optional.ofNullable;
 
 import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.*;
 import static org.alfresco.indexing.shared.utils.EsScriptUtils.archiveDocumentScriptSource;
-import static org.alfresco.indexing.shared.utils.EsScriptUtils.contentExclusionScriptSource;
 import static org.alfresco.indexing.shared.utils.EsScriptUtils.contentInProgressScriptSource;
 import static org.alfresco.indexing.shared.utils.EsScriptUtils.deleteDocumentScriptSource;
 import static org.alfresco.indexing.shared.utils.EsScriptUtils.removeFieldScriptSource;
@@ -46,7 +45,6 @@ import org.opensearch.client.opensearch._types.Script;
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.client.opensearch.core.bulk.UpdateOperation;
 
-import org.alfresco.elasticsearch.shared.translator.AlfrescoQualifiedNameTranslator;
 import org.alfresco.indexing.shared.ElasticsearchProperties;
 import org.alfresco.indexing.shared.extractor.EncodedFields;
 import org.alfresco.indexing.shared.extractor.EncodedFieldsExtractor;
@@ -61,10 +59,6 @@ import org.alfresco.repo.event.v1.model.RepoEvent;
 @SuppressWarnings("PMD.AbstractClassWithoutAbstractMethod")
 public abstract class AbstractElasticsearchRequestBuilder
 {
-    protected static final String ENCODED_CM_CONTENT = "cm%3Acontent";
-    protected static final String ENCODED_CM_CONTENT_TR_STATUS = AlfrescoQualifiedNameTranslator.encode(CM_CONTENT_TR_STATUS);
-    protected static final String ENCODED_CM_CONTENT_TR_EX = AlfrescoQualifiedNameTranslator.encode(CM_CONTENT_TR_EX);
-
     protected final ElasticsearchProperties elasticsearchProperties;
     protected final EncodedFieldsExtractor encodedFieldsExtractor;
 
@@ -100,13 +94,7 @@ public abstract class AbstractElasticsearchRequestBuilder
         var encodedFields = new EncodedFields();
         encodedFields.put(CONTENT_INDEXING_LAST_UPDATE, contentTimestamp);
         var fieldsMapping = encodedFields.getEncodedMapping();
-        // The cutoff is a script parameter only; the upsert document keeps just the stored fields.
-        Map<String, Object> scriptParams = new HashMap<>(fieldsMapping);
-        scriptParams.put(CONTENT_EXCLUSION_CUTOFF, conflictCutoff);
-        var script = EsScriptUtils.buildInlineScript(scriptParams,
-                contentExclusionScriptSource(fieldsMapping.keySet(),
-                        Set.of(ENCODED_CM_CONTENT, ENCODED_CM_CONTENT_TR_STATUS, ENCODED_CM_CONTENT_TR_EX)));
-        return createUpsertOperation(getIdFromEvent(event), fieldsMapping, script);
+        return createUpsertOperation(getIdFromEvent(event), fieldsMapping, EsScriptUtils.contentExclusionScript(fieldsMapping, conflictCutoff));
     }
 
     /** The node's content after this event, falling back to the previous content when the update does not restate it. */

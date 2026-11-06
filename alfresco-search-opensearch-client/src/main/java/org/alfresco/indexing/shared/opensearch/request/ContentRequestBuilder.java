@@ -39,9 +39,12 @@ import java.util.Set;
 
 import lombok.RequiredArgsConstructor;
 import org.opensearch.client.opensearch.core.UpdateRequest;
+import org.opensearch.client.opensearch.core.bulk.BulkOperation;
+import org.opensearch.client.opensearch.core.bulk.UpdateOperation;
 import org.springframework.stereotype.Component;
 
 import org.alfresco.indexing.shared.ElasticsearchProperties;
+import org.alfresco.indexing.shared.opensearch.command.ContentClearCmd;
 import org.alfresco.indexing.shared.opensearch.command.ContentIndexCmd;
 import org.alfresco.indexing.shared.utils.EsScriptUtils;
 
@@ -70,26 +73,19 @@ public class ContentRequestBuilder
 
     /**
      * Clears the content fields of an excluded node. Used by the content stage, which runs even when metadata indexing is switched off and so is the only thing that can clear in that configuration.
-     *
-     * @param conflictCutoff
-     *            content indexed after this point is newer than the exclusion and is left alone; {@code contentTimestamp} is what gets stored.
+     * <p>
+     * {@code contentTimestamp} is what gets stored. Content indexed after {@code conflictCutoff} is newer than the exclusion and is left alone.
      */
-    public UpdateRequest<?, ?> createExclusionRequest(String id, long contentTimestamp, long conflictCutoff)
+    public BulkOperation createExclusionBulkOperation(ContentClearCmd clear)
     {
-        Map<String, Object> fieldsToUpsert = new HashMap<>();
-        fieldsToUpsert.put(CONTENT_INDEXING_LAST_UPDATE, contentTimestamp);
-        Map<String, Object> scriptParams = new HashMap<>(fieldsToUpsert);
-        scriptParams.put(EsScriptUtils.CONTENT_EXCLUSION_CUTOFF, conflictCutoff);
-        var script = EsScriptUtils.buildInlineScript(scriptParams,
-                EsScriptUtils.contentExclusionScriptSource(fieldsToUpsert.keySet(),
-                        Set.of(ENCODED_CONTENT_TEXT, ENCODED_TR_STATUS, ENCODED_TR_EX)));
-        return new UpdateRequest.Builder<>()
+        Map<String, Object> fieldsToUpsert = Map.of(CONTENT_INDEXING_LAST_UPDATE, clear.contentTimestamp());
+        return new BulkOperation.Builder().update(new UpdateOperation.Builder<>()
                 .index(elasticsearchProperties.getIndexName())
                 .retryOnConflict(elasticsearchProperties.getRetryOnConflict())
-                .id(id)
+                .id(clear.id())
                 .upsert(fieldsToUpsert)
-                .script(script)
-                .build();
+                .script(EsScriptUtils.contentExclusionScript(fieldsToUpsert, clear.conflictCutoff()))
+                .build()).build();
     }
 
     private Map<String, Object> buildFieldsMapping(ContentIndexCmd contentIndexCmd)

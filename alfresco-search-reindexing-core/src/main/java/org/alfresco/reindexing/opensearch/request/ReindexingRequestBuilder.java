@@ -170,7 +170,15 @@ public class ReindexingRequestBuilder extends AbstractElasticsearchRequestBuilde
     }
 
     /**
-     * The content operation for a node. Exposed so the merged writer can issue it as its own bulk operation.
+     * Build the content transform-status upsert operation for a node, or empty when the node carries no transform status. Does not apply the content exclusion; use {@link #buildContentUpsertOperation(RepoEvent, long)} for that.
+     */
+    public Optional<BulkOperation> buildContentUpsertOperation(RepoEvent event)
+    {
+        return createContentUpsertRequest(event);
+    }
+
+    /**
+     * The content operation for a node, clearing it when the node is excluded by policy. Exposed so the merged writer can issue it as its own bulk operation.
      */
     public Optional<BulkOperation> buildContentUpsertOperation(RepoEvent event, long reindexingStartTime)
     {

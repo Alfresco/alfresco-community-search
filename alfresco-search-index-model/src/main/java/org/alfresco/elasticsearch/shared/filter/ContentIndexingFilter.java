@@ -28,9 +28,6 @@ package org.alfresco.elasticsearch.shared.filter;
 import static java.util.Locale.ENGLISH;
 
 import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -47,21 +44,11 @@ public class ContentIndexingFilter
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(ContentIndexingFilter.class);
     private static final long NO_SIZE_LIMIT = 0L;
-    private static final int MAX_LOGGED_SKIPS = 10_000;
     private static final String WILDCARD_SUFFIX = "/*";
     private static final ContentIndexingFilter ACCEPT_ALL = new ContentIndexingFilter(Set.of(), NO_SIZE_LIMIT);
 
     private final Set<String> excludedMimeTypes;
     private final long maxContentSizeBytes;
-
-    /** Skips already logged, keyed by node, mime type and size. Bounded so it cannot grow without limit. */
-    private final Map<String, Boolean> loggedSkips = Collections.synchronizedMap(new LinkedHashMap<>() {
-        @Override
-        protected boolean removeEldestEntry(Map.Entry<String, Boolean> eldest)
-        {
-            return size() > MAX_LOGGED_SKIPS;
-        }
-    });
 
     /** Matching is case-insensitive and blank entries are ignored. A {@code maxContentSizeBytes} of {@code 0} means no limit. */
     public ContentIndexingFilter(Collection<String> excludedMimeTypes, long maxContentSizeBytes)
@@ -89,12 +76,12 @@ public class ContentIndexingFilter
         }
         if (isExcludedMimeType(content.getMimeType()))
         {
-            logSkipOnce(nodeId, content, "mimetype=" + content.getMimeType() + " is excluded by policy");
+            LOGGER.debug("Content of node {} not indexed: mimetype={} is excluded by policy", nodeId, content.getMimeType());
             return false;
         }
         if (isOverMaxSize(content.getSizeInBytes()))
         {
-            logSkipOnce(nodeId, content, "sizeInBytes=" + content.getSizeInBytes() + " is above the limit of " + maxContentSizeBytes + " bytes");
+            LOGGER.debug("Content of node {} not indexed: sizeInBytes={} is above the limit of {} bytes", nodeId, content.getSizeInBytes(), maxContentSizeBytes);
             return false;
         }
         return true;
@@ -105,15 +92,6 @@ public class ContentIndexingFilter
     {
         return "ContentIndexingFilter[excludedMimeTypes=%s, maxContentSizeBytes=%s]"
                 .formatted(excludedMimeTypes, maxContentSizeBytes > NO_SIZE_LIMIT ? maxContentSizeBytes : "unlimited");
-    }
-
-    private void logSkipOnce(String nodeId, ContentInfo content, String reason)
-    {
-        String key = nodeId + "|" + content.getMimeType() + "|" + content.getSizeInBytes();
-        if (loggedSkips.put(key, Boolean.TRUE) == null)
-        {
-            LOGGER.debug("Content of node {} not indexed: {}", nodeId, reason);
-        }
     }
 
     private boolean isExcludedMimeType(String mimeType)

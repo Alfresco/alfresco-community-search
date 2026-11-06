@@ -25,10 +25,14 @@
  */
 package org.alfresco.elasticsearch.batchindexing.writers;
 
+import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.REINDEXING_START_TIME;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 import java.time.ZonedDateTime;
@@ -44,6 +48,7 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.batch.infrastructure.item.Chunk;
+import org.springframework.batch.infrastructure.item.ExecutionContext;
 
 import org.alfresco.elasticsearch.batchindexing.domain.transform.ContentTransformClient;
 import org.alfresco.elasticsearch.batchindexing.domain.transform.ContentTransformFailure;
@@ -124,7 +129,7 @@ class ContentTransformDirectWriterTest
 
             filteringWriter.write(Chunk.of(buildEvent(RESOURCE_UUID, NODE_DB_ID, MIME_TYPE)));
 
-            verify(contentModifyPort).clearContent(eq(RESOURCE_UUID), anyLong(), anyLong());
+            verify(contentModifyPort).clearContents(argThat(clears -> clears.size() == 1 && clears.get(0).id().equals(RESOURCE_UUID)));
             verifyNoInteractions(contentTransformClient);
         }
 
@@ -140,7 +145,7 @@ class ContentTransformDirectWriterTest
             filteringWriter.write(Chunk.of(buildEvent(RESOURCE_UUID, NODE_DB_ID, MIME_TYPE)));
 
             verifyNoInteractions(contentTransformClient);
-            verify(contentModifyPort).clearContent(eq(RESOURCE_UUID), anyLong(), anyLong());
+            verify(contentModifyPort).clearContents(argThat(clears -> clears.size() == 1 && clears.get(0).id().equals(RESOURCE_UUID)));
         }
 
         @Test
@@ -172,6 +177,56 @@ class ContentTransformDirectWriterTest
 
             verifyNoInteractions(contentTransformClient);
             verifyNoInteractions(contentModifyPort);
+        }
+    }
+
+    @Nested
+    @DisplayName("Exclusion clear")
+    class ExclusionClear
+    {
+        private ContentTransformDirectWriter excludingWriter()
+        {
+            return new ContentTransformDirectWriter(
+                    contentTransformSupportService, contentTransformClient, contentModifyPort, STORE_REF, 1, null, null,
+                    new ContentIndexingFilter(List.of(MIME_TYPE), 0L));
+        }
+
+        @Test
+        @DisplayName("Cutoff is the reindex start time from the step context, not the wall clock")
+        void cutoffIsReindexStartTime() throws Exception
+        {
+            var context = new ExecutionContext();
+            context.putLong(REINDEXING_START_TIME, 1234L);
+            var filteringWriter = excludingWriter();
+            filteringWriter.open(context);
+
+            filteringWriter.write(Chunk.of(buildEvent(RESOURCE_UUID, NODE_DB_ID, MIME_TYPE)));
+
+            verify(contentModifyPort).clearContents(argThat(clears -> clears.size() == 1 && clears.get(0).conflictCutoff() == 1234L));
+        }
+
+        @Test
+        @DisplayName("Excluded nodes in one chunk are cleared in a single batched call")
+        void clearsAreBatchedPerChunk() throws Exception
+        {
+            var filteringWriter = excludingWriter();
+
+            filteringWriter.write(Chunk.of(buildEvent(RESOURCE_UUID, NODE_DB_ID, MIME_TYPE),
+                    buildEvent("another-uuid", 99L, MIME_TYPE)));
+
+            verify(contentModifyPort, times(1)).clearContents(argThat(clears -> clears.size() == 2));
+        }
+
+        @Test
+        @DisplayName("A failed clear fails the chunk instead of being swallowed")
+        void clearFailurePropagates() throws Exception
+        {
+            var filteringWriter = excludingWriter();
+            doThrow(new IllegalStateException("bulk clear failed")).when(contentModifyPort).clearContents(anyList());
+
+            assertThatThrownBy(() -> filteringWriter.write(Chunk.of(buildEvent(RESOURCE_UUID, NODE_DB_ID, MIME_TYPE))))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessage("bulk clear failed");
         }
     }
 

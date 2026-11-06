@@ -34,6 +34,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -115,7 +116,7 @@ class ElasticSearchUpdateOperationsMergedContentTest
         assertThat(sentOperations()).hasSize(2);
     }
 
-    private List<BulkOperation> sentOperations() throws Exception
+    private List<BulkOperation> sentOperations() throws IOException
     {
         ArgumentCaptor<BulkRequest> captor = ArgumentCaptor.forClass(BulkRequest.class);
         verify(openSearchClient).bulk(captor.capture());

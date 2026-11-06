@@ -48,6 +48,8 @@ import org.opensearch.client.opensearch._types.Script;
 public class EsScriptUtils
 {
     private static final ObjectMapper OM = OpenSearchJsonMapperFactory.createObjectMapper();
+    private static final Set<String> ENCODED_CONTENT_FIELDS_TO_CLEAR = Set.of(encode(CONTENT_ATTRIBUTE_NAME),
+            encode(CM_CONTENT_TR_STATUS), encode(CM_CONTENT_TR_EX));
 
     /**
      * Build the Elasticsearch inline script with all fields passing to parameters.
@@ -96,9 +98,6 @@ public class EsScriptUtils
                 + "{ ctx._source." + timestamp + " = params." + timestamp + "; } "
                 + removeValuesFor(encodedFieldNamesToRemove) + "}";
     }
-
-    private static final Set<String> ENCODED_CONTENT_FIELDS_TO_CLEAR = Set.of(encode(CONTENT_ATTRIBUTE_NAME),
-            encode(CM_CONTENT_TR_STATUS), encode(CM_CONTENT_TR_EX));
 
     /** The exclusion script for a node: assigns {@code fieldsToUpsert} and drops the content, transform status and transform error. */
     public static Script contentExclusionScript(Map<String, Object> fieldsToUpsert, long conflictCutoff)

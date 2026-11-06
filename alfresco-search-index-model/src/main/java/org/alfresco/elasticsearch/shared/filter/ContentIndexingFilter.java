@@ -76,12 +76,18 @@ public class ContentIndexingFilter
         }
         if (isExcludedMimeType(content.getMimeType()))
         {
-            LOGGER.debug("Content of node {} not indexed: mimetype={} is excluded by policy", nodeId, content.getMimeType());
+            if (LOGGER.isDebugEnabled())
+            {
+                LOGGER.debug("Content of node {} not indexed: mimetype={} is excluded by policy", nodeId, content.getMimeType());
+            }
             return false;
         }
         if (isOverMaxSize(content.getSizeInBytes()))
         {
-            LOGGER.debug("Content of node {} not indexed: sizeInBytes={} is above the limit of {} bytes", nodeId, content.getSizeInBytes(), maxContentSizeBytes);
+            if (LOGGER.isDebugEnabled())
+            {
+                LOGGER.debug("Content of node {} not indexed: sizeInBytes={} is above the limit of {} bytes", nodeId, content.getSizeInBytes(), maxContentSizeBytes);
+            }
             return false;
         }
         return true;

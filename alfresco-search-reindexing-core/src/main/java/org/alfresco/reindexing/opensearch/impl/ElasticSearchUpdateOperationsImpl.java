@@ -141,6 +141,7 @@ public class ElasticSearchUpdateOperationsImpl implements ElasticSearchUpdateOpe
         openSearchClient.index(indexRequest);
     }
 
+    @SuppressWarnings({"PMD.SignatureDeclareThrowsException"})
     @Override
     public Map<String, Object> getDescriptorFromElasticsearch(String descriptorType) throws Exception
     {

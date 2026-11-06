@@ -42,6 +42,7 @@ import org.springframework.batch.infrastructure.item.ItemWriter;
 import org.alfresco.elasticsearch.batchindexing.domain.transform.ContentTransformClient;
 import org.alfresco.elasticsearch.batchindexing.domain.transform.ContentTransformFailure;
 import org.alfresco.elasticsearch.batchindexing.domain.transform.ContentTransformResult;
+import org.alfresco.elasticsearch.shared.filter.ContentIndexingFilter;
 import org.alfresco.indexing.shared.opensearch.ElasticsearchContentModifyPort;
 import org.alfresco.indexing.shared.opensearch.command.ContentIndexCmd;
 import org.alfresco.metrics.MetricsConstants;
@@ -72,6 +73,8 @@ public class ContentTransformDirectWriter implements ItemWriter<ReindexingEvent>
      * Optional. When null the writer only logs a WARN on 4xx and moves on; consumers that want a per-item hook (e.g. batch-indexing's DLQ) register a bean of this type.
      */
     private final ContentTransformFailureListener failureListener;
+    /** Excluded content is never fetched or transformed. Defaults to {@link ContentIndexingFilter#acceptAll()}. */
+    private final ContentIndexingFilter contentIndexingFilter;
 
     public ContentTransformDirectWriter(
             ContentTransformSupportService contentTransformSupportService,
@@ -102,10 +105,25 @@ public class ContentTransformDirectWriter implements ItemWriter<ReindexingEvent>
             ChunkWriteMetricsAccumulator writeMetricsAccumulator,
             ContentTransformFailureListener failureListener)
     {
+        this(contentTransformSupportService, contentTransformClient, contentModifyPort, storeRef, maxConcurrency,
+                writeMetricsAccumulator, failureListener, ContentIndexingFilter.acceptAll());
+    }
+
+    public ContentTransformDirectWriter(
+            ContentTransformSupportService contentTransformSupportService,
+            ContentTransformClient contentTransformClient,
+            ElasticsearchContentModifyPort contentModifyPort,
+            String storeRef,
+            int maxConcurrency,
+            ChunkWriteMetricsAccumulator writeMetricsAccumulator,
+            ContentTransformFailureListener failureListener,
+            ContentIndexingFilter contentIndexingFilter)
+    {
         if (storeRef == null || storeRef.isBlank())
         {
             throw new IllegalArgumentException("storeRef must not be null or blank");
         }
+        this.contentIndexingFilter = contentIndexingFilter;
         this.contentTransformSupportService = contentTransformSupportService;
         this.contentTransformClient = contentTransformClient;
         this.contentModifyPort = contentModifyPort;
@@ -118,6 +136,13 @@ public class ContentTransformDirectWriter implements ItemWriter<ReindexingEvent>
         {
             log.info("ContentTransformDirectWriter parallel mode enabled: {} threads", this.maxConcurrency);
         }
+    }
+
+    /** Dropped before the content fetch, so excluded nodes are neither downloaded nor transformed. */
+    private boolean isContentIndexableByPolicy(ReindexingEvent event)
+    {
+        NodeResource resource = event.getData().getResource();
+        return resource == null || contentIndexingFilter.isIndexable(resource.getId(), resource.getContent());
     }
 
     @PreDestroy
@@ -137,6 +162,7 @@ public class ContentTransformDirectWriter implements ItemWriter<ReindexingEvent>
     {
         List<? extends ReindexingEvent> events = chunk.getItems().stream()
                 .filter(contentTransformSupportService::isContentTransformSupported)
+                .filter(this::isContentIndexableByPolicy)
                 .toList();
 
         if (events.isEmpty())

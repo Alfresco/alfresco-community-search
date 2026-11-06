@@ -50,6 +50,7 @@ import org.alfresco.content.mediatype.AcceptedContentMediaTypesCacheProperties;
 import org.alfresco.database.connector.AlfrescoMetadataRepository;
 import org.alfresco.database.connector.model.AlfrescoNode;
 import org.alfresco.database.connector.model.TagData;
+import org.alfresco.elasticsearch.shared.filter.ContentIndexingFilter;
 import org.alfresco.indexing.shared.ElasticsearchFieldsPostProcessor;
 import org.alfresco.indexing.shared.ElasticsearchProperties;
 import org.alfresco.indexing.shared.config.FilteringConfig;
@@ -276,9 +277,11 @@ public class SharedBatchProcessingConfig
     @Bean
     ReindexEventTrStatusAdderProcessor reindexEventTrStatusAdderProcessor(
             ContentTransformSupportService contentTransformSupportService,
-            TransformStatusExtender transformStatusExtender)
+            TransformStatusExtender transformStatusExtender,
+            ObjectProvider<ContentIndexingFilter> contentIndexingFilter)
     {
-        return new ReindexEventTrStatusAdderProcessor(contentTransformSupportService, transformStatusExtender);
+        return new ReindexEventTrStatusAdderProcessor(contentTransformSupportService, transformStatusExtender,
+                contentIndexingFilter.getIfAvailable(ContentIndexingFilter::acceptAll));
     }
 
     @Bean("processors")

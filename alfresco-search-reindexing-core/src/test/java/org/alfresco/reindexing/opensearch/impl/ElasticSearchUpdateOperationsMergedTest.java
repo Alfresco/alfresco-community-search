@@ -100,7 +100,7 @@ class ElasticSearchUpdateOperationsMergedTest
         when(pathFieldsBuilder.buildFields(any(), anyLong()))
                 .thenReturn(Map.of("path", "p", "shared", "fromPath"));
         when(requestBuilder.buildReindexUpsertOperation(any(), any())).thenReturn(dummyOp("n1"));
-        when(requestBuilder.buildContentUpsertOperation(any())).thenReturn(Optional.of(dummyOp("n1-content")));
+        when(requestBuilder.buildContentUpsertOperation(any(), anyLong())).thenReturn(Optional.of(dummyOp("n1-content")));
         when(openSearchClient.bulk(any(BulkRequest.class)))
                 .thenReturn(bulkResponse(successItem("n1"), successItem("n1-content")));
 
@@ -117,7 +117,7 @@ class ElasticSearchUpdateOperationsMergedTest
 
         assertThat(dto.getNumberOfActions()).isEqualTo(1);
         assertThat(dto.getFailures()).isEmpty();
-        verify(requestBuilder).buildContentUpsertOperation(any());
+        verify(requestBuilder).buildContentUpsertOperation(any(), anyLong());
         verify(openSearchClient, times(1)).bulk(any(BulkRequest.class));
     }
 
@@ -149,7 +149,7 @@ class ElasticSearchUpdateOperationsMergedTest
         when(pathFieldsBuilder.buildFields(any(), anyLong()))
                 .thenReturn(Map.of("path", "p"));
         when(requestBuilder.buildReindexUpsertOperation(any(), any())).thenReturn(dummyOp("n1"));
-        when(requestBuilder.buildContentUpsertOperation(any())).thenReturn(Optional.of(dummyOp("n1-content")));
+        when(requestBuilder.buildContentUpsertOperation(any(), anyLong())).thenReturn(Optional.of(dummyOp("n1-content")));
         when(openSearchClient.bulk(any(BulkRequest.class)))
                 .thenReturn(bulkResponse(successItem("n1"), successItem("n1-content")));
 
@@ -158,7 +158,7 @@ class ElasticSearchUpdateOperationsMergedTest
         // archive delete is a soft-delete upsert (ALIVE=false), never a hard delete
         verify(requestBuilder).buildMetadataFields(any(), anyLong(), eq(false));
         verify(requestBuilder).buildReindexUpsertOperation(any(), any());
-        verify(requestBuilder).buildContentUpsertOperation(any());
+        verify(requestBuilder).buildContentUpsertOperation(any(), anyLong());
         verify(requestBuilder, never()).buildDeleteOperation(any());
         assertThat(dto.getNumberOfActions()).isEqualTo(1);
         assertThat(dto.getFailures()).isEmpty();

@@ -27,7 +27,6 @@ package org.alfresco.reindexing.processors;
 
 import static java.util.Optional.of;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.batch.infrastructure.item.ItemProcessor;
 
 import org.alfresco.elasticsearch.shared.filter.ContentIndexingFilter;
@@ -38,12 +37,25 @@ import org.alfresco.reindexing.model.ReindexingEvent;
 /**
  * The processor that adds the transformation status to the reindexing event.
  */
-@RequiredArgsConstructor
 public class ReindexEventTrStatusAdderProcessor implements ItemProcessor<ReindexingEvent, ReindexingEvent>
 {
     private final ContentTransformSupportService contentTransformSupportService;
     private final TransformStatusExtender trStatusExtender;
     private final ContentIndexingFilter contentIndexingFilter;
+
+    public ReindexEventTrStatusAdderProcessor(ContentTransformSupportService contentTransformSupportService,
+            TransformStatusExtender trStatusExtender)
+    {
+        this(contentTransformSupportService, trStatusExtender, ContentIndexingFilter.acceptAll());
+    }
+
+    public ReindexEventTrStatusAdderProcessor(ContentTransformSupportService contentTransformSupportService,
+            TransformStatusExtender trStatusExtender, ContentIndexingFilter contentIndexingFilter)
+    {
+        this.contentTransformSupportService = contentTransformSupportService;
+        this.trStatusExtender = trStatusExtender;
+        this.contentIndexingFilter = contentIndexingFilter;
+    }
 
     @Override
     public ReindexingEvent process(ReindexingEvent reindexingEvent)

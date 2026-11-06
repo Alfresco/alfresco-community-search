@@ -143,18 +143,21 @@ class ReindexingRequestBuilderTest
     }
 
     @Test
-    void shouldStampTheClearWithTheEventTimestampNotTheReindexStartTime()
+    void shouldStoreTheEventTimestampButDecideOnTheReindexStartTime()
     {
         var filteringBuilder = new ReindexingRequestBuilder(elasticsearchProperties, encodedFieldsExtractor,
                 new ContentIndexingFilter(List.of("application/pdf"), 0L));
         long eventTimestamp = ZonedDateTime.parse(EVENT_TIME).toInstant().toEpochMilli();
 
         BulkRequest bulkRequest = filteringBuilder.buildBulkRequest(List.of(contentEvent("application/pdf")), REINDEX_START);
+        String exclusion = serializeOperation(exclusionOperation(bulkRequest));
 
-        // A wall-clock stamp would be newer than any later transform reply, so the guard would block content coming back.
-        assertThat(serializeOperation(exclusionOperation(bulkRequest)))
-                .contains(String.valueOf(eventTimestamp))
-                .doesNotContain(String.valueOf(REINDEX_START));
+        // Storing the reindex start time would lock out later transform replies; deciding on the event timestamp would
+        // skip nodes whose indexed content is newer than their own event, such as after a database restore.
+        assertThat(exclusion)
+                .contains("\"CONTENT_INDEXING_LAST_UPDATE\":" + eventTimestamp)
+                .contains("\"CONTENT_EXCLUSION_CUTOFF\":" + REINDEX_START)
+                .contains("params.CONTENT_EXCLUSION_CUTOFF");
     }
 
     @Test

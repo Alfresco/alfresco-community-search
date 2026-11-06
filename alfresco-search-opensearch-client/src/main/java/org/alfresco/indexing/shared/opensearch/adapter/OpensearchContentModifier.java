@@ -46,4 +46,11 @@ public class OpensearchContentModifier implements ElasticsearchContentModifyPort
         var updateRequest = contentRequestBuilder.createUpsertRequest(contentIndexCmd);
         opensearchUpdater.sendUpdate(updateRequest, contentIndexCmd.id());
     }
+
+    @Override
+    public void clearContent(String nodeId, long contentTimestamp, long conflictCutoff)
+    {
+        var updateRequest = contentRequestBuilder.createExclusionRequest(nodeId, contentTimestamp, conflictCutoff);
+        opensearchUpdater.sendUpdate(updateRequest, nodeId);
+    }
 }

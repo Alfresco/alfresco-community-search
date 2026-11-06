@@ -28,15 +28,10 @@ package org.alfresco.indexing.shared.opensearch.request;
 import static java.util.Collections.emptyMap;
 import static java.util.Optional.ofNullable;
 
-import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.ALIVE;
-import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.CM_CONTENT_TR_EX;
-import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.CM_CONTENT_TR_STATUS;
-import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.CONTENT_INDEXING_LAST_UPDATE;
-import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.METADATA_INDEXING_LAST_UPDATE;
-import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.PATH_INDEXING_LAST_UPDATE;
+import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.*;
 import static org.alfresco.indexing.shared.utils.EsScriptUtils.archiveDocumentScriptSource;
+import static org.alfresco.indexing.shared.utils.EsScriptUtils.contentExclusionScriptSource;
 import static org.alfresco.indexing.shared.utils.EsScriptUtils.contentInProgressScriptSource;
-import static org.alfresco.indexing.shared.utils.EsScriptUtils.contentUpsertScriptSource;
 import static org.alfresco.indexing.shared.utils.EsScriptUtils.deleteDocumentScriptSource;
 import static org.alfresco.indexing.shared.utils.EsScriptUtils.removeFieldScriptSource;
 import static org.alfresco.indexing.shared.utils.EventUtils.getEventTimestamp;
@@ -96,15 +91,20 @@ public abstract class AbstractElasticsearchRequestBuilder
     }
 
     /**
-     * Drops the content fields of an excluded node: {@code cm:content} and any transform status or error. Clearing the status keeps the node healthy in search health checks. {@code contentTimestamp} is written to {@code CONTENT_INDEXING_LAST_UPDATE} and guards the script, so an older transform reply cannot undo this.
+     * Drops the content fields of an excluded node: {@code cm:content} and any transform status or error. Clearing the status keeps the node healthy in search health checks.
+     * <p>
+     * {@code contentTimestamp} is stored as {@code CONTENT_INDEXING_LAST_UPDATE}, so later writes carrying a node-derived timestamp are not locked out. {@code conflictCutoff} only decides whether to clear: anything indexed after it is newer than this operation and is left alone. Reindexing passes its start time here so the clear is not skipped for a node whose indexed content is newer than its own event.
      */
-    protected BulkOperation createContentExclusionRequest(RepoEvent event, long contentTimestamp)
+    protected BulkOperation createContentExclusionRequest(RepoEvent event, long contentTimestamp, long conflictCutoff)
     {
         var encodedFields = new EncodedFields();
         encodedFields.put(CONTENT_INDEXING_LAST_UPDATE, contentTimestamp);
         var fieldsMapping = encodedFields.getEncodedMapping();
-        var script = EsScriptUtils.buildInlineScript(fieldsMapping,
-                contentUpsertScriptSource(fieldsMapping.keySet(),
+        // The cutoff is a script parameter only; the upsert document keeps just the stored fields.
+        Map<String, Object> scriptParams = new HashMap<>(fieldsMapping);
+        scriptParams.put(CONTENT_EXCLUSION_CUTOFF, conflictCutoff);
+        var script = EsScriptUtils.buildInlineScript(scriptParams,
+                contentExclusionScriptSource(fieldsMapping.keySet(),
                         Set.of(ENCODED_CM_CONTENT, ENCODED_CM_CONTENT_TR_STATUS, ENCODED_CM_CONTENT_TR_EX)));
         return createUpsertOperation(getIdFromEvent(event), fieldsMapping, script);
     }

@@ -39,4 +39,9 @@ public interface ElasticsearchContentModifyPort
      *            the content indexing command
      */
     void upsertContent(ContentIndexCmd contentIndexCmd);
+
+    /**
+     * Clears the indexed content and transform status of a node excluded by the content indexing policy.
+     */
+    void clearContent(String nodeId, long contentTimestamp, long conflictCutoff);
 }

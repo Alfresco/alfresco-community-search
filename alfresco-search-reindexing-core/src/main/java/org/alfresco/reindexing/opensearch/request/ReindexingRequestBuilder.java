@@ -116,20 +116,20 @@ public class ReindexingRequestBuilder extends AbstractElasticsearchRequestBuilde
     {
         List<BulkOperation> result = new ArrayList<>();
         result.add(createReindexingMetadataUpsertRequest(event, reindexingStartTime, alive));
-        contentOperationFor(event).ifPresent(result::add);
+        contentOperationFor(event, reindexingStartTime).ifPresent(result::add);
         return result;
     }
 
     /**
      * Clears content and transform status for an excluded node, otherwise emits the normal transform-status upsert. Empty when an indexable node has no content.
      * <p>
-     * The clear is stamped with the event timestamp, like every other content writer. A wall-clock value would be newer than any later transform reply, so the script guard would then reject all future content writes for the node.
+     * The clear stores the event timestamp but is decided against the reindexing start time. Storing a wall-clock value would lock out later transform replies, while deciding on the event timestamp would skip nodes whose indexed content is newer than their own event, such as after a database restore.
      */
-    private Optional<BulkOperation> contentOperationFor(RepoEvent event)
+    private Optional<BulkOperation> contentOperationFor(RepoEvent event, long reindexingStartTime)
     {
         if (!contentIndexingFilter.isIndexable(getIdFromEvent(event), getContent(event)))
         {
-            return Optional.of(createContentExclusionRequest(event, getEventTimestamp(event)));
+            return Optional.of(createContentExclusionRequest(event, getEventTimestamp(event), reindexingStartTime));
         }
         return createContentUpsertRequest(event);
     }
@@ -172,9 +172,9 @@ public class ReindexingRequestBuilder extends AbstractElasticsearchRequestBuilde
     /**
      * The content operation for a node. Exposed so the merged writer can issue it as its own bulk operation.
      */
-    public Optional<BulkOperation> buildContentUpsertOperation(RepoEvent event)
+    public Optional<BulkOperation> buildContentUpsertOperation(RepoEvent event, long reindexingStartTime)
     {
-        return contentOperationFor(event);
+        return contentOperationFor(event, reindexingStartTime);
     }
 
     /**

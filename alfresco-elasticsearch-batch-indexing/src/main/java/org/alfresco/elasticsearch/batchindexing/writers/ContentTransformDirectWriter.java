@@ -141,8 +141,36 @@ public class ContentTransformDirectWriter implements ItemWriter<ReindexingEvent>
     /** Dropped before the content fetch, so excluded nodes are neither downloaded nor transformed. */
     private boolean isContentIndexableByPolicy(ReindexingEvent event)
     {
-        NodeResource resource = event.getData().getResource();
+        NodeResource resource = resourceOf(event);
         return resource == null || contentIndexingFilter.isIndexable(resource.getId(), resource.getContent());
+    }
+
+    private static NodeResource resourceOf(ReindexingEvent event)
+    {
+        return event.getData() == null ? null : event.getData().getResource();
+    }
+
+    /**
+     * Clears anything an excluded node still has indexed. The content stage runs even when metadata indexing is switched off, so without this the exclusion would leave stale text and transform status behind in that configuration.
+     */
+    private void clearExcludedContent(Chunk<? extends ReindexingEvent> chunk)
+    {
+        long now = System.currentTimeMillis();
+        chunk.getItems().stream()
+                .filter(event -> !isContentIndexableByPolicy(event))
+                .filter(event -> resourceOf(event) != null)
+                .forEach(event -> {
+                    NodeResource resource = resourceOf(event);
+                    try
+                    {
+                        contentModifyPort.clearContent(resource.getId(), getEventTimestamp(event), now);
+                    }
+                    catch (RuntimeException e)
+                    {
+                        // Best effort, like the rest of this writer: a failed clear must not fail the chunk.
+                        log.warn("Could not clear excluded content for node {}", resource.getId(), e);
+                    }
+                });
     }
 
     @PreDestroy
@@ -160,6 +188,8 @@ public class ContentTransformDirectWriter implements ItemWriter<ReindexingEvent>
     @Override
     public void write(Chunk<? extends ReindexingEvent> chunk) throws Exception
     {
+        clearExcludedContent(chunk);
+
         List<? extends ReindexingEvent> events = chunk.getItems().stream()
                 .filter(contentTransformSupportService::isContentTransformSupported)
                 .filter(this::isContentIndexableByPolicy)

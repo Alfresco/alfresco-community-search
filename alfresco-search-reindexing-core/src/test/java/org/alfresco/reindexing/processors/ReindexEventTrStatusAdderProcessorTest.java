@@ -146,6 +146,15 @@ class ReindexEventTrStatusAdderProcessorTest
     }
 
     @Test
+    @DisplayName("two-argument constructor is preserved for published-library consumers")
+    void twoArgumentConstructorStillExists()
+    {
+        var legacy = new ReindexEventTrStatusAdderProcessor(contentTransformSupportService, new TransformStatusExtender());
+
+        assertThat(legacy).isNotNull();
+    }
+
+    @Test
     @DisplayName("should not add transform status when content is excluded by the indexing filter")
     void shouldNotAddTrStatusForExcludedContent()
     {

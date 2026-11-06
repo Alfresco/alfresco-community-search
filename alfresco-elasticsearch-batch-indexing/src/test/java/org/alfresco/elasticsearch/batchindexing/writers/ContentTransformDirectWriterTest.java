@@ -112,7 +112,20 @@ class ContentTransformDirectWriterTest
             filteringWriter.write(Chunk.of(buildEvent(RESOURCE_UUID, NODE_DB_ID, MIME_TYPE)));
 
             verifyNoInteractions(contentTransformClient);
-            verifyNoInteractions(contentModifyPort);
+        }
+
+        @Test
+        @DisplayName("Excluded content is cleared from the index, so it is not left behind when metadata indexing is off")
+        void excludedContentIsCleared() throws Exception
+        {
+            var filteringWriter = new ContentTransformDirectWriter(
+                    contentTransformSupportService, contentTransformClient, contentModifyPort, STORE_REF, 1, null, null,
+                    new ContentIndexingFilter(List.of(MIME_TYPE), 0L));
+
+            filteringWriter.write(Chunk.of(buildEvent(RESOURCE_UUID, NODE_DB_ID, MIME_TYPE)));
+
+            verify(contentModifyPort).clearContent(eq(RESOURCE_UUID), anyLong(), anyLong());
+            verifyNoInteractions(contentTransformClient);
         }
 
         @Test
@@ -127,7 +140,7 @@ class ContentTransformDirectWriterTest
             filteringWriter.write(Chunk.of(buildEvent(RESOURCE_UUID, NODE_DB_ID, MIME_TYPE)));
 
             verifyNoInteractions(contentTransformClient);
-            verifyNoInteractions(contentModifyPort);
+            verify(contentModifyPort).clearContent(eq(RESOURCE_UUID), anyLong(), anyLong());
         }
 
         @Test

@@ -110,7 +110,7 @@ class ContentIndexingFilterTest
     }
 
     @Test
-    void toStringDescribesThePolicy()
+    void policyIsDescribedByToString()
     {
         assertThat(new ContentIndexingFilter(List.of("application/zip"), 2_097_152L).toString())
                 .contains("application/zip")

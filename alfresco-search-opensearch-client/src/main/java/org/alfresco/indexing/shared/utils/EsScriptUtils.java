@@ -29,10 +29,7 @@ import static java.util.Collections.emptyMap;
 
 import static org.opensearch.client.opensearch._types.BuiltinScriptLanguage.Painless;
 
-import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.CONTENT_INDEXING_LAST_UPDATE;
-import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.METADATA_INDEXING_LAST_UPDATE;
-import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.PATH_INDEXING_LAST_UPDATE;
-import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.REINDEXING_START_TIME;
+import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.*;
 import static org.alfresco.indexing.shared.utils.ArchiveFieldsScriptUtils.removeArchiveFieldsWhenAlive;
 
 import java.util.HashMap;
@@ -80,6 +77,22 @@ public class EsScriptUtils
     public static String contentUpsertScriptSource(Set<String> encodedFieldNamesToAssign, Set<String> encodedFieldNamesToRemove)
     {
         return "if (ctx._source." + CONTENT_INDEXING_LAST_UPDATE + " != null && ctx._source." + CONTENT_INDEXING_LAST_UPDATE + " > params." + CONTENT_INDEXING_LAST_UPDATE + ") "
+                + "{ ctx.op = 'noop'; } "
+                + "else "
+                + "{ " + assignValuesFor(encodedFieldNamesToAssign) + removeValuesFor(encodedFieldNamesToRemove) + "}";
+    }
+
+    /**
+     * Script-only parameter holding the point after which indexed content is considered newer than this operation. It is never written to the document.
+     */
+    public static final String CONTENT_EXCLUSION_CUTOFF = "CONTENT_EXCLUSION_CUTOFF";
+
+    /**
+     * Clears content fields unless the document was content indexed after the cutoff. The cutoff is a separate parameter from the timestamp being written, so a reindex can use its start time to decide whether to clear while still storing the node's own event timestamp. Using one value for both would either skip the clear or leave a stored timestamp no later write could beat.
+     */
+    public static String contentExclusionScriptSource(Set<String> encodedFieldNamesToAssign, Set<String> encodedFieldNamesToRemove)
+    {
+        return "if (ctx._source." + CONTENT_INDEXING_LAST_UPDATE + " != null && ctx._source." + CONTENT_INDEXING_LAST_UPDATE + " > params." + CONTENT_EXCLUSION_CUTOFF + ") "
                 + "{ ctx.op = 'noop'; } "
                 + "else "
                 + "{ " + assignValuesFor(encodedFieldNamesToAssign) + removeValuesFor(encodedFieldNamesToRemove) + "}";

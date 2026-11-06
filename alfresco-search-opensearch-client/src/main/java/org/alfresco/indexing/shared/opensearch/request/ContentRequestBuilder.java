@@ -68,6 +68,30 @@ public class ContentRequestBuilder
                 .build();
     }
 
+    /**
+     * Clears the content fields of an excluded node. Used by the content stage, which runs even when metadata indexing is switched off and so is the only thing that can clear in that configuration.
+     *
+     * @param conflictCutoff
+     *            content indexed after this point is newer than the exclusion and is left alone; {@code contentTimestamp} is what gets stored.
+     */
+    public UpdateRequest<?, ?> createExclusionRequest(String id, long contentTimestamp, long conflictCutoff)
+    {
+        Map<String, Object> fieldsToUpsert = new HashMap<>();
+        fieldsToUpsert.put(CONTENT_INDEXING_LAST_UPDATE, contentTimestamp);
+        Map<String, Object> scriptParams = new HashMap<>(fieldsToUpsert);
+        scriptParams.put(EsScriptUtils.CONTENT_EXCLUSION_CUTOFF, conflictCutoff);
+        var script = EsScriptUtils.buildInlineScript(scriptParams,
+                EsScriptUtils.contentExclusionScriptSource(fieldsToUpsert.keySet(),
+                        Set.of(ENCODED_CONTENT_TEXT, ENCODED_TR_STATUS, ENCODED_TR_EX)));
+        return new UpdateRequest.Builder<>()
+                .index(elasticsearchProperties.getIndexName())
+                .retryOnConflict(elasticsearchProperties.getRetryOnConflict())
+                .id(id)
+                .upsert(fieldsToUpsert)
+                .script(script)
+                .build();
+    }
+
     private Map<String, Object> buildFieldsMapping(ContentIndexCmd contentIndexCmd)
     {
         Map<String, Object> fields = new HashMap<>();

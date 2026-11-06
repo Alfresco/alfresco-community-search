@@ -69,34 +69,68 @@ public class EsScriptUtils
                 .build();
     }
 
+    /**
+     * Marks the node's content as about to be (re)transformed. A node excluded at or before this event's timestamp is being allowed again, so the exclusion marker is dropped and the stored timestamp is reset to this event's: nothing has written content since the exclusion, so a newer stored timestamp (e.g. left by a database restore) protects nothing and would only block the coming transform reply. An exclusion newer than this event keeps the normal ordering guard, so an out-of-order older event cannot reopen it.
+     */
     public static String contentInProgressScriptSource(Set<String> encodedFieldNamesToAssign)
     {
-        return "if (ctx._source." + CONTENT_INDEXING_LAST_UPDATE + " != null && ctx._source." + CONTENT_INDEXING_LAST_UPDATE + " >= params." + CONTENT_INDEXING_LAST_UPDATE + ") "
+        return "if (" + excludedAtOrBefore() + ") "
+                + "{ " + assignValuesFor(encodedFieldNamesToAssign) + removeExclusionMarker() + "} "
+                + "else if (ctx._source." + CONTENT_INDEXING_LAST_UPDATE + " != null && ctx._source." + CONTENT_INDEXING_LAST_UPDATE + " >= params." + CONTENT_INDEXING_LAST_UPDATE + ") "
                 + "{ ctx.op = 'noop'; } "
                 + "else "
                 + "{ " + assignValuesFor(encodedFieldNamesToAssign) + "}";
     }
 
+    /**
+     * Writes a transform reply. Noops for a reply that is older than the stored content, or not newer than an exclusion: such a reply was requested before the content was excluded and must not bring it back. A newer reply is for a later content version that was allowed, so it drops the exclusion marker.
+     */
     public static String contentUpsertScriptSource(Set<String> encodedFieldNamesToAssign, Set<String> encodedFieldNamesToRemove)
     {
-        return "if (ctx._source." + CONTENT_INDEXING_LAST_UPDATE + " != null && ctx._source." + CONTENT_INDEXING_LAST_UPDATE + " > params." + CONTENT_INDEXING_LAST_UPDATE + ") "
+        return "if ((ctx._source." + CONTENT_INDEXING_LAST_UPDATE + " != null && ctx._source." + CONTENT_INDEXING_LAST_UPDATE + " > params." + CONTENT_INDEXING_LAST_UPDATE + ") "
+                + "|| (ctx._source." + CONTENT_INDEXING_EXCLUDED_AT + " != null && ctx._source." + CONTENT_INDEXING_EXCLUDED_AT + " >= params." + CONTENT_INDEXING_LAST_UPDATE + ")) "
                 + "{ ctx.op = 'noop'; } "
                 + "else "
-                + "{ " + assignValuesFor(encodedFieldNamesToAssign) + removeValuesFor(encodedFieldNamesToRemove) + "}";
+                + "{ " + assignValuesFor(encodedFieldNamesToAssign) + removeValuesFor(encodedFieldNamesToRemove) + removeExclusionMarker() + "}";
+    }
+
+    /**
+     * Writes content whose writer has itself just checked the content indexing policy for this content version (the batch-indexing direct writer). It may therefore lift an exclusion at or before its timestamp, exactly like {@link #contentInProgressScriptSource(Set)}, which covers the case where metadata indexing is switched off and nothing else resets the marker. Otherwise behaves like {@link #contentUpsertScriptSource(Set, Set)}.
+     */
+    public static String policyCheckedContentUpsertScriptSource(Set<String> encodedFieldNamesToAssign, Set<String> encodedFieldNamesToRemove)
+    {
+        return "if (" + excludedAtOrBefore() + ") "
+                + "{ " + assignValuesFor(encodedFieldNamesToAssign) + removeValuesFor(encodedFieldNamesToRemove) + removeExclusionMarker() + "} "
+                + "else " + contentUpsertScriptSource(encodedFieldNamesToAssign, encodedFieldNamesToRemove);
     }
 
     /**
      * Clears content fields unless the document was content indexed after the cutoff. The cutoff is a separate parameter from the timestamp being written, so a reindex can use its start time to decide whether to clear while still storing the node's own event timestamp. The stored timestamp only moves forward, so a clear can never reopen the guard for an older transform reply.
+     * <p>
+     * The excluded content version is recorded in {@link org.alfresco.elasticsearch.shared.ElasticsearchConstants#CONTENT_INDEXING_EXCLUDED_AT}, so a transform reply for that same version that arrives after the clear is rejected by {@link #contentUpsertScriptSource(Set, Set)}.
      */
     public static String contentExclusionScriptSource(Set<String> encodedFieldNamesToRemove)
     {
         String timestamp = CONTENT_INDEXING_LAST_UPDATE;
+        String excludedAt = CONTENT_INDEXING_EXCLUDED_AT;
         return "if (ctx._source." + timestamp + " != null && ctx._source." + timestamp + " > params." + CONTENT_EXCLUSION_CUTOFF + ") "
                 + "{ ctx.op = 'noop'; } "
                 + "else "
                 + "{ if (ctx._source." + timestamp + " == null || ctx._source." + timestamp + " < params." + timestamp + ") "
                 + "{ ctx._source." + timestamp + " = params." + timestamp + "; } "
+                + "if (ctx._source." + excludedAt + " == null || ctx._source." + excludedAt + " < params." + timestamp + ") "
+                + "{ ctx._source." + excludedAt + " = params." + timestamp + "; } "
                 + removeValuesFor(encodedFieldNamesToRemove) + "}";
+    }
+
+    private static String excludedAtOrBefore()
+    {
+        return "ctx._source." + CONTENT_INDEXING_EXCLUDED_AT + " != null && ctx._source." + CONTENT_INDEXING_EXCLUDED_AT + " <= params." + CONTENT_INDEXING_LAST_UPDATE;
+    }
+
+    private static String removeExclusionMarker()
+    {
+        return removeFieldScriptSource(CONTENT_INDEXING_EXCLUDED_AT);
     }
 
     /** The exclusion script for a node: assigns {@code fieldsToUpsert} and drops the content, transform status and transform error. */

@@ -271,6 +271,9 @@ class ContentTransformDirectWriterTest
             assertThat(captured.id()).isEqualTo(RESOURCE_UUID);
             assertThat(captured.updateTime()).isEqualTo(EVENT_TIME.toInstant().toEpochMilli());
             assertThat(captured.contentText()).isEqualTo(TRANSFORMED_TEXT);
+            assertThat(captured.clearsExclusion())
+                    .as("the direct writer checks the policy itself, so it may lift an earlier exclusion")
+                    .isTrue();
         }
     }
 

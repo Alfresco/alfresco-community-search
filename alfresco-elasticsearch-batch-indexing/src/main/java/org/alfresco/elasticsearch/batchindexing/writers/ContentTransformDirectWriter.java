@@ -305,8 +305,9 @@ public class ContentTransformDirectWriter implements ItemStreamWriter<Reindexing
             {
                 String uuid = extractUuid(resourceId);
                 long modifiedAt = getEventTimestamp(event);
+                // This writer checked the content indexing policy itself, so it may lift an earlier exclusion of this version.
                 ContentIndexCmd contentIndexCmd = ContentIndexCmd.withTextScript(
-                        uuid, modifiedAt, result.text().get());
+                        uuid, modifiedAt, result.text().get()).policyChecked();
                 contentModifyPort.upsertContent(contentIndexCmd);
 
                 log.debug("Successfully transformed and indexed content for {}", resourceId);

@@ -141,6 +141,7 @@ public class ElasticSearchUpdateOperationsImpl implements ElasticSearchUpdateOpe
         openSearchClient.index(indexRequest);
     }
 
+    @SuppressWarnings({"PMD.SignatureDeclareThrowsException"})
     @Override
     public Map<String, Object> getDescriptorFromElasticsearch(String descriptorType) throws Exception
     {
@@ -228,7 +229,7 @@ public class ElasticSearchUpdateOperationsImpl implements ElasticSearchUpdateOpe
                 // sequential order (path writer ran after metadata) for any overlapping keys.
                 ops.add(reindexingRequestBuilder.buildReindexUpsertOperation(repoEvent,
                         buildCombinedFields(event, reindexingStartTime, true)));
-                reindexingRequestBuilder.buildContentUpsertOperation(repoEvent).ifPresent(ops::add);
+                reindexingRequestBuilder.buildContentUpsertOperation(repoEvent, reindexingStartTime).ifPresent(ops::add);
                 nodeCount++;
             }
             else if (NODE_DELETED.getType().equals(eventType))
@@ -239,7 +240,7 @@ public class ElasticSearchUpdateOperationsImpl implements ElasticSearchUpdateOpe
                     // mark it soft-deleted (ALIVE=false), mirroring the non-merged writer path.
                     ops.add(reindexingRequestBuilder.buildReindexUpsertOperation(repoEvent,
                             buildCombinedFields(event, reindexingStartTime, false)));
-                    reindexingRequestBuilder.buildContentUpsertOperation(repoEvent).ifPresent(ops::add);
+                    reindexingRequestBuilder.buildContentUpsertOperation(repoEvent, reindexingStartTime).ifPresent(ops::add);
                 }
                 else
                 {

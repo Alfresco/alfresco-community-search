@@ -25,6 +25,9 @@
  */
 package org.alfresco.indexing.shared.opensearch;
 
+import java.util.List;
+
+import org.alfresco.indexing.shared.opensearch.command.ContentClearCmd;
 import org.alfresco.indexing.shared.opensearch.command.ContentIndexCmd;
 
 /**
@@ -39,4 +42,12 @@ public interface ElasticsearchContentModifyPort
      *            the content indexing command
      */
     void upsertContent(ContentIndexCmd contentIndexCmd);
+
+    /**
+     * Clears the indexed content and transform status of several excluded nodes in one bulk request. Fails if any of them could not be cleared.
+     *
+     * @param clears
+     *            the clear commands, one per node
+     */
+    void clearContents(List<ContentClearCmd> clears);
 }

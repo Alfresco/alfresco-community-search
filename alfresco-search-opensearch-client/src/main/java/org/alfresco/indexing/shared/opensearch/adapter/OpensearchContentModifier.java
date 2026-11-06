@@ -25,9 +25,14 @@
  */
 package org.alfresco.indexing.shared.opensearch.adapter;
 
+import java.util.List;
+
 import lombok.RequiredArgsConstructor;
+import org.opensearch.client.opensearch.core.BulkRequest;
+import org.opensearch.client.opensearch.core.BulkResponse;
 
 import org.alfresco.indexing.shared.opensearch.ElasticsearchContentModifyPort;
+import org.alfresco.indexing.shared.opensearch.command.ContentClearCmd;
 import org.alfresco.indexing.shared.opensearch.command.ContentIndexCmd;
 import org.alfresco.indexing.shared.opensearch.request.ContentRequestBuilder;
 
@@ -45,5 +50,24 @@ public class OpensearchContentModifier implements ElasticsearchContentModifyPort
     {
         var updateRequest = contentRequestBuilder.createUpsertRequest(contentIndexCmd);
         opensearchUpdater.sendUpdate(updateRequest, contentIndexCmd.id());
+    }
+
+    @Override
+    public void clearContents(List<ContentClearCmd> clears)
+    {
+        if (clears.isEmpty())
+        {
+            return;
+        }
+        var bulkRequest = new BulkRequest.Builder()
+                .operations(clears.stream().map(contentRequestBuilder::createExclusionBulkOperation).toList())
+                .build();
+        BulkResponse response = opensearchUpdater.sendBulk(bulkRequest, "excluded content");
+        if (response.errors())
+        {
+            long failed = response.items().stream().filter(item -> item.error() != null).count();
+            throw new IllegalStateException(
+                    "Failed to clear excluded content for %d of %d nodes".formatted(failed, clears.size()));
+        }
     }
 }

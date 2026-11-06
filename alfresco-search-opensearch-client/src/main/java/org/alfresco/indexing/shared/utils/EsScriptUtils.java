@@ -29,10 +29,8 @@ import static java.util.Collections.emptyMap;
 
 import static org.opensearch.client.opensearch._types.BuiltinScriptLanguage.Painless;
 
-import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.CONTENT_INDEXING_LAST_UPDATE;
-import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.METADATA_INDEXING_LAST_UPDATE;
-import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.PATH_INDEXING_LAST_UPDATE;
-import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.REINDEXING_START_TIME;
+import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.*;
+import static org.alfresco.elasticsearch.shared.translator.AlfrescoQualifiedNameTranslator.encode;
 import static org.alfresco.indexing.shared.utils.ArchiveFieldsScriptUtils.removeArchiveFieldsWhenAlive;
 
 import java.util.HashMap;
@@ -50,6 +48,8 @@ import org.opensearch.client.opensearch._types.Script;
 public class EsScriptUtils
 {
     private static final ObjectMapper OM = OpenSearchJsonMapperFactory.createObjectMapper();
+    private static final Set<String> ENCODED_CONTENT_FIELDS_TO_CLEAR = Set.of(encode(CONTENT_ATTRIBUTE_NAME),
+            encode(CM_CONTENT_TR_STATUS), encode(CM_CONTENT_TR_EX));
 
     /**
      * Build the Elasticsearch inline script with all fields passing to parameters.
@@ -83,6 +83,29 @@ public class EsScriptUtils
                 + "{ ctx.op = 'noop'; } "
                 + "else "
                 + "{ " + assignValuesFor(encodedFieldNamesToAssign) + removeValuesFor(encodedFieldNamesToRemove) + "}";
+    }
+
+    /**
+     * Clears content fields unless the document was content indexed after the cutoff. The cutoff is a separate parameter from the timestamp being written, so a reindex can use its start time to decide whether to clear while still storing the node's own event timestamp. The stored timestamp only moves forward, so a clear can never reopen the guard for an older transform reply.
+     */
+    public static String contentExclusionScriptSource(Set<String> encodedFieldNamesToRemove)
+    {
+        String timestamp = CONTENT_INDEXING_LAST_UPDATE;
+        return "if (ctx._source." + timestamp + " != null && ctx._source." + timestamp + " > params." + CONTENT_EXCLUSION_CUTOFF + ") "
+                + "{ ctx.op = 'noop'; } "
+                + "else "
+                + "{ if (ctx._source." + timestamp + " == null || ctx._source." + timestamp + " < params." + timestamp + ") "
+                + "{ ctx._source." + timestamp + " = params." + timestamp + "; } "
+                + removeValuesFor(encodedFieldNamesToRemove) + "}";
+    }
+
+    /** The exclusion script for a node: assigns {@code fieldsToUpsert} and drops the content, transform status and transform error. */
+    public static Script contentExclusionScript(Map<String, Object> fieldsToUpsert, long conflictCutoff)
+    {
+        Map<String, Object> scriptParams = new HashMap<>(fieldsToUpsert);
+        scriptParams.put(CONTENT_EXCLUSION_CUTOFF, conflictCutoff);
+        return buildInlineScript(scriptParams,
+                contentExclusionScriptSource(ENCODED_CONTENT_FIELDS_TO_CLEAR));
     }
 
     public static String pathUpsertScriptSource(Set<String> encodedFieldNames)

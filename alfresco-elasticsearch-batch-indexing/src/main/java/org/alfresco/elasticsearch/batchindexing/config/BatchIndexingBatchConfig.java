@@ -41,6 +41,7 @@ import org.alfresco.elasticsearch.batchindexing.cascade.CascadeCollectorWriter;
 import org.alfresco.elasticsearch.batchindexing.domain.transform.ContentTransformClient;
 import org.alfresco.elasticsearch.batchindexing.writers.ContentTransformDirectWriter;
 import org.alfresco.elasticsearch.batchindexing.writers.ContentTransformFailureListener;
+import org.alfresco.elasticsearch.shared.filter.ContentIndexingFilter;
 import org.alfresco.indexing.shared.opensearch.ElasticsearchContentModifyPort;
 import org.alfresco.metrics.MetricsBeansConfig;
 import org.alfresco.metrics.MetricsConstants;
@@ -74,13 +75,14 @@ public class BatchIndexingBatchConfig
             ChunkWriteMetricsAccumulator chunkWriteMetricsAccumulator,
             @Value("${alfresco.storeRef:workspace://SpacesStore/}") String storeRef,
             @Value("${alfresco.content.transform.writeConcurrency:1}") int writeConcurrency,
-            ObjectProvider<ContentTransformFailureListener> failureListener)
+            ObjectProvider<ContentTransformFailureListener> failureListener,
+            ContentIndexingFilter contentIndexingFilter)
     {
         // ObjectProvider keeps the listener optional — batch-indexing registers one to feed its DLQ,
         // but the writer stays functional if the DLQ config is disabled.
         return new ContentTransformDirectWriter(contentTransformSupportService, contentTransformClient,
                 contentModifyPort, storeRef, writeConcurrency, chunkWriteMetricsAccumulator,
-                failureListener.getIfAvailable());
+                failureListener.getIfAvailable(), contentIndexingFilter);
     }
 
     /* destroyMethod="" prevents Spring from auto-detecting close() on the CompositeItemWriter and re-invoking it at context shutdown; Spring Batch already closes it (and cascades to the ItemStream delegates below) at end-of-step. Mirrors the reindexing module's writer bean. */

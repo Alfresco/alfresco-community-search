@@ -39,9 +39,12 @@ import java.util.Set;
 
 import lombok.RequiredArgsConstructor;
 import org.opensearch.client.opensearch.core.UpdateRequest;
+import org.opensearch.client.opensearch.core.bulk.BulkOperation;
+import org.opensearch.client.opensearch.core.bulk.UpdateOperation;
 import org.springframework.stereotype.Component;
 
 import org.alfresco.indexing.shared.ElasticsearchProperties;
+import org.alfresco.indexing.shared.opensearch.command.ContentClearCmd;
 import org.alfresco.indexing.shared.opensearch.command.ContentIndexCmd;
 import org.alfresco.indexing.shared.utils.EsScriptUtils;
 
@@ -66,6 +69,23 @@ public class ContentRequestBuilder
                 .upsert(fieldsToUpsert)
                 .script(script)
                 .build();
+    }
+
+    /**
+     * Clears the content fields of an excluded node. Used by the content stage, which runs even when metadata indexing is switched off and so is the only thing that can clear in that configuration.
+     * <p>
+     * {@code contentTimestamp} is what gets stored. Content indexed after {@code conflictCutoff} is newer than the exclusion and is left alone.
+     */
+    public BulkOperation createExclusionBulkOperation(ContentClearCmd clear)
+    {
+        Map<String, Object> fieldsToUpsert = Map.of(CONTENT_INDEXING_LAST_UPDATE, clear.contentTimestamp());
+        return new BulkOperation.Builder().update(new UpdateOperation.Builder<>()
+                .index(elasticsearchProperties.getIndexName())
+                .retryOnConflict(elasticsearchProperties.getRetryOnConflict())
+                .id(clear.id())
+                .upsert(fieldsToUpsert)
+                .script(EsScriptUtils.contentExclusionScript(fieldsToUpsert, clear.conflictCutoff()))
+                .build()).build();
     }
 
     private Map<String, Object> buildFieldsMapping(ContentIndexCmd contentIndexCmd)

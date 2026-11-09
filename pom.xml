@@ -467,18 +467,6 @@
                 </plugins>
             </build>
         </profile>
-        <!-- Deploys -A.x versions to internal releases; maven-release-slim enables it via prerelease-profile. -->
-        <profile>
-            <id>prerelease</id>
-            <distributionManagement>
-                <repository>
-                    <id>alfresco-releases</id>
-                    <name>Alfresco Internal Releases</name>
-                    <!-- TODO: switch to maven.artifacts.hyland.dev once its DNS record exists -->
-                    <url>https://maven.cloudsmith.io/hyland/alfresco-internal-releases/</url>
-                </repository>
-            </distributionManagement>
-        </profile>
     </profiles>
 
     <scm>

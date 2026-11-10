@@ -40,7 +40,7 @@
         <maven-antrun-plugin.version>3.1.0</maven-antrun-plugin.version>
 
         <!-- Alfresco dependencies -->
-        <acs.event.model.version>1.2.0-A.1</acs.event.model.version>
+        <acs.event.model.version>1.2.0-A.2</acs.event.model.version>
         <alfresco.database.connector.version>1.8.0</alfresco.database.connector.version>
         <dist.share.version>26.3.0-A.11</dist.share.version>
         <dist.postgres.version>16.6</dist.postgres.version>
@@ -62,7 +62,7 @@
         <dependency.hsqldb.version>2.7.4</dependency.hsqldb.version>
         <dependency.commons-compress.version>1.27.1</dependency.commons-compress.version>
         <jackson-2-bom.version>2.22.4</jackson-2-bom.version>
-        <jackson-bom.version>3.2.3</jackson-bom.version>
+        <jackson-bom.version>3.2.4</jackson-bom.version>
         <!-- Temporary override above the Spring Boot-managed Tomcat version.
         Intended to be removed once Spring Boot manages a safe Tomcat release. -->
         <dependency.tomcat.version>11.0.26</dependency.tomcat.version>

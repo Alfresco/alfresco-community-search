@@ -97,17 +97,12 @@ public class ContentRequestBuilder
 
     private String buildUpsertScript(ContentIndexCmd contentIndexCmd)
     {
-        boolean managed = elasticsearchProperties.isContentFingerprintManaged();
         boolean hasFingerprint = StringUtils.hasText(contentIndexCmd.contentFingerprint());
         return switch (contentIndexCmd.scriptType())
         {
         case EXCEPTION_SCRIPT -> {
             var encodedFieldNamesToAssign = Set.of(CONTENT_INDEXING_LAST_UPDATE, ENCODED_TR_STATUS, ENCODED_TR_EX);
-            var encodedFieldNamesToRemove = new HashSet<>(Set.of(ENCODED_CONTENT_TEXT));
-            if (managed)
-            {
-                encodedFieldNamesToRemove.add(ENCODED_FINGERPRINT);
-            }
+            var encodedFieldNamesToRemove = Set.of(ENCODED_CONTENT_TEXT, ENCODED_FINGERPRINT);
             yield contentUpsertScriptSource(encodedFieldNamesToAssign, encodedFieldNamesToRemove);
         }
         case TEXT_SCRIPT -> {
@@ -117,7 +112,7 @@ public class ContentRequestBuilder
             {
                 encodedFieldNamesToAssign.add(ENCODED_FINGERPRINT);
             }
-            else if (managed)
+            else
             {
                 encodedFieldNamesToRemove.add(ENCODED_FINGERPRINT);
             }

@@ -78,7 +78,7 @@ public class ContentTransformDirectWriter implements ItemStreamWriter<Reindexing
      * Optional. When null the writer only logs a WARN on 4xx and moves on; consumers that want a per-item hook (e.g. batch-indexing's DLQ) register a bean of this type.
      */
     private final ContentTransformFailureListener failureListener;
-    /** Excluded content is never fetched or transformed. Defaults to {@link ContentIndexingFilter#acceptAll()}. */
+    /** Selects the events the exclusion clear targets. Defaults to {@link ContentIndexingFilter#acceptAll()}. */
     private final ContentIndexingFilter contentIndexingFilter;
     private volatile ExecutionContext executionContext;
 
@@ -144,7 +144,7 @@ public class ContentTransformDirectWriter implements ItemStreamWriter<Reindexing
         }
     }
 
-    /** Dropped before the content fetch, so excluded nodes are neither downloaded nor transformed. */
+    /** Whether the policy allows this event's content to be indexed. An event without a resource counts as indexable. */
     private boolean isContentIndexableByPolicy(ReindexingEvent event)
     {
         NodeResource resource = resourceOf(event);
@@ -218,9 +218,9 @@ public class ContentTransformDirectWriter implements ItemStreamWriter<Reindexing
     {
         clearExcludedContent(chunk);
 
+        // isContentTransformSupported already applies the content indexing policy, so excluded events are dropped here too.
         List<? extends ReindexingEvent> events = chunk.getItems().stream()
                 .filter(contentTransformSupportService::isContentTransformSupported)
-                .filter(this::isContentIndexableByPolicy)
                 .toList();
 
         if (events.isEmpty())

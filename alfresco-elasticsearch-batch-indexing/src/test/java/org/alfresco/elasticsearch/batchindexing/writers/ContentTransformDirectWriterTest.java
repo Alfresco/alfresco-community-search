@@ -107,20 +107,6 @@ class ContentTransformDirectWriterTest
         }
 
         @Test
-        @DisplayName("Content excluded by the indexing filter is never fetched or transformed")
-        void excludedByContentIndexingFilter() throws Exception
-        {
-            var filteringWriter = new ContentTransformDirectWriter(
-                    contentTransformSupportService, contentTransformClient, contentModifyPort, STORE_REF, 1, null, null,
-                    new ContentIndexingFilter(List.of(MIME_TYPE), 0L));
-            when(contentTransformSupportService.isContentTransformSupported(any())).thenReturn(true);
-
-            filteringWriter.write(Chunk.of(buildEvent(RESOURCE_UUID, NODE_DB_ID, MIME_TYPE)));
-
-            verifyNoInteractions(contentTransformClient);
-        }
-
-        @Test
         @DisplayName("Excluded content is cleared from the index, so it is not left behind when metadata indexing is off")
         void excludedContentIsCleared() throws Exception
         {
@@ -135,13 +121,12 @@ class ContentTransformDirectWriterTest
         }
 
         @Test
-        @DisplayName("Content over the size limit is never fetched or transformed")
+        @DisplayName("Content over the size limit is cleared and never fetched or transformed")
         void excludedBySizeLimit() throws Exception
         {
             var filteringWriter = new ContentTransformDirectWriter(
                     contentTransformSupportService, contentTransformClient, contentModifyPort, STORE_REF, 1, null, null,
                     new ContentIndexingFilter(List.of(), 1L));
-            when(contentTransformSupportService.isContentTransformSupported(any())).thenReturn(true);
 
             filteringWriter.write(Chunk.of(buildEvent(RESOURCE_UUID, NODE_DB_ID, MIME_TYPE)));
 

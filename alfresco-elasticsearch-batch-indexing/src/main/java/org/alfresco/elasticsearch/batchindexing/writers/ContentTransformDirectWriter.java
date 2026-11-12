@@ -25,6 +25,7 @@
  */
 package org.alfresco.elasticsearch.batchindexing.writers;
 
+import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.REINDEXING_START_TIME;
 import static org.alfresco.indexing.shared.utils.EventUtils.getEventTimestamp;
 import static org.alfresco.indexing.shared.utils.NodeRefUtils.extractUuid;
 
@@ -37,12 +38,15 @@ import jakarta.annotation.PreDestroy;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.infrastructure.item.Chunk;
-import org.springframework.batch.infrastructure.item.ItemWriter;
+import org.springframework.batch.infrastructure.item.ExecutionContext;
+import org.springframework.batch.infrastructure.item.ItemStreamWriter;
 
 import org.alfresco.elasticsearch.batchindexing.domain.transform.ContentTransformClient;
 import org.alfresco.elasticsearch.batchindexing.domain.transform.ContentTransformFailure;
 import org.alfresco.elasticsearch.batchindexing.domain.transform.ContentTransformResult;
+import org.alfresco.elasticsearch.shared.filter.ContentIndexingFilter;
 import org.alfresco.indexing.shared.opensearch.ElasticsearchContentModifyPort;
+import org.alfresco.indexing.shared.opensearch.command.ContentClearCmd;
 import org.alfresco.indexing.shared.opensearch.command.ContentIndexCmd;
 import org.alfresco.metrics.MetricsConstants;
 import org.alfresco.reindexing.domain.transform.ContentTransformSupportService;
@@ -53,8 +57,10 @@ import org.alfresco.repo.event.v1.model.DataAttributes;
 import org.alfresco.repo.event.v1.model.NodeResource;
 
 @Slf4j
-public class ContentTransformDirectWriter implements ItemWriter<ReindexingEvent>
+public class ContentTransformDirectWriter implements ItemStreamWriter<ReindexingEvent>
 {
+    private static final long DEFAULT_REINDEXING_START_TIME = Long.MAX_VALUE;
+
     private final ContentTransformSupportService contentTransformSupportService;
     private final ContentTransformClient contentTransformClient;
     private final ElasticsearchContentModifyPort contentModifyPort;
@@ -72,6 +78,9 @@ public class ContentTransformDirectWriter implements ItemWriter<ReindexingEvent>
      * Optional. When null the writer only logs a WARN on 4xx and moves on; consumers that want a per-item hook (e.g. batch-indexing's DLQ) register a bean of this type.
      */
     private final ContentTransformFailureListener failureListener;
+    /** Selects the events the exclusion clear targets. Defaults to {@link ContentIndexingFilter#acceptAll()}. */
+    private final ContentIndexingFilter contentIndexingFilter;
+    private volatile ExecutionContext executionContext;
 
     public ContentTransformDirectWriter(
             ContentTransformSupportService contentTransformSupportService,
@@ -102,10 +111,25 @@ public class ContentTransformDirectWriter implements ItemWriter<ReindexingEvent>
             ChunkWriteMetricsAccumulator writeMetricsAccumulator,
             ContentTransformFailureListener failureListener)
     {
+        this(contentTransformSupportService, contentTransformClient, contentModifyPort, storeRef, maxConcurrency,
+                writeMetricsAccumulator, failureListener, ContentIndexingFilter.acceptAll());
+    }
+
+    public ContentTransformDirectWriter(
+            ContentTransformSupportService contentTransformSupportService,
+            ContentTransformClient contentTransformClient,
+            ElasticsearchContentModifyPort contentModifyPort,
+            String storeRef,
+            int maxConcurrency,
+            ChunkWriteMetricsAccumulator writeMetricsAccumulator,
+            ContentTransformFailureListener failureListener,
+            ContentIndexingFilter contentIndexingFilter)
+    {
         if (storeRef == null || storeRef.isBlank())
         {
             throw new IllegalArgumentException("storeRef must not be null or blank");
         }
+        this.contentIndexingFilter = contentIndexingFilter;
         this.contentTransformSupportService = contentTransformSupportService;
         this.contentTransformClient = contentTransformClient;
         this.contentModifyPort = contentModifyPort;
@@ -120,6 +144,61 @@ public class ContentTransformDirectWriter implements ItemWriter<ReindexingEvent>
         }
     }
 
+    /** Whether the policy allows this event's content to be indexed. An event without a resource counts as indexable. */
+    private boolean isContentIndexableByPolicy(ReindexingEvent event)
+    {
+        NodeResource resource = resourceOf(event);
+        return resource == null || contentIndexingFilter.isIndexable(resource.getId(), resource.getContent());
+    }
+
+    private static NodeResource resourceOf(ReindexingEvent event)
+    {
+        return event.getData() == null ? null : event.getData().getResource();
+    }
+
+    /**
+     * Clears anything an excluded node still has indexed, in one bulk request per chunk. The content stage runs even when metadata indexing is switched off, so without this the exclusion would leave stale text and transform status behind in that configuration.
+     * <p>
+     * The cutoff is the reindex start time, matching the metadata path, so content indexed after the reindex began is kept. A failure propagates as {@code ContentClearException}, which the step retries but never skips, so the step cannot complete while a node still holds stale content.
+     */
+    private void clearExcludedContent(Chunk<? extends ReindexingEvent> chunk)
+    {
+        long reindexingStartTime = reindexingStartTime();
+        List<ContentClearCmd> clears = chunk.getItems().stream()
+                .filter(event -> resourceOf(event) != null)
+                .filter(event -> !isContentIndexableByPolicy(event))
+                .map(event -> new ContentClearCmd(contentDocumentId(event), getEventTimestamp(event), reindexingStartTime))
+                .toList();
+        if (!clears.isEmpty())
+        {
+            contentModifyPort.clearContents(clears);
+        }
+    }
+
+    private long reindexingStartTime()
+    {
+        ExecutionContext context = executionContext;
+        return context == null ? DEFAULT_REINDEXING_START_TIME : context.getLong(REINDEXING_START_TIME, DEFAULT_REINDEXING_START_TIME);
+    }
+
+    @Override
+    public void open(ExecutionContext executionContext)
+    {
+        this.executionContext = executionContext;
+    }
+
+    @Override
+    public void update(ExecutionContext executionContext)
+    {
+        this.executionContext = executionContext;
+    }
+
+    @Override
+    public void close()
+    {
+        executionContext = null;
+    }
+
     @PreDestroy
     public void shutdown()
     {
@@ -130,11 +209,16 @@ public class ContentTransformDirectWriter implements ItemWriter<ReindexingEvent>
     }
 
     /**
-     * Failures are intentionally caught and logged rather than propagated to Spring Batch. Content transformation is a best-effort secondary indexing step — a failed transform should not cause the entire chunk to be retried or the step to fail, because the metadata and path indexing (handled by other writers) can still succeed. Non-retryable failures (e.g. ACS 4xx) are additionally forwarded to the optional {@link ContentTransformFailureListener} so an operator sees them in the DLQ; the affected nodes are otherwise still eligible for retry on the next reindexing window overlap.
+     * Transform failures are intentionally caught and logged rather than propagated to Spring Batch. Content transformation is a best-effort secondary indexing step — a failed transform should not cause the entire chunk to be retried or the step to fail, because the metadata and path indexing (handled by other writers) can still succeed. Non-retryable failures (e.g. ACS 4xx) are additionally forwarded to the optional {@link ContentTransformFailureListener} so an operator sees them in the DLQ; the affected nodes are otherwise still eligible for retry on the next reindexing window overlap.
+     * <p>
+     * The exclusion clear is different: a failed clear fails the chunk, so a node never keeps stale content behind a successful chunk.
      */
     @Override
     public void write(Chunk<? extends ReindexingEvent> chunk) throws Exception
     {
+        clearExcludedContent(chunk);
+
+        // isContentTransformSupported already applies the content indexing policy, so excluded events are dropped here too.
         List<? extends ReindexingEvent> events = chunk.getItems().stream()
                 .filter(contentTransformSupportService::isContentTransformSupported)
                 .toList();
@@ -219,7 +303,7 @@ public class ContentTransformDirectWriter implements ItemWriter<ReindexingEvent>
 
             if (result.text().isPresent())
             {
-                String uuid = extractUuid(resourceId);
+                String uuid = contentDocumentId(event);
                 long modifiedAt = getEventTimestamp(event);
                 ContentIndexCmd contentIndexCmd = ContentIndexCmd.withTextScript(
                         uuid, modifiedAt, result.text().get());
@@ -272,6 +356,12 @@ public class ContentTransformDirectWriter implements ItemWriter<ReindexingEvent>
     private String getResourceId(ReindexingEvent event)
     {
         return storeRef + event.getData().getResource().getId();
+    }
+
+    /** The index document id that content writes and exclusion clears both target, so a clear never misses the indexed text. */
+    private String contentDocumentId(ReindexingEvent event)
+    {
+        return extractUuid(getResourceId(event));
     }
 
     private Optional<String> getMimeType(ReindexingEvent event)

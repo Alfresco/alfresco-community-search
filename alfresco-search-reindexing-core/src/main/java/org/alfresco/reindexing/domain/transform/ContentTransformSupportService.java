@@ -30,9 +30,10 @@ import static java.util.Optional.ofNullable;
 
 import static org.alfresco.repo.event.util.DataAttributesUtils.containsNotBlankContent;
 
-import lombok.RequiredArgsConstructor;
+import java.util.Objects;
 
 import org.alfresco.content.mediatype.AcceptedContentMediaTypesCache;
+import org.alfresco.elasticsearch.shared.filter.ContentIndexingFilter;
 import org.alfresco.indexing.shared.config.FilteringConfig;
 import org.alfresco.reindexing.model.ReindexingEvent;
 import org.alfresco.repo.event.v1.model.*;
@@ -40,12 +41,29 @@ import org.alfresco.repo.event.v1.model.*;
 /**
  * The Domain Service containing business logic deciding if content transformation is supported in the event context.
  */
-@RequiredArgsConstructor
 public class ContentTransformSupportService
 {
     private static final String IS_CONTENT_INDEXED_PROPERTY = "cm:isContentIndexed";
     private final FilteringConfig filteringConfig;
     private final AcceptedContentMediaTypesCache mediaTypesCache;
+    private final ContentIndexingFilter contentIndexingFilter;
+
+    public ContentTransformSupportService(FilteringConfig filteringConfig, AcceptedContentMediaTypesCache mediaTypesCache)
+    {
+        this(filteringConfig, mediaTypesCache, ContentIndexingFilter.acceptAll());
+    }
+
+    /**
+     * @param contentIndexingFilter
+     *            content indexing policy (MIME type / size exclusions). Applied here so every content path (tr_status marking, direct and JMS content writers) honours it.
+     */
+    public ContentTransformSupportService(FilteringConfig filteringConfig, AcceptedContentMediaTypesCache mediaTypesCache,
+            ContentIndexingFilter contentIndexingFilter)
+    {
+        this.filteringConfig = filteringConfig;
+        this.mediaTypesCache = mediaTypesCache;
+        this.contentIndexingFilter = Objects.requireNonNull(contentIndexingFilter, "contentIndexingFilter must not be null");
+    }
 
     /**
      * Verifies if the content transformation is supported for the given reindexing event.
@@ -56,6 +74,7 @@ public class ContentTransformSupportService
                 .filter(reindexingEvent -> shouldContentBeIndexed(reindexingEvent.getRepoEvent()))
                 .filter(reindexingEvent -> containsNotBlankContent(reindexingEvent.getData()))
                 .filter(this::isContentRequestable)
+                .filter(this::isContentIndexableByPolicy)
                 .isPresent();
     }
 
@@ -89,5 +108,11 @@ public class ContentTransformSupportService
                 .map(ContentInfo::getMimeType)
                 .map(mediaTypesCache::isSupported)
                 .orElse(false);
+    }
+
+    private boolean isContentIndexableByPolicy(ReindexingEvent event)
+    {
+        NodeResource resource = event.getData().getResource();
+        return contentIndexingFilter.isIndexable(resource.getId(), resource.getContent());
     }
 }

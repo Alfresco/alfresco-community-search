@@ -30,6 +30,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 
+import org.alfresco.elasticsearch.shared.config.ContentIndexingFilterConfig;
 import org.alfresco.indexing.shared.ElasticsearchFieldsPostProcessor;
 import org.alfresco.indexing.shared.ElasticsearchProperties;
 import org.alfresco.indexing.shared.PropertiesDeterminingStrategy;
@@ -48,7 +49,8 @@ import org.alfresco.reindexing.writers.FailureSummary;
 import org.alfresco.reindexing.writers.ReindexPathFieldsBuilder;
 
 @Configuration
-@Import(MultilingualSupportSharedConfig.class)
+// ContentIndexingFilterConfig provides the content indexing policy used by the content transform decision; unset means index everything, as before.
+@Import({MultilingualSupportSharedConfig.class, ContentIndexingFilterConfig.class})
 public class ElasticSearchReIndexConfig
 {
     @Bean

@@ -31,6 +31,7 @@ import static org.mockito.Mockito.lenient;
 
 import static org.alfresco.repo.event.v1.model.EventType.NODE_CREATED;
 
+import java.util.List;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -45,6 +46,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import org.alfresco.content.mediatype.AcceptedContentMediaTypesCache;
+import org.alfresco.elasticsearch.shared.filter.ContentIndexingFilter;
 import org.alfresco.indexing.shared.config.FilteringConfig;
 import org.alfresco.reindexing.model.ReindexingEvent;
 import org.alfresco.repo.event.v1.model.ContentInfo;
@@ -155,6 +157,41 @@ class ContentTransformSupportServiceTest
 
         // then
         assertThat(res).isFalse();
+    }
+
+    @Test
+    @DisplayName("should not support content transform when content is excluded by the content indexing policy")
+    void shouldNotSupportWhenExcludedByContentIndexingPolicy()
+    {
+        // given
+        var excludingSut = new ContentTransformSupportService(filteringConfig, acceptedContentMediaTypesCache,
+                new ContentIndexingFilter(List.of(MEDIA_TYPE), 0L));
+        lenient().doReturn(true).when(filteringConfig).doesntContainContentNodeType(NODE_TYPE);
+        lenient().doReturn(true).when(acceptedContentMediaTypesCache).isSupported(MEDIA_TYPE);
+
+        // when
+        var res = excludingSut.isContentTransformSupported(buildFullEvent());
+
+        // then
+        assertThat(res).isFalse();
+    }
+
+    @ParameterizedTest(name = "[{index}] maxContentSize={0} -> supported={1}")
+    @CsvSource({"11,false", "12,true", "0,true"})
+    @DisplayName("should apply the content indexing policy size limit (content size is 12 bytes)")
+    void shouldApplyContentIndexingPolicySizeLimit(long maxContentSize, boolean expected)
+    {
+        // given
+        var sizeLimitedSut = new ContentTransformSupportService(filteringConfig, acceptedContentMediaTypesCache,
+                new ContentIndexingFilter(List.of(), maxContentSize));
+        doReturn(true).when(filteringConfig).doesntContainContentNodeType(NODE_TYPE);
+        doReturn(true).when(acceptedContentMediaTypesCache).isSupported(MEDIA_TYPE);
+
+        // when
+        var res = sizeLimitedSut.isContentTransformSupported(buildFullEvent());
+
+        // then
+        assertThat(res).isEqualTo(expected);
     }
 
     private static ReindexingEvent buildFullEvent()

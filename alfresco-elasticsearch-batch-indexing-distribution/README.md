@@ -32,6 +32,25 @@ docker run --rm \
   alfresco/alfresco-elasticsearch-batch-indexing:<version>
 ```
 
+## Content indexing filter
+
+Excludes content from content indexing by MIME type and by size, leaving metadata and path indexing
+unaffected. See the
+[batch-indexing README](../alfresco-elasticsearch-batch-indexing/README.md#content-indexing-filter)
+for the matching rules and for what happens to content that was indexed before the exclusion.
+
+```bash
+docker run --rm \
+  -e ALFRESCO_CONTENTINDEXING_FILTER_EXCLUDEDMIMETYPES='application/zip,video/*' \
+  -e ALFRESCO_CONTENTINDEXING_FILTER_MAXCONTENTSIZE=50MB \
+  ... \
+  alfresco/alfresco-elasticsearch-batch-indexing:<version>
+```
+
+Both are unset by default, which indexes all content. The names follow the usual mapping of
+`alfresco.content-indexing.filter.excluded-mime-types` onto an environment variable: dots become
+underscores, dashes are dropped, and the result is upper-cased.
+
 ## Recommended production configuration
 
 - **Database user (`SPRING_DATASOURCE_USERNAME`)**: grant `SELECT` only on the Alfresco schema. The indexer never issues `INSERT` / `UPDATE` / `DELETE` against the repository DB, so a SELECT-only role bounds the blast radius of a future regression.

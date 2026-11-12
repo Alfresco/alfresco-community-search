@@ -27,11 +27,17 @@ package org.alfresco.elasticsearch.batchindexing.writers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
+import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.REINDEXING_START_TIME;
+
 import java.time.ZonedDateTime;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -43,10 +49,12 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.batch.infrastructure.item.Chunk;
+import org.springframework.batch.infrastructure.item.ExecutionContext;
 
 import org.alfresco.elasticsearch.batchindexing.domain.transform.ContentTransformClient;
 import org.alfresco.elasticsearch.batchindexing.domain.transform.ContentTransformFailure;
 import org.alfresco.elasticsearch.batchindexing.domain.transform.ContentTransformResult;
+import org.alfresco.elasticsearch.shared.filter.ContentIndexingFilter;
 import org.alfresco.indexing.shared.opensearch.ElasticsearchContentModifyPort;
 import org.alfresco.indexing.shared.opensearch.command.ContentIndexCmd;
 import org.alfresco.reindexing.domain.transform.ContentTransformSupportService;
@@ -99,6 +107,48 @@ class ContentTransformDirectWriterTest
         }
 
         @Test
+        @DisplayName("Excluded content is cleared from the index, so it is not left behind when metadata indexing is off")
+        void excludedContentIsCleared() throws Exception
+        {
+            var filteringWriter = new ContentTransformDirectWriter(
+                    contentTransformSupportService, contentTransformClient, contentModifyPort, STORE_REF, 1, null, null,
+                    new ContentIndexingFilter(List.of(MIME_TYPE), 0L));
+
+            filteringWriter.write(Chunk.of(buildEvent(RESOURCE_UUID, NODE_DB_ID, MIME_TYPE)));
+
+            verify(contentModifyPort).clearContents(argThat(clears -> clears.size() == 1 && clears.get(0).id().equals(RESOURCE_UUID)));
+        }
+
+        @Test
+        @DisplayName("Content over the size limit is cleared from the index")
+        void excludedBySizeLimit() throws Exception
+        {
+            var filteringWriter = new ContentTransformDirectWriter(
+                    contentTransformSupportService, contentTransformClient, contentModifyPort, STORE_REF, 1, null, null,
+                    new ContentIndexingFilter(List.of(), 1L));
+
+            filteringWriter.write(Chunk.of(buildEvent(RESOURCE_UUID, NODE_DB_ID, MIME_TYPE)));
+
+            verify(contentModifyPort).clearContents(argThat(clears -> clears.size() == 1 && clears.get(0).id().equals(RESOURCE_UUID)));
+        }
+
+        @Test
+        @DisplayName("Content allowed by the indexing filter is still transformed")
+        void allowedByContentIndexingFilter() throws Exception
+        {
+            var filteringWriter = new ContentTransformDirectWriter(
+                    contentTransformSupportService, contentTransformClient, contentModifyPort, STORE_REF, 1, null, null,
+                    new ContentIndexingFilter(List.of("application/zip"), 0L));
+            when(contentTransformSupportService.isContentTransformSupported(any())).thenReturn(true);
+            when(contentTransformClient.transformContent(anyLong()))
+                    .thenReturn(ContentTransformResult.ofText(TRANSFORMED_TEXT));
+
+            filteringWriter.write(Chunk.of(buildEvent(RESOURCE_UUID, NODE_DB_ID, MIME_TYPE)));
+
+            verify(contentTransformClient).transformContent(NODE_DB_ID);
+        }
+
+        @Test
         @DisplayName("All items filtered out by ContentTransformSupportService produces no transform calls")
         void allItemsFilteredOut() throws Exception
         {
@@ -111,6 +161,72 @@ class ContentTransformDirectWriterTest
 
             verifyNoInteractions(contentTransformClient);
             verifyNoInteractions(contentModifyPort);
+        }
+    }
+
+    @Nested
+    @DisplayName("Exclusion clear")
+    class ExclusionClear
+    {
+        private ContentTransformDirectWriter excludingWriter()
+        {
+            return new ContentTransformDirectWriter(
+                    contentTransformSupportService, contentTransformClient, contentModifyPort, STORE_REF, 1, null, null,
+                    new ContentIndexingFilter(List.of(MIME_TYPE), 0L));
+        }
+
+        @Test
+        @DisplayName("Cutoff is the reindex start time from the step context, not the wall clock")
+        void cutoffIsReindexStartTime() throws Exception
+        {
+            var context = new ExecutionContext();
+            context.putLong(REINDEXING_START_TIME, 1234L);
+            var filteringWriter = excludingWriter();
+            filteringWriter.open(context);
+
+            filteringWriter.write(Chunk.of(buildEvent(RESOURCE_UUID, NODE_DB_ID, MIME_TYPE)));
+
+            verify(contentModifyPort).clearContents(argThat(clears -> clears.size() == 1 && clears.get(0).conflictCutoff() == 1234L));
+        }
+
+        @Test
+        @DisplayName("Excluded nodes in one chunk are cleared in a single batched call")
+        void clearsAreBatchedPerChunk() throws Exception
+        {
+            var filteringWriter = excludingWriter();
+
+            filteringWriter.write(Chunk.of(buildEvent(RESOURCE_UUID, NODE_DB_ID, MIME_TYPE),
+                    buildEvent("another-uuid", 99L, MIME_TYPE)));
+
+            verify(contentModifyPort, times(1)).clearContents(argThat(clears -> clears.size() == 2));
+        }
+
+        @Test
+        @DisplayName("A failed clear fails the chunk instead of being swallowed")
+        void clearFailurePropagates() throws Exception
+        {
+            var filteringWriter = excludingWriter();
+            doThrow(new IllegalStateException("bulk clear failed")).when(contentModifyPort).clearContents(anyList());
+
+            assertThatThrownBy(() -> filteringWriter.write(Chunk.of(buildEvent(RESOURCE_UUID, NODE_DB_ID, MIME_TYPE))))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessage("bulk clear failed");
+        }
+
+        @Test
+        @DisplayName("A clear targets the same document as the content write, even for a store-qualified resource id")
+        void clearUsesContentWriteDocumentId() throws Exception
+        {
+            ReindexingEvent event = buildEvent("workspace://SpacesStore/qualified-uuid", NODE_DB_ID, MIME_TYPE);
+            when(contentTransformSupportService.isContentTransformSupported(any())).thenReturn(true);
+            when(contentTransformClient.transformContent(NODE_DB_ID)).thenReturn(ContentTransformResult.ofText(TRANSFORMED_TEXT));
+            writer.write(Chunk.of(event));
+            verify(contentModifyPort).upsertContent(contentIndexCmdCaptor.capture());
+            String contentWriteId = contentIndexCmdCaptor.getValue().id();
+
+            excludingWriter().write(Chunk.of(event));
+
+            verify(contentModifyPort).clearContents(argThat(clears -> clears.size() == 1 && clears.get(0).id().equals(contentWriteId)));
         }
     }
 

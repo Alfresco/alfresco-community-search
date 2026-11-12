@@ -25,9 +25,17 @@
  */
 package org.alfresco.indexing.shared.opensearch.adapter;
 
-import lombok.RequiredArgsConstructor;
+import java.util.List;
+import java.util.stream.Collectors;
 
+import lombok.RequiredArgsConstructor;
+import org.opensearch.client.opensearch.core.BulkRequest;
+import org.opensearch.client.opensearch.core.BulkResponse;
+import org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
+
+import org.alfresco.indexing.shared.exception.ContentClearException;
 import org.alfresco.indexing.shared.opensearch.ElasticsearchContentModifyPort;
+import org.alfresco.indexing.shared.opensearch.command.ContentClearCmd;
 import org.alfresco.indexing.shared.opensearch.command.ContentIndexCmd;
 import org.alfresco.indexing.shared.opensearch.request.ContentRequestBuilder;
 
@@ -37,6 +45,14 @@ import org.alfresco.indexing.shared.opensearch.request.ContentRequestBuilder;
 @RequiredArgsConstructor
 public class OpensearchContentModifier implements ElasticsearchContentModifyPort
 {
+    /** Failed nodes listed in a clear failure message, so the error stays readable for large chunks. */
+    private static final int MAX_FAILURES_IN_MESSAGE = 5;
+
+    /** What a failed clear means for the operator: it is appended to both clear failure messages. */
+    private static final String CONSEQUENCE = "Their indexed content and transform status are unchanged, "
+            + "so these nodes may still return text the content indexing policy excludes. "
+            + "The step fails rather than skipping them; re-run the reindex once the cause is resolved.";
+
     private final ContentRequestBuilder contentRequestBuilder;
     private final OpensearchUpdater opensearchUpdater;
 
@@ -45,5 +61,36 @@ public class OpensearchContentModifier implements ElasticsearchContentModifyPort
     {
         var updateRequest = contentRequestBuilder.createUpsertRequest(contentIndexCmd);
         opensearchUpdater.sendUpdate(updateRequest, contentIndexCmd.id());
+    }
+
+    @Override
+    public void clearContents(List<ContentClearCmd> clears)
+    {
+        if (clears.isEmpty())
+        {
+            return;
+        }
+        var bulkRequest = new BulkRequest.Builder()
+                .operations(clears.stream().map(contentRequestBuilder::createExclusionBulkOperation).toList())
+                .build();
+        BulkResponse response;
+        try
+        {
+            response = opensearchUpdater.sendBulk(bulkRequest, "excluded content");
+        }
+        catch (RuntimeException e)
+        {
+            throw new ContentClearException(("Failed to clear excluded content for %d nodes. " + CONSEQUENCE).formatted(clears.size()), e);
+        }
+        if (response.errors())
+        {
+            List<BulkResponseItem> failed = response.items().stream().filter(item -> item.error() != null).toList();
+            String sample = failed.stream()
+                    .limit(MAX_FAILURES_IN_MESSAGE)
+                    .map(item -> "%s (%s: %s)".formatted(item.id(), item.error().type(), item.error().reason()))
+                    .collect(Collectors.joining(", "));
+            throw new ContentClearException(("Failed to clear excluded content for %d of %d nodes. " + CONSEQUENCE + " Failures: %s%s").formatted(
+                    failed.size(), clears.size(), sample, failed.size() > MAX_FAILURES_IN_MESSAGE ? ", ..." : ""));
+        }
     }
 }

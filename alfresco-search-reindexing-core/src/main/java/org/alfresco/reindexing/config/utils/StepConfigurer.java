@@ -39,6 +39,7 @@ import org.springframework.core.retry.RetryPolicy;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.backoff.BackOff;
 
+import org.alfresco.indexing.shared.exception.ContentClearException;
 import org.alfresco.indexing.shared.exception.MissingTagException;
 import org.alfresco.metrics.ReindexingMetrics;
 import org.alfresco.reindexing.config.ReindexingCoreProperties;
@@ -130,10 +131,12 @@ public class StepConfigurer
         // TerminalWriteFailureException is the deliberate fail-loud signal raised by the reindex writers when
         // per-item bulk failures survive retries and no dead-letter listener captured them. It must never be
         // skipped (which would let failOnTerminalWriteErrors=true silently discard the failed chunk up to the
-        // skip limit); everything else remains skippable up to skipLimit.
+        // skip limit). ContentClearException is non-skippable for the same reason: skipping it would
+        // complete the step while excluded text stays searchable. Everything else remains skippable up to skipLimit.
         Map<Class<? extends Throwable>, Boolean> skippable = new HashMap<>();
         skippable.put(Exception.class, Boolean.TRUE);
         skippable.put(TerminalWriteFailureException.class, Boolean.FALSE);
+        skippable.put(ContentClearException.class, Boolean.FALSE);
         if (reindexingProperties.getOnUnresolvedNamespace() == UnresolvedNamespaceAction.STOP)
         {
             // Non-skippable, so the step fails on the first such node and the cycle can terminate.

@@ -51,6 +51,38 @@ Override default properties via environment variables or command-line flags, e.g
 docker compose -f alfresco-elasticsearch-batch-indexing/src/test/resources/compose-test.yaml down
 ```
 
+## Content indexing filter
+
+Excludes content from content indexing by MIME type and by size. Metadata and path indexing are
+unaffected: an excluded node stays searchable by its properties and its path, only its text is not
+indexed.
+
+| Property | Default | Meaning |
+|---|---|---|
+| `alfresco.content-indexing.filter.excluded-mime-types` | empty | Comma-separated MIME types to exclude. Empty excludes nothing. |
+| `alfresco.content-indexing.filter.max-content-size` | `0` | Maximum size to index, as a Spring `DataSize`. `0` means no limit. |
+
+Matching is case-insensitive, and a `type/*` entry excludes every subtype, so `video/*` covers
+`video/mp4`. `max-content-size` takes a unit (`50MB`, `1GB`; `KB`/`MB`/`GB`/`TB` are binary, so
+1MB is 1048576 bytes) and a bare number is read as bytes. Content strictly larger than the limit is
+skipped.
+
+```properties
+alfresco.content-indexing.filter.excluded-mime-types=application/zip,video/*
+alfresco.content-indexing.filter.max-content-size=50MB
+```
+
+Excluded content is not fetched from the repository and not sent to Transform Core.
+
+### Content already indexed
+
+Content indexed before a node became excluded is removed by the content stage, which runs only when
+`alfresco.reindex.contentIndexingEnabled=true`. With content indexing switched off, adding an
+exclusion stops new content being indexed but leaves existing content in the index.
+
+Live indexing behaves differently: it removes already-indexed content from the metadata module, so
+it applies whether or not content indexing is enabled.
+
 ## Running tests
 
 This module depends on `alfresco-search-reindexing-core` and other sibling modules that are not

@@ -113,7 +113,9 @@ class OpensearchContentModifierClearTest
                 new ContentClearCmd("a", CONTENT_TIMESTAMP, CONFLICT_CUTOFF),
                 new ContentClearCmd("b", CONTENT_TIMESTAMP, CONFLICT_CUTOFF))))
                         .isInstanceOf(ContentClearException.class)
-                        .hasMessage("Failed to clear excluded content for 1 of 2 nodes: b (mapper_parsing_exception: boom)");
+                        .hasMessageStartingWith("Failed to clear excluded content for 1 of 2 nodes.")
+                        .hasMessageContaining("may still return text the content indexing policy excludes")
+                        .hasMessageEndingWith("Failures: b (mapper_parsing_exception: boom)");
     }
 
     @Test
@@ -129,7 +131,8 @@ class OpensearchContentModifierClearTest
 
         assertThatThrownBy(() -> modifier.clearContents(clears))
                 .isInstanceOf(ContentClearException.class)
-                .hasMessageStartingWith("Failed to clear excluded content for 6 of 6 nodes: n1 (")
+                .hasMessageStartingWith("Failed to clear excluded content for 6 of 6 nodes.")
+                .hasMessageContaining("Failures: n1 (")
                 .hasMessageContaining("n5 (mapper_parsing_exception: boom)")
                 .hasMessageNotContaining("n6")
                 .hasMessageEndingWith(", ...");

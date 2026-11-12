@@ -76,7 +76,7 @@ public class ContentRequestBuilder
      * <p>
      * {@code contentTimestamp} is what gets stored. Content indexed after {@code conflictCutoff} is newer than the exclusion and is left alone.
      * <p>
-     * Built with {@code scriptedUpsert}, so a missing document runs the script against an empty source and the script decides whether the document is created.
+     * Built with {@code scriptedUpsert}, so the script also runs when the document is missing. It runs against the upsert document, and decides whether the document is created.
      */
     public BulkOperation createExclusionBulkOperation(ContentClearCmd clear)
     {

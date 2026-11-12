@@ -93,14 +93,15 @@ public class EsScriptUtils
      * <p>
      * Known limitation: a transform requested before the exclusion whose reply carries the same timestamp as the clear can still write that content back. Excluded nodes are no longer sent for transformation, so this only affects replies already in flight, and the next reindex clears it again.
      * <p>
-     * The script is a noop in two cases: when the stored timestamp is after the cutoff, and when the document carries none of {@code encodedFieldNamesToRemove}. In the second case nothing is written, and under {@code scripted_upsert} no document is created.
+     * The script is a noop when the stored timestamp is after the cutoff, and when the write would change nothing: no field of {@code encodedFieldNamesToRemove} is present and the stored timestamp would not move forward. Under {@code scripted_upsert} the second case also leaves a missing document uncreated, because the script then runs against the upsert document, which already carries the timestamp.
      */
     public static String contentExclusionScriptSource(Set<String> encodedFieldNamesToRemove)
     {
         String timestamp = CONTENT_INDEXING_LAST_UPDATE;
         return "if (ctx._source." + timestamp + " != null && ctx._source." + timestamp + " > params." + CONTENT_EXCLUSION_CUTOFF + ") "
                 + "{ ctx.op = 'noop'; } "
-                + "else if (" + absentValuesFor(encodedFieldNamesToRemove) + ") "
+                + "else if (" + absentValuesFor(encodedFieldNamesToRemove)
+                + " && ctx._source." + timestamp + " != null && ctx._source." + timestamp + " >= params." + timestamp + ") "
                 + "{ ctx.op = 'noop'; } "
                 + "else "
                 + "{ if (ctx._source." + timestamp + " == null || ctx._source." + timestamp + " < params." + timestamp + ") "

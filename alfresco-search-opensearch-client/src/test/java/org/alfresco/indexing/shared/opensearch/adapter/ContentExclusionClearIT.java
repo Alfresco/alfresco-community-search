@@ -50,7 +50,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import org.alfresco.indexing.shared.ElasticsearchProperties;
+import org.alfresco.indexing.shared.TransformStatus;
 import org.alfresco.indexing.shared.opensearch.command.ContentClearCmd;
+import org.alfresco.indexing.shared.opensearch.command.ContentIndexCmd;
 import org.alfresco.indexing.shared.opensearch.request.ContentRequestBuilder;
 import org.alfresco.indexing.shared.utils.OpenSearchJsonMapperFactory;
 
@@ -71,6 +73,7 @@ class ContentExclusionClearIT
     private static final long CONTENT_TIMESTAMP = 1000L;
     private static final long CONFLICT_CUTOFF = 5000L;
     private static final long AFTER_THE_CUTOFF = 9000L;
+    private static final long BEFORE_THE_CLEAR = 500L;
 
     @Container
     private static final ElasticsearchContainer ELASTICSEARCH = new ElasticsearchContainer(
@@ -164,9 +167,65 @@ class ContentExclusionClearIT
         assertThat(sourceOf(id)).containsEntry(ENCODED_CONTENT, "some indexed text");
     }
 
+    @Test
+    @DisplayName("A node whose first transform is still in flight records the clear timestamp, so the late reply cannot index its text")
+    void clearBlocksAReplyFromATransformStillInFlight() throws IOException
+    {
+        String id = randomUUID().toString();
+        indexMetadataOnly(id);
+
+        clear(id);
+
+        // The transform was requested before the node became excluded, so its reply carries an older timestamp.
+        modifier.upsertContent(ContentIndexCmd.withTextScript(id, BEFORE_THE_CLEAR, "text from the in-flight transform"));
+
+        assertThat(sourceOf(id))
+                .doesNotContainKey(ENCODED_CONTENT)
+                .doesNotContainKey(ENCODED_TR_STATUS)
+                .containsEntry(TIMESTAMP, (int) CONTENT_TIMESTAMP);
+    }
+
+    @Test
+    @DisplayName("A late reply reporting a failed transform cannot put the transform status back after the clear")
+    void clearBlocksAFailureReplyFromATransformStillInFlight() throws IOException
+    {
+        String id = randomUUID().toString();
+        indexMetadataOnly(id);
+
+        clear(id);
+
+        modifier.upsertContent(ContentIndexCmd.withExceptionScript(
+                id, BEFORE_THE_CLEAR, TransformStatus.TRANSFORM_FAILED, "transform blew up"));
+
+        assertThat(sourceOf(id))
+                .doesNotContainKey(ENCODED_TR_STATUS)
+                .doesNotContainKey(ENCODED_TR_EX)
+                .doesNotContainKey(ENCODED_CONTENT);
+    }
+
+    @Test
+    @DisplayName("A node with nothing indexed records the clear timestamp rather than skipping the write")
+    void clearRecordsTheTimestampWhenNothingIsIndexedYet() throws IOException
+    {
+        String id = randomUUID().toString();
+        indexMetadataOnly(id);
+
+        clear(id);
+
+        assertThat(sourceOf(id)).containsEntry(TIMESTAMP, (int) CONTENT_TIMESTAMP);
+    }
+
     private void clear(String id)
     {
         modifier.clearContents(List.of(new ContentClearCmd(id, CONTENT_TIMESTAMP, CONFLICT_CUTOFF)));
+    }
+
+    /** Indexes a document with metadata only: no content fields and no content timestamp, as a node looks while its first transform is in flight. */
+    private void indexMetadataOnly(String id) throws IOException
+    {
+        client.index(index -> index.index(INDEX).id(id)
+                .document(Map.of(ENCODED_TITLE, "a title"))
+                .refresh(Refresh.True));
     }
 
     /** Indexes a document holding content text, a failed transform status, a transform error and a title, with the given content timestamp. */

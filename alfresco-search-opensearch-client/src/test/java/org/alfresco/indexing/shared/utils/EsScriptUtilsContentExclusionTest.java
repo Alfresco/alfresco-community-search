@@ -51,10 +51,18 @@ class EsScriptUtilsContentExclusionTest
     }
 
     @Test
-    @DisplayName("a document holding none of the fields is a noop, so a repeated clear does not write and an unindexed node is not created")
-    void nothingToClearIsANoop()
+    @DisplayName("a write that would change nothing is a noop, so a repeated clear does not write and an unindexed node is not created")
+    void nothingToChangeIsANoop()
     {
-        assertThat(source).contains("else if (!ctx._source.containsKey('cm%3Acontent')) { ctx.op = 'noop'; } else {");
+        assertThat(source).contains("else if (!ctx._source.containsKey('cm%3Acontent') && ctx._source." + TIMESTAMP
+                + " != null && ctx._source." + TIMESTAMP + " >= params." + TIMESTAMP + ") { ctx.op = 'noop'; } else {");
+    }
+
+    @Test
+    @DisplayName("a node with nothing indexed yet still records the timestamp, so a reply from a transform in flight cannot write its content back")
+    void absentTimestampIsNotANoop()
+    {
+        assertThat(source).doesNotContain("containsKey('cm%3Acontent')) { ctx.op = 'noop'; }");
     }
 
     @Test

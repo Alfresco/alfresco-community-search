@@ -48,6 +48,11 @@ public class OpensearchContentModifier implements ElasticsearchContentModifyPort
     /** Failed nodes listed in a clear failure message, so the error stays readable for large chunks. */
     private static final int MAX_FAILURES_IN_MESSAGE = 5;
 
+    /** What a failed clear means for the operator: it is appended to both clear failure messages. */
+    private static final String CONSEQUENCE = "Their indexed content and transform status are unchanged, "
+            + "so these nodes may still return text the content indexing policy excludes. "
+            + "The step fails rather than skipping them; re-run the reindex once the cause is resolved.";
+
     private final ContentRequestBuilder contentRequestBuilder;
     private final OpensearchUpdater opensearchUpdater;
 
@@ -75,7 +80,7 @@ public class OpensearchContentModifier implements ElasticsearchContentModifyPort
         }
         catch (RuntimeException e)
         {
-            throw new ContentClearException("Failed to clear excluded content for %d nodes".formatted(clears.size()), e);
+            throw new ContentClearException(("Failed to clear excluded content for %d nodes. " + CONSEQUENCE).formatted(clears.size()), e);
         }
         if (response.errors())
         {
@@ -84,7 +89,7 @@ public class OpensearchContentModifier implements ElasticsearchContentModifyPort
                     .limit(MAX_FAILURES_IN_MESSAGE)
                     .map(item -> "%s (%s: %s)".formatted(item.id(), item.error().type(), item.error().reason()))
                     .collect(Collectors.joining(", "));
-            throw new ContentClearException("Failed to clear excluded content for %d of %d nodes: %s%s".formatted(
+            throw new ContentClearException(("Failed to clear excluded content for %d of %d nodes. " + CONSEQUENCE + " Failures: %s%s").formatted(
                     failed.size(), clears.size(), sample, failed.size() > MAX_FAILURES_IN_MESSAGE ? ", ..." : ""));
         }
     }

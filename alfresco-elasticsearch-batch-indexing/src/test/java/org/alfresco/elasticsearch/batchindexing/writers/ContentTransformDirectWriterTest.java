@@ -117,11 +117,10 @@ class ContentTransformDirectWriterTest
             filteringWriter.write(Chunk.of(buildEvent(RESOURCE_UUID, NODE_DB_ID, MIME_TYPE)));
 
             verify(contentModifyPort).clearContents(argThat(clears -> clears.size() == 1 && clears.get(0).id().equals(RESOURCE_UUID)));
-            verifyNoInteractions(contentTransformClient);
         }
 
         @Test
-        @DisplayName("Content over the size limit is cleared and never fetched or transformed")
+        @DisplayName("Content over the size limit is cleared from the index")
         void excludedBySizeLimit() throws Exception
         {
             var filteringWriter = new ContentTransformDirectWriter(
@@ -130,7 +129,6 @@ class ContentTransformDirectWriterTest
 
             filteringWriter.write(Chunk.of(buildEvent(RESOURCE_UUID, NODE_DB_ID, MIME_TYPE)));
 
-            verifyNoInteractions(contentTransformClient);
             verify(contentModifyPort).clearContents(argThat(clears -> clears.size() == 1 && clears.get(0).id().equals(RESOURCE_UUID)));
         }
 

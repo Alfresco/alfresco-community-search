@@ -172,6 +172,16 @@ class OpensearchContentModifierClearTest
                 .contains("remove('cm%3Acontent')");
     }
 
+    @Test
+    @DisplayName("the clear runs its script on a missing document, so the script decides whether to create one rather than the upsert leaving a timestamp-only stub")
+    void bulkOperationUsesScriptedUpsert()
+    {
+        BulkOperation operation = new ContentRequestBuilder(properties)
+                .createExclusionBulkOperation(new ContentClearCmd("node", CONTENT_TIMESTAMP, CONFLICT_CUTOFF));
+
+        assertThat(serialize(operation)).contains("\"scripted_upsert\":true");
+    }
+
     private static BulkResponse bulkResponse(boolean errors, BulkResponseItem... items)
     {
         return new BulkResponse.Builder()

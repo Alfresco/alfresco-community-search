@@ -47,7 +47,14 @@ class EsScriptUtilsContentExclusionTest
     void noopGuardUsesReindexCutoff()
     {
         assertThat(source).startsWith("if (ctx._source." + TIMESTAMP + " != null && ctx._source." + TIMESTAMP
-                + " > params.CONTENT_EXCLUSION_CUTOFF) { ctx.op = 'noop'; } else {");
+                + " > params.CONTENT_EXCLUSION_CUTOFF) { ctx.op = 'noop'; } else if (");
+    }
+
+    @Test
+    @DisplayName("a document holding none of the fields is a noop, so a repeated clear does not write and an unindexed node is not created")
+    void nothingToClearIsANoop()
+    {
+        assertThat(source).contains("else if (!ctx._source.containsKey('cm%3Acontent')) { ctx.op = 'noop'; } else {");
     }
 
     @Test

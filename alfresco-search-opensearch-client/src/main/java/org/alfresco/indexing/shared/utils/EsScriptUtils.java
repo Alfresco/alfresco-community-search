@@ -36,6 +36,7 @@ import static org.alfresco.indexing.shared.utils.ArchiveFieldsScriptUtils.remove
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import jakarta.json.JsonValue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -91,11 +92,15 @@ public class EsScriptUtils
      * Removing {@code cm:content.tr_status} rather than setting it keeps an excluded node neutral in the repository health checks: it is neither reported as a failed transform nor counted as content indexing in progress.
      * <p>
      * Known limitation: a transform requested before the exclusion whose reply carries the same timestamp as the clear can still write that content back. Excluded nodes are no longer sent for transformation, so this only affects replies already in flight, and the next reindex clears it again.
+     * <p>
+     * The script is a noop in two cases: when the stored timestamp is after the cutoff, and when the document carries none of {@code encodedFieldNamesToRemove}. In the second case nothing is written, and under {@code scripted_upsert} no document is created.
      */
     public static String contentExclusionScriptSource(Set<String> encodedFieldNamesToRemove)
     {
         String timestamp = CONTENT_INDEXING_LAST_UPDATE;
         return "if (ctx._source." + timestamp + " != null && ctx._source." + timestamp + " > params." + CONTENT_EXCLUSION_CUTOFF + ") "
+                + "{ ctx.op = 'noop'; } "
+                + "else if (" + absentValuesFor(encodedFieldNamesToRemove) + ") "
                 + "{ ctx.op = 'noop'; } "
                 + "else "
                 + "{ if (ctx._source." + timestamp + " == null || ctx._source." + timestamp + " < params." + timestamp + ") "
@@ -175,6 +180,15 @@ public class EsScriptUtils
     public static String removeFieldScriptSource(String encodedFieldName)
     {
         return "ctx._source.remove('" + encodedFieldName + "'); ";
+    }
+
+    /** A condition that holds when the document carries none of the given fields, in the same order {@link #removeValuesFor} uses. */
+    private static String absentValuesFor(Set<String> encodedFieldNames)
+    {
+        return encodedFieldNames.stream()
+                .sorted()
+                .map(fieldName -> "!ctx._source.containsKey('" + fieldName + "')")
+                .collect(Collectors.joining(" && "));
     }
 
     private static String removeValuesFor(Set<String> encodedFieldNames)

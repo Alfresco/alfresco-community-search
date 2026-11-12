@@ -75,6 +75,8 @@ public class ContentRequestBuilder
      * Clears the content fields of an excluded node. Used by the content stage, which runs even when metadata indexing is switched off and so is the only thing that can clear in that configuration.
      * <p>
      * {@code contentTimestamp} is what gets stored. Content indexed after {@code conflictCutoff} is newer than the exclusion and is left alone.
+     * <p>
+     * Built with {@code scriptedUpsert}, so a missing document runs the script against an empty source and the script decides whether the document is created.
      */
     public BulkOperation createExclusionBulkOperation(ContentClearCmd clear)
     {
@@ -83,6 +85,7 @@ public class ContentRequestBuilder
                 .index(elasticsearchProperties.getIndexName())
                 .retryOnConflict(elasticsearchProperties.getRetryOnConflict())
                 .id(clear.id())
+                .scriptedUpsert(true)
                 .upsert(fieldsToUpsert)
                 .script(EsScriptUtils.contentExclusionScript(fieldsToUpsert, clear.conflictCutoff()))
                 .build()).build();

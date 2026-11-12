@@ -29,11 +29,13 @@ package org.alfresco.indexing.shared.opensearch.request;
 import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.CM_CONTENT_TR_EX;
 import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.CM_CONTENT_TR_STATUS;
 import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.CONTENT_ATTRIBUTE_NAME;
+import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.CONTENT_FINGERPRINT;
 import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.CONTENT_INDEXING_LAST_UPDATE;
 import static org.alfresco.elasticsearch.shared.translator.AlfrescoQualifiedNameTranslator.encode;
 import static org.alfresco.indexing.shared.utils.EsScriptUtils.contentUpsertScriptSource;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -47,6 +49,7 @@ import org.alfresco.indexing.shared.ElasticsearchProperties;
 import org.alfresco.indexing.shared.opensearch.command.ContentClearCmd;
 import org.alfresco.indexing.shared.opensearch.command.ContentIndexCmd;
 import org.alfresco.indexing.shared.utils.EsScriptUtils;
+import org.springframework.util.StringUtils;
 
 @Component
 @RequiredArgsConstructor
@@ -55,6 +58,7 @@ public class ContentRequestBuilder
     private static final String ENCODED_TR_STATUS = encode(CM_CONTENT_TR_STATUS);
     private static final String ENCODED_TR_EX = encode(CM_CONTENT_TR_EX);
     private static final String ENCODED_CONTENT_TEXT = encode(CONTENT_ATTRIBUTE_NAME);
+    private static final String ENCODED_FINGERPRINT = encode(CONTENT_FINGERPRINT);
     private final ElasticsearchProperties elasticsearchProperties;
 
     public UpdateRequest<?, ?> createUpsertRequest(ContentIndexCmd contentIndexCmd)
@@ -103,24 +107,38 @@ public class ContentRequestBuilder
             fields.put(ENCODED_TR_STATUS, contentIndexCmd.transformationStatus());
             fields.put(ENCODED_TR_EX, contentIndexCmd.transformationError());
         }
-        case TEXT_SCRIPT -> fields.put(ENCODED_CONTENT_TEXT, contentIndexCmd.contentText());
+        case TEXT_SCRIPT -> {
+            fields.put(ENCODED_CONTENT_TEXT, contentIndexCmd.contentText());
+            if (StringUtils.hasText(contentIndexCmd.contentFingerprint()))
+            {
+                fields.put(ENCODED_FINGERPRINT, contentIndexCmd.contentFingerprint());
+            }
+        }
         }
         return fields;
     }
 
     private String buildUpsertScript(ContentIndexCmd contentIndexCmd)
     {
-        var identifier = contentIndexCmd.scriptType();
-        return switch (identifier)
+        boolean hasFingerprint = StringUtils.hasText(contentIndexCmd.contentFingerprint());
+        return switch (contentIndexCmd.scriptType())
         {
         case EXCEPTION_SCRIPT -> {
             var encodedFieldNamesToAssign = Set.of(CONTENT_INDEXING_LAST_UPDATE, ENCODED_TR_STATUS, ENCODED_TR_EX);
-            var encodedFieldNamesToRemove = Set.of(ENCODED_CONTENT_TEXT);
+            var encodedFieldNamesToRemove = Set.of(ENCODED_CONTENT_TEXT, ENCODED_FINGERPRINT);
             yield contentUpsertScriptSource(encodedFieldNamesToAssign, encodedFieldNamesToRemove);
         }
         case TEXT_SCRIPT -> {
-            var encodedFieldNamesToAssign = Set.of(CONTENT_INDEXING_LAST_UPDATE, ENCODED_CONTENT_TEXT);
-            var encodedFieldNamesToRemove = Set.of(ENCODED_TR_STATUS, ENCODED_TR_EX);
+            var encodedFieldNamesToAssign = new HashSet<>(Set.of(CONTENT_INDEXING_LAST_UPDATE, ENCODED_CONTENT_TEXT));
+            var encodedFieldNamesToRemove = new HashSet<>(Set.of(ENCODED_TR_STATUS, ENCODED_TR_EX));
+            if (hasFingerprint)
+            {
+                encodedFieldNamesToAssign.add(ENCODED_FINGERPRINT);
+            }
+            else
+            {
+                encodedFieldNamesToRemove.add(ENCODED_FINGERPRINT);
+            }
             yield contentUpsertScriptSource(encodedFieldNamesToAssign, encodedFieldNamesToRemove);
         }
         };

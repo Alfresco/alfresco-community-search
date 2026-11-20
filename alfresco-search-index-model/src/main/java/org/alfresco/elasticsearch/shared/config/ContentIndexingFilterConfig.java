@@ -46,17 +46,41 @@ public class ContentIndexingFilterConfig
 
     @Bean
     public ContentIndexingFilter contentIndexingFilter(
-            @Value("${alfresco.content-indexing.filter.excluded-mime-types:}") List<String> excludedMimeTypes,
-            @Value("${alfresco.content-indexing.filter.max-content-size:0}") DataSize maxContentSize)
+            @Value("${alfresco.content-indexing.filter.excluded-mime-types:}") String excludedMimeTypes,
+            @Value("${alfresco.content-indexing.filter.max-content-size:0}") String maxContentSize)
     {
-        // An empty property value binds to null instead of falling back to the default.
-        long maxContentSizeBytes = maxContentSize == null ? 0L : maxContentSize.toBytes();
-        if (maxContentSizeBytes < 0)
+        ContentIndexingFilter filter = new ContentIndexingFilter(
+                excludedMimeTypes(excludedMimeTypes), maxContentSizeBytes(maxContentSize));
+        LOGGER.info("Content indexing policy: {}", filter);
+        return filter;
+    }
+
+    /**
+     * The configured MIME types, split on commas. An absent or empty value excludes nothing. Blank entries and surrounding spaces are dropped by {@link ContentIndexingFilter}, which also lower-cases them.
+     */
+    private static List<String> excludedMimeTypes(String excludedMimeTypes)
+    {
+        if (excludedMimeTypes == null || excludedMimeTypes.isBlank())
+        {
+            return List.of();
+        }
+        return List.of(excludedMimeTypes.split(","));
+    }
+
+    /**
+     * The configured size in bytes, accepting the forms {@link DataSize#parse} accepts: a unit such as {@code 50MB}, or a bare number of bytes. An absent or empty value means no limit, which is how an empty property value arrives.
+     */
+    private static long maxContentSizeBytes(String maxContentSize)
+    {
+        if (maxContentSize == null || maxContentSize.isBlank())
+        {
+            return 0L;
+        }
+        long bytes = DataSize.parse(maxContentSize.trim()).toBytes();
+        if (bytes < 0)
         {
             throw new IllegalArgumentException("alfresco.content-indexing.filter.max-content-size must not be negative: " + maxContentSize);
         }
-        ContentIndexingFilter filter = new ContentIndexingFilter(excludedMimeTypes == null ? List.of() : excludedMimeTypes, maxContentSizeBytes);
-        LOGGER.info("Content indexing policy: {}", filter);
-        return filter;
+        return bytes;
     }
 }

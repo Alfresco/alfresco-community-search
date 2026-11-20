@@ -126,10 +126,12 @@ public class BatchIndexingByDateIT extends BatchIndexingAbstractIT
                         "cm:accessed",
                         "cm:hits",
                         "cm:type",
-                        "cm:contributor"));
+                        "cm:contributor",
+                        "sys:node-dbid"));
 
         assertThat(document.get(encode("bulkobj:missingContentInfo"))).isNull();
         assertThat(document.get(encode("cm:from"))).isNotNull();
+        assertThat(document.get(encode("sys:node-dbid"))).isInstanceOf(Number.class);
     }
 
     @Test

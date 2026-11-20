@@ -33,6 +33,7 @@ import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.core.env.MapPropertySource;
 
 import org.alfresco.elasticsearch.shared.filter.ContentIndexingFilter;
@@ -40,6 +41,8 @@ import org.alfresco.repo.event.v1.model.ContentInfo;
 
 /**
  * Builds the configuration in a plain {@link AnnotationConfigApplicationContext}, the kind of context that carries none of the converters Spring Boot registers. Live indexing and reindexing start through Spring Boot, but the configuration is also imported by contexts that do not, so every property it reads has to bind without them.
+ * <p>
+ * The context is deliberately not a Spring Boot one: under Spring Boot these tests pass whether or not the properties are read as text, so they would report nothing about the binding they exist to cover.
  */
 @DisplayName("content indexing filter configuration")
 class ContentIndexingFilterConfigTest
@@ -107,13 +110,18 @@ class ContentIndexingFilterConfigTest
                 .hasMessageContaining("must not be negative");
     }
 
-    /** Builds the configuration against the given properties in a context Spring Boot had no part in starting. */
+    /**
+     * Builds the configuration against the given properties in a context Spring Boot had no part in starting.
+     * <p>
+     * {@link PropertySourcesPlaceholderConfigurer} is registered so placeholders resolve strictly, as they do in a running application. Without it the context still resolves them, through the environment-backed resolver {@code AbstractApplicationContext} installs by default, but a placeholder with no default would be passed on as text rather than failing.
+     */
     private static ContentIndexingFilter filterFrom(Map<String, Object> properties)
     {
         try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext())
         {
             context.getEnvironment().getPropertySources().addFirst(new MapPropertySource("test", properties));
             context.register(ContentIndexingFilterConfig.class);
+            context.registerBean(PropertySourcesPlaceholderConfigurer.class);
             context.refresh();
             return context.getBean(ContentIndexingFilter.class);
         }

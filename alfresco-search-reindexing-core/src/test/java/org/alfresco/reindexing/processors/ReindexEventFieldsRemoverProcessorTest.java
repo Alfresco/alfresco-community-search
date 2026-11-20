@@ -33,8 +33,14 @@ import java.util.Map;
 
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.context.properties.bind.Binder;
+import org.springframework.boot.context.properties.source.ConfigurationPropertySources;
+import org.springframework.core.env.PropertySource;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.support.EncodedResource;
 
 import org.alfresco.indexing.shared.config.FilteringConfig;
+import org.alfresco.indexing.shared.utils.YamlPropertySourceFactory;
 import org.alfresco.reindexing.model.ReindexingEvent;
 import org.alfresco.repo.event.v1.model.DataAttributes;
 import org.alfresco.repo.event.v1.model.EventData;
@@ -70,6 +76,35 @@ class ReindexEventFieldsRemoverProcessorTest
 
         Assertions.assertThat(properties).hasSize(2)
                 .containsOnlyKeys("keepThis", "cm:description");
+    }
+
+    @Test
+    void should_keepNodeDbIdWithDefaultMediationFilterFields() throws Exception
+    {
+        ReindexEventFieldsRemoverProcessor processor = new ReindexEventFieldsRemoverProcessor(defaultMediationFilterConfig());
+
+        Map<String, Serializable> inputProperties = new java.util.HashMap<>();
+        inputProperties.put("sys:node-dbid", 875L);
+        inputProperties.put("cmis:changeToken", "value");
+        ReindexingEvent reindexingEvent = event(NodeResource.builder().setProperties(inputProperties).build());
+
+        Map<String, Serializable> properties = of(processor.process(reindexingEvent))
+                .map(ReindexingEvent::getData)
+                .map(DataAttributes::getResource)
+                .map(NodeResource::getProperties)
+                .get();
+
+        Assertions.assertThat(properties).containsOnly(Map.entry("sys:node-dbid", 875L));
+    }
+
+    /** Binds the shipped mediation-filter.yml the same way FilteringConfig's @PropertySource does. */
+    private static FilteringConfig defaultMediationFilterConfig()
+    {
+        PropertySource<?> source = new YamlPropertySourceFactory()
+                .createPropertySource("mediation-filter", new EncodedResource(new ClassPathResource("mediation-filter.yml")));
+        return new Binder(ConfigurationPropertySources.from(source))
+                .bind("mediation", FilteringConfig.class)
+                .get();
     }
 
     private static ReindexingEvent event(NodeResource resource)

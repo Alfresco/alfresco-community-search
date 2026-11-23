@@ -66,6 +66,7 @@ import org.alfresco.repo.event.v1.model.NodeResource;
 class UnresolvedNamespaceReportingTest
 {
     private static final String CM_URI = "http://www.alfresco.org/model/content/1.0";
+    private static final String SYS_URI = "http://www.alfresco.org/model/system/1.0";
     private static final String CUSTOM_URI = "http://acme.example.org/model/custom/1.0";
 
     private PrefixNamespaceConfig prefixMap;
@@ -76,7 +77,8 @@ class UnresolvedNamespaceReportingTest
     void setUp()
     {
         prefixMap = new PrefixNamespaceConfig();
-        prefixMap.setPrefixUriMap(Map.of(CM_URI, "cm"));
+        // sys is needed for the intrinsic sys:node-dbid property every indexed node carries.
+        prefixMap.setPrefixUriMap(Map.of(CM_URI, "cm", SYS_URI, "sys"));
         metrics = mock(ReindexingMetrics.class);
         listener = mock(UnresolvedNamespaceListener.class);
     }

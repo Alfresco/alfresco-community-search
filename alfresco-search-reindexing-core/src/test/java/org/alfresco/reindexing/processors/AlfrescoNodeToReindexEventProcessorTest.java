@@ -26,10 +26,12 @@
 package org.alfresco.reindexing.processors;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 import static org.alfresco.elasticsearch.shared.ElasticsearchConstants.TYPE_DELETED;
 
+import java.io.Serializable;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
@@ -60,6 +62,7 @@ import org.alfresco.repo.event.v1.model.NodeResource;
 public class AlfrescoNodeToReindexEventProcessorTest
 {
     private static final String SYS_URI = "http://www.alfresco.org/model/system/1.0";
+    private static final String SYS_NODE_DBID = "sys:node-dbid";
 
     @Mock
     private PrefixNamespaceConfig prefixNamespaceConfig;
@@ -74,6 +77,9 @@ public class AlfrescoNodeToReindexEventProcessorTest
     public void setUp()
     {
         when(reindexingCoreProperties.getNonReadPermissions()).thenReturn(Set.of("ReadPermissions", "AddChildren"));
+        // A mocked node's getId() defaults to 0L, so every non-delete event resolves sys:node-dbid.
+        PrefixUriMapper defaultPrefixUriMapper = (a) -> Map.of("http://www.alfresco.org/model/content/1.0", "cm", SYS_URI, "sys").get(a);
+        lenient().when(prefixNamespaceConfig.prefixUriMapper()).thenReturn(defaultPrefixUriMapper);
     }
 
     @Test
@@ -277,6 +283,74 @@ public class AlfrescoNodeToReindexEventProcessorTest
 
         assertThat(processResult.getData().getResourceReaderAuthorities())
                 .containsExactly("GROUP_EVERYONE");
+    }
+
+    @Test
+    public void shouldAddNodeDbIdPropertyAsLong()
+    {
+        PrefixUriMapper prefixUriMapper = (a) -> Map.of(SYS_URI, "sys").get(a);
+        when(prefixNamespaceConfig.prefixUriMapper()).thenReturn(prefixUriMapper);
+        when(alfrescoNode.getId()).thenReturn(875L);
+
+        AlfrescoNodeToReindexingEventProcessor eventProcessor = new AlfrescoNodeToReindexingEventProcessor(prefixNamespaceConfig, reindexingCoreProperties.getNonReadPermissions());
+        ReindexingEvent processResult = eventProcessor.process(alfrescoNode);
+
+        Map<String, Serializable> properties = ((NodeResource) processResult.getData().getResource()).getProperties();
+        assertThat(properties).containsEntry(SYS_NODE_DBID, 875L);
+        assertThat(properties.get(SYS_NODE_DBID)).isInstanceOf(Long.class);
+    }
+
+    @Test
+    public void shouldOmitNodeDbIdPropertyWhenNodeIdIsNull()
+    {
+        when(alfrescoNode.getId()).thenReturn(null);
+
+        AlfrescoNodeToReindexingEventProcessor eventProcessor = new AlfrescoNodeToReindexingEventProcessor(prefixNamespaceConfig, reindexingCoreProperties.getNonReadPermissions());
+        ReindexingEvent processResult = eventProcessor.process(alfrescoNode);
+
+        assertThat(((NodeResource) processResult.getData().getResource()).getProperties()).doesNotContainKey(SYS_NODE_DBID);
+    }
+
+    @Test
+    public void shouldAddNodeDbIdPropertyForArchivedNode()
+    {
+        PrefixUriMapper prefixUriMapper = (a) -> Map.of(SYS_URI, "sys").get(a);
+        when(prefixNamespaceConfig.prefixUriMapper()).thenReturn(prefixUriMapper);
+        when(alfrescoNode.getId()).thenReturn(875L);
+        when(alfrescoNode.getProtocol()).thenReturn("archive");
+
+        AlfrescoNodeToReindexingEventProcessor eventProcessor = new AlfrescoNodeToReindexingEventProcessor(prefixNamespaceConfig, reindexingCoreProperties.getNonReadPermissions());
+        ReindexingEvent processResult = eventProcessor.process(alfrescoNode);
+
+        assertThat(((NodeResource) processResult.getData().getResource()).getProperties()).containsEntry(SYS_NODE_DBID, 875L);
+    }
+
+    @Test
+    public void shouldNotAddPropertiesToDeleteEventForNodeMarkedAsDeleted()
+    {
+        when(alfrescoNode.hasBeenMarkedAsDeleted()).thenReturn(true);
+        when(alfrescoNode.getId()).thenReturn(875L);
+
+        AlfrescoNodeToReindexingEventProcessor eventProcessor = new AlfrescoNodeToReindexingEventProcessor(prefixNamespaceConfig, reindexingCoreProperties.getNonReadPermissions());
+        ReindexingEvent processResult = eventProcessor.process(alfrescoNode);
+
+        assertThat(processResult.getType()).isEqualTo(EventType.NODE_DELETED.getType());
+        assertThat(((NodeResource) processResult.getData().getResource()).getProperties()).isNullOrEmpty();
+    }
+
+    @Test
+    public void shouldNotAddPropertiesToDeleteEventWhenIsIndexedIsFalse()
+    {
+        PrefixUriMapper prefixUriMapper = (a) -> Map.of("http://www.alfresco.org/model/content/1.0", "cm", SYS_URI, "sys").get(a);
+        when(prefixNamespaceConfig.prefixUriMapper()).thenReturn(prefixUriMapper);
+        when(alfrescoNode.getNodeProperties()).thenReturn(Set.of(buildIsIndexedNodeProperties(false)));
+        when(alfrescoNode.getId()).thenReturn(875L);
+
+        AlfrescoNodeToReindexingEventProcessor eventProcessor = new AlfrescoNodeToReindexingEventProcessor(prefixNamespaceConfig, reindexingCoreProperties.getNonReadPermissions());
+        ReindexingEvent processResult = eventProcessor.process(alfrescoNode);
+
+        assertThat(processResult.getType()).isEqualTo(EventType.NODE_DELETED.getType());
+        assertThat(((NodeResource) processResult.getData().getResource()).getProperties()).isNullOrEmpty();
     }
 
     private AccessControlEntry buildAce(String authority, String permission, boolean allowed)

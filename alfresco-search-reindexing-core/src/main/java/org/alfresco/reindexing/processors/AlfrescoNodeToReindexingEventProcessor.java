@@ -75,6 +75,7 @@ public class AlfrescoNodeToReindexingEventProcessor extends AlfrescoNodeProcesso
     private static final String ARCHIVE_STORE_PROTOCOL = "archive";
     private static final String SYSTEM_MODEL_URI = "http://www.alfresco.org/model/system/1.0";
     private static final String ARCHIVED_ORIGINAL_PARENT_ASSOC = "archivedOriginalParentAssoc";
+    private static final String NODE_DBID = "node-dbid";
 
     /** Optional. Nullable in tests; wired in production via SharedBatchProcessingConfig. */
     private final UnresolvedNamespaceListener unresolvedNamespaceListener;
@@ -152,6 +153,11 @@ public class AlfrescoNodeToReindexingEventProcessor extends AlfrescoNodeProcesso
         NodeResource.Builder nodeResourceBuilder = NodeResource.builder();
 
         Map<String, Serializable> properties = getProperties(node);
+        // Intrinsic property (not in alf_node_properties); required to match the live event contract from alfresco-community-repo
+        if (node.getId() != null)
+        {
+            getPrefixedPropertyName(SYSTEM_MODEL_URI, NODE_DBID).ifPresent(key -> properties.put(key, node.getId()));
+        }
         Map<String, Map<String, String>> localizedProperties = getLocalizedProperties(node);
 
         if (isNotIndexed(properties))

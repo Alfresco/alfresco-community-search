@@ -27,11 +27,15 @@ package org.alfresco.reindexing.config;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.format.annotation.DateTimeFormat;
 
@@ -40,8 +44,10 @@ import org.alfresco.metrics.MetricsConstants;
 @Setter
 @Getter
 @ConfigurationProperties(prefix = "alfresco.reindex")
-public class ReindexingCoreProperties
+public class ReindexingCoreProperties implements InitializingBean
 {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ReindexingCoreProperties.class);
+
     private String jobName;
 
     private int batchSize;
@@ -92,8 +98,9 @@ public class ReindexingCoreProperties
 
     // Single selector for the writer strategy: sequential | concurrent | merged. This supersedes the
     // legacy writersConcurrentEnabled / writersMergedEnabled booleans. When left unset (the default) the
-    // legacy booleans are still honoured for backward compatibility — see getEffectiveWriterMode() — so
-    // existing configurations keep working unchanged; set this to pick a strategy explicitly.
+    // legacy booleans are still honoured for backward compatibility — see getRequestedWriterMode() — so
+    // existing configurations keep working unchanged; set this to pick a strategy explicitly. A strategy
+    // this edition does not support falls back to sequential — see getEffectiveWriterMode().
     private WriterMode writerMode;
 
     // Log a per-writer timing summary once each step finishes.
@@ -121,11 +128,40 @@ public class ReindexingCoreProperties
     private Set<String> nonReadPermissions = Set.of();
 
     /**
-     * Resolves the effective writer strategy from the single {@code writerMode} selector, falling back to the legacy {@code writersMergedEnabled} / {@code writersConcurrentEnabled} booleans when {@code writerMode} is not set. Precedence is: explicit {@code writerMode} &gt; merged boolean &gt; concurrent boolean &gt; {@link WriterMode#SEQUENTIAL}. This is the single place that decides the default strategy, so flipping the shipped default (e.g. to {@link WriterMode#MERGED}) is a one-line change here.
-     *
-     * @return the effective {@link WriterMode}, never {@code null}
+     * Logs the resolved writer strategy once, at startup, after the properties have been bound. When the requested strategy is not supported by this edition a single warning names the request and the fallback; startup always continues.
      */
-    public WriterMode getEffectiveWriterMode()
+    @Override
+    public void afterPropertiesSet()
+    {
+        WriterMode requested = getRequestedWriterMode();
+        WriterMode effective = getEffectiveWriterMode();
+        if (requested == effective)
+        {
+            LOGGER.info("Reindex writer mode: {}", effective);
+        }
+        else
+        {
+            LOGGER.warn("Reindex writer mode {} is not supported in this edition (supported: {}); falling back to {}. See docs/reindex-writer-configuration.md.",
+                    requested, supportedWriterModes(), effective);
+        }
+    }
+
+    /**
+     * The writer strategies this edition supports. Community supports {@link WriterMode#SEQUENTIAL} only; editions that ship more strategies widen the set by overriding this method. Deliberately not a JavaBean accessor, so it cannot be bound (and therefore cannot be widened) from configuration.
+     *
+     * @return the supported writer modes
+     */
+    protected Set<WriterMode> supportedWriterModes()
+    {
+        return EnumSet.of(WriterMode.SEQUENTIAL);
+    }
+
+    /**
+     * Resolves the writer strategy the configuration asks for, from the single {@code writerMode} selector, falling back to the legacy {@code writersMergedEnabled} / {@code writersConcurrentEnabled} booleans when {@code writerMode} is not set. Precedence is: explicit {@code writerMode} &gt; merged boolean &gt; concurrent boolean &gt; {@link WriterMode#SEQUENTIAL}. The requested strategy is not necessarily the one that runs; see {@link #getEffectiveWriterMode()}.
+     *
+     * @return the requested {@link WriterMode}, never {@code null}
+     */
+    public WriterMode getRequestedWriterMode()
     {
         if (writerMode != null)
         {
@@ -140,6 +176,17 @@ public class ReindexingCoreProperties
             return WriterMode.CONCURRENT;
         }
         return WriterMode.SEQUENTIAL;
+    }
+
+    /**
+     * The writer strategy that actually runs: the {@link #getRequestedWriterMode() requested} strategy when this edition {@link #supportedWriterModes() supports} it, otherwise {@link WriterMode#SEQUENTIAL}. This is the single place the edition fallback is resolved; every writer-strategy accessor below, and therefore the writer composition and the write-metrics listeners, derive from it.
+     *
+     * @return the effective {@link WriterMode}, never {@code null}
+     */
+    public WriterMode getEffectiveWriterMode()
+    {
+        WriterMode requested = getRequestedWriterMode();
+        return supportedWriterModes().contains(requested) ? requested : WriterMode.SEQUENTIAL;
     }
 
     /**
@@ -228,6 +275,7 @@ public class ReindexingCoreProperties
                 ", pathUpsertEnabled=" + pathUpsertEnabled +
                 ", writersMergedEnabled=" + writersMergedEnabled +
                 ", writerMode=" + writerMode +
+                ", requestedWriterMode=" + getRequestedWriterMode() +
                 ", effectiveWriterMode=" + getEffectiveWriterMode() +
                 ", writerTimingSummaryLogEnabled=" + writerTimingSummaryLogEnabled +
                 ", failureSummaryLogEnabled=" + failureSummaryLogEnabled +
@@ -240,7 +288,7 @@ public class ReindexingCoreProperties
     }
 
     /**
-     * The reindex writer strategy selected by {@code alfresco.reindex.writerMode}. A single selector that replaces the overlapping {@code writersConcurrentEnabled} / {@code writersMergedEnabled} booleans.
+     * The reindex writer strategy selected by {@code alfresco.reindex.writerMode}. A single selector that replaces the overlapping {@code writersConcurrentEnabled} / {@code writersMergedEnabled} booleans. Which strategies can run depends on the edition, see {@link #supportedWriterModes()}.
      */
     public enum WriterMode
     {

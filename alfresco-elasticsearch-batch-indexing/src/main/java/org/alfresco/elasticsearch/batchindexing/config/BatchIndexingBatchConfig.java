@@ -106,9 +106,10 @@ public class BatchIndexingBatchConfig
             leadingWriters.add(cascadeCollectorWriter);
         }
         // Merged / metadata+path / content selection is centralised in ReindexWriterComposer, driven by
-        // ReindexingCoreProperties#getEnabledWriterKeys(). Merged mode folds the metadata + path writes
-        // into a single scripted-upsert bulk (its failures are dead-lettered under the MERGED_WRITER stage).
-        // Batch-indexing does not use the concurrent writer, so no executor is supplied.
+        // ReindexingCoreProperties#getEnabledWriterKeys(). Community supports the sequential strategy only, so
+        // a concurrent or merged request falls back to sequential there and the MERGED key is never produced;
+        // the merged writer (and its MERGED_WRITER dead-letter wiring) stays registered but dormant. No
+        // concurrent executor is supplied for the same reason.
         Map<String, ItemWriter<? super ReindexingEvent>> writersByKey = new HashMap<>();
         writersByKey.put(MetricsConstants.MERGED, elasticsearchMergedReindexWriter);
         writersByKey.put(MetricsConstants.METADATA, elasticsearchRepoEventItemWriter);

@@ -206,6 +206,7 @@ what is specific to working on the source.
 Repository-specific documentation:
 
 - [Contributing guide](CONTRIBUTING.md)
+- [Reindex writer configuration](docs/reindex-writer-configuration.md) — writer strategies and edition support
 
 [docs-intro]: https://docs.hyland.com/r/Alfresco/Alfresco-Search-Community/5.9/Alfresco-Search-Community/Introduction
 [docs-install]: https://docs.hyland.com/r/Alfresco/Alfresco-Search-Community/5.9/Alfresco-Search-Community/Install

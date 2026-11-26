@@ -20,10 +20,10 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: Alfresco/alfresco-build-tools/.github/actions/cloudsmith-auth@148e8c308239d720af80dc33c6cc3cf897764610 # v19.9.0
+      - uses: Alfresco/alfresco-build-tools/.github/actions/cloudsmith-auth@482401ef42e6503cfa54d5873f1a768a0ecb3e0e # v19.11.0
         with:
           oidc-namespace: ${{ vars.CLOUDSMITH_NAMESPACE }}
-      - uses: Alfresco/alfresco-build-tools/.github/actions/maven-dependency-scan@148e8c308239d720af80dc33c6cc3cf897764610 # v19.9.0
+      - uses: Alfresco/alfresco-build-tools/.github/actions/maven-dependency-scan@482401ef42e6503cfa54d5873f1a768a0ecb3e0e # v19.11.0
         with:
           java-version: '17'
           maven-version: '3.9.9'

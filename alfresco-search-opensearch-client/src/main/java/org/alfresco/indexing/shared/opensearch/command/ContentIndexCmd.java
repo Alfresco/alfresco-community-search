@@ -35,19 +35,37 @@ import org.alfresco.indexing.shared.TransformStatus;
 
 public record ContentIndexCmd(@NonNull String id, @NonNull Long updateTime,
         @NonNull ElasticsearchConstants.ScriptType scriptType, String contentText,
-        String transformationStatus, String transformationError)
+        String transformationStatus, String transformationError,
+        String contentFingerprint)
 {
+    /**
+     * Creates a command without a content fingerprint. Kept for source and binary compatibility.
+     */
+    public ContentIndexCmd(String id, Long updateTime, ElasticsearchConstants.ScriptType scriptType, String contentText,
+            String transformationStatus, String transformationError)
+    {
+        this(id, updateTime, scriptType, contentText, transformationStatus, transformationError, null);
+    }
 
     public static ContentIndexCmd withTextScript(String id, Long updateTime, String contentText)
     {
+        return withTextScript(id, updateTime, contentText, null);
+    }
+
+    /**
+     * @param contentFingerprint
+     *            fingerprint of {@code contentText}, or {@code null} if none was computed
+     */
+    public static ContentIndexCmd withTextScript(String id, Long updateTime, String contentText, String contentFingerprint)
+    {
         Objects.requireNonNull(contentText);
-        return new ContentIndexCmd(id, updateTime, ElasticsearchConstants.ScriptType.TEXT_SCRIPT, contentText, null, null);
+        return new ContentIndexCmd(id, updateTime, ElasticsearchConstants.ScriptType.TEXT_SCRIPT, contentText, null, null, contentFingerprint);
     }
 
     public static ContentIndexCmd withExceptionScript(String id, Long updateTime, TransformStatus transformStatus, String transformError)
     {
         Objects.requireNonNull(transformStatus);
         Objects.requireNonNull(transformError);
-        return new ContentIndexCmd(id, updateTime, ElasticsearchConstants.ScriptType.EXCEPTION_SCRIPT, null, transformStatus.name(), transformError);
+        return new ContentIndexCmd(id, updateTime, ElasticsearchConstants.ScriptType.EXCEPTION_SCRIPT, null, transformStatus.name(), transformError, null);
     }
 }

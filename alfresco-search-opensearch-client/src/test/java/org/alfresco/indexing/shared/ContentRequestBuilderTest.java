@@ -57,6 +57,8 @@ class ContentRequestBuilderTest
     private static final String ENCODED_CONTENT = "cm%3Acontent";
     private static final String ENCODED_TR_EX = "cm%3Acontent%2Etr_ex";
     private static final String ENCODED_TR_STATUS = "cm%3Acontent%2Etr_status";
+    private static final String FINGERPRINT = "FINGERPRINT";
+    private static final String HASH = "46b5f1fc07ba950cdbf478fc0403668d2ad91b3b8084739e5681895a194f4e54";
 
     private final ElasticsearchProperties elasticsearchProperties = mock();
     private final ContentRequestBuilder requestBuilder = new ContentRequestBuilder(elasticsearchProperties);
@@ -87,11 +89,25 @@ class ContentRequestBuilderTest
                 Arguments.of(
                         ContentIndexCmd.withTextScript("testNodeId", 1000L, "test content"),
                         Map.of(CONTENT_INDEXING_LAST_UPDATE, 1000L, ENCODED_CONTENT, "test content"),
-                        Set.of(ENCODED_TR_EX, ENCODED_TR_STATUS)),
+                        Set.of(ENCODED_TR_EX, ENCODED_TR_STATUS, FINGERPRINT)),
                 Arguments.of(
                         ContentIndexCmd.withExceptionScript("testNodeId", 1000L, TransformStatus.TRANSFORM_FAILED, "test content error"),
                         Map.of(CONTENT_INDEXING_LAST_UPDATE, 1000L, ENCODED_TR_EX, "test content error", ENCODED_TR_STATUS, TransformStatus.TRANSFORM_FAILED.name()),
-                        Set.of(ENCODED_CONTENT)));
+                        Set.of(ENCODED_CONTENT, FINGERPRINT)),
+                Arguments.of(
+                        ContentIndexCmd.withTextScript("testNodeId", 1000L, "test content", HASH),
+                        Map.of(CONTENT_INDEXING_LAST_UPDATE, 1000L, ENCODED_CONTENT, "test content", FINGERPRINT, HASH),
+                        Set.of(ENCODED_TR_EX, ENCODED_TR_STATUS)));
+    }
+
+    @Test
+    void shouldPassFingerprintInScriptParams()
+    {
+        var updateRequest = requestBuilder.createUpsertRequest(ContentIndexCmd.withTextScript("id", 1000L, "test content", HASH));
+
+        var params = updateRequest.script().inline().params();
+        assertThat(params).containsKey(FINGERPRINT);
+        assertThat(params.get(FINGERPRINT).to(String.class)).isEqualTo(HASH);
     }
 
     private void assertScriptCorrect(UpdateRequest<?, ?> updateRequest, Set<String> toUpdate, Set<String> toRemove)

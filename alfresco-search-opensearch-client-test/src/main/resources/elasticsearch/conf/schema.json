@@ -153,6 +153,13 @@
       "CONTENT_INDEXING_LAST_UPDATE": {
         "type": "long"
       },
+      "FINGERPRINT": {
+        "type": "keyword"
+      },
+      "FINGERPRINT_untokenized": {
+        "type": "alias",
+        "path": "FINGERPRINT"
+      },
       "PATH_INDEXING_LAST_UPDATE": {
         "type": "long"
       },
